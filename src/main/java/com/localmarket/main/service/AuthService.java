@@ -4,6 +4,7 @@ import com.localmarket.main.dto.AuthResponse;
 import com.localmarket.main.dto.LoginRequest;
 import com.localmarket.main.dto.RegisterRequest;
 import com.localmarket.main.entity.User;
+import com.localmarket.main.entity.Role;
 import com.localmarket.main.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,7 +26,7 @@ public class AuthService {
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole());
+        user.setRole(request.getRole() != null ? request.getRole() : Role.CUSTOMER);
         
         User savedUser = userRepository.save(user);
         String token = jwtService.generateToken(user.getEmail());
