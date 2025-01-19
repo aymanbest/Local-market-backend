@@ -1,0 +1,73 @@
+use localmarket;
+-- Table: User
+CREATE TABLE User (
+    userId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    passwordHash VARCHAR(255) NOT NULL,
+    role  ENUM('CUSTOMER', 'PRODUCER', 'ADMIN') NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Table: Product
+CREATE TABLE Product (
+    productId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    producerId BIGINT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    quantity INT NOT NULL,
+    imageUrl VARCHAR(2083),
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (producerId) REFERENCES User(userId) ON DELETE CASCADE
+);
+
+-- Table: Category
+CREATE TABLE Category (
+    categoryId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE
+);
+
+-- Table: ProductCategory
+CREATE TABLE ProductCategory (
+    productId BIGINT NOT NULL,
+    categoryId BIGINT NOT NULL,
+    PRIMARY KEY (productId, categoryId),
+    FOREIGN KEY (productId) REFERENCES Product(productId) ON DELETE CASCADE,
+    FOREIGN KEY (categoryId) REFERENCES Category(categoryId) ON DELETE CASCADE
+);
+
+-- Table: Order
+CREATE TABLE `Order` (
+    orderId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    customerId BIGINT NOT NULL,
+    orderDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('PENDING', 'ACCEPTED', 'DECLINED', 'COMPLETED') DEFAULT 'PENDING',
+    totalPrice DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (customerId) REFERENCES User(userId) ON DELETE CASCADE
+);
+
+-- Table: OrderItem
+CREATE TABLE OrderItem (
+    orderItemId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    orderId BIGINT NOT NULL,
+    productId BIGINT NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (orderId) REFERENCES `Order`(orderId) ON DELETE CASCADE,
+    FOREIGN KEY (productId) REFERENCES Product(productId) ON DELETE CASCADE
+);
+
+-- Table: Review
+CREATE TABLE Review (
+    reviewId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    productId BIGINT NOT NULL,
+    customerId BIGINT NOT NULL,
+    rating INT NOT NULL,
+    comment TEXT,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (productId) REFERENCES Product(productId) ON DELETE CASCADE,
+    FOREIGN KEY (customerId) REFERENCES User(userId) ON DELETE CASCADE
+);
