@@ -9,10 +9,11 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.ManyToMany;
 import java.util.HashSet;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.FetchType;
 import lombok.ToString;
 import lombok.EqualsAndHashCode;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Data
@@ -25,8 +26,13 @@ public class Category {
     
     private String name;
     
+    @JsonIgnore
     @ManyToMany(mappedBy = "categories", fetch = FetchType.LAZY)
-    @JsonIgnoreProperties("categories")
     @ToString.Exclude
     private Set<Product> products = new HashSet<>();
+    
+    @JsonProperty("productCount")
+    public int getProductCount() {
+        return products.size();
+    }
 } 

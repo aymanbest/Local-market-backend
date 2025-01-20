@@ -32,11 +32,13 @@ public class Product {
     private String imageUrl;
     
     @ManyToMany(fetch = FetchType.LAZY)
+
     @JoinTable(
         name = "ProductCategory",
         joinColumns = @JoinColumn(name = "productId"),
         inverseJoinColumns = @JoinColumn(name = "categoryId")
     )
+    
     @JsonIgnoreProperties("products")
     @ToString.Exclude
     private Set<Category> categories = new HashSet<>();

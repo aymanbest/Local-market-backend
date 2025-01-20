@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import com.localmarket.main.entity.User;
 import com.localmarket.main.entity.Role;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -32,12 +33,14 @@ public class CategoryService {
         return categoryRepository.save(category);
     }
 
+    @Transactional(readOnly = true)
     public List<Category> getAllCategories() {
-        return categoryRepository.findAll();
+        return categoryRepository.findAllWithProducts();
     }
 
+    @Transactional(readOnly = true)
     public Category getCategory(Long id) {
-        return categoryRepository.findById(id)
+        return categoryRepository.findByIdWithProducts(id)
             .orElseThrow(() -> new RuntimeException("Category not found"));
     }
 
