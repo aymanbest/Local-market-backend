@@ -4,9 +4,11 @@ import lombok.Data;
 import lombok.Builder;
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.AllArgsConstructor;
 
 @Data
 @Builder
+@AllArgsConstructor
 public class ErrorResponse {
     private int status;
     private String message;

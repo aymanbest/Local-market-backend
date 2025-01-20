@@ -39,14 +39,30 @@ CREATE TABLE ProductCategory (
     FOREIGN KEY (categoryId) REFERENCES Category(categoryId) ON DELETE CASCADE
 );
 
+-- Table: PaymentInfo
+CREATE TABLE PaymentInfo (
+    paymentId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    orderId BIGINT,
+    paymentMethod ENUM('CARD', 'GOOGLE_PAY', 'APPLE_PAY', 'CASH', 'BITCOIN') NOT NULL,
+    paymentStatus ENUM('PENDING', 'COMPLETED', 'FAILED') NOT NULL,
+    transactionId VARCHAR(255),
+    amount DECIMAL(10, 2) NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Table: Order
 CREATE TABLE `Order` (
     orderId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    customerId BIGINT NOT NULL,
+    customerId BIGINT,
+    guestEmail VARCHAR(255),
+    shippingAddress TEXT NOT NULL,
+    phoneNumber VARCHAR(20) NOT NULL,
     orderDate DATETIME DEFAULT CURRENT_TIMESTAMP,
     status ENUM('PENDING', 'ACCEPTED', 'DECLINED', 'COMPLETED') DEFAULT 'PENDING',
     totalPrice DECIMAL(10, 2) NOT NULL,
-    FOREIGN KEY (customerId) REFERENCES User(userId) ON DELETE CASCADE
+    paymentId BIGINT,
+    FOREIGN KEY (customerId) REFERENCES User(userId) ON DELETE SET NULL,
+    FOREIGN KEY (paymentId) REFERENCES PaymentInfo(paymentId)
 );
 
 -- Table: OrderItem
@@ -71,3 +87,7 @@ CREATE TABLE Review (
     FOREIGN KEY (productId) REFERENCES Product(productId) ON DELETE CASCADE,
     FOREIGN KEY (customerId) REFERENCES User(userId) ON DELETE CASCADE
 );
+
+-- Update PaymentInfo to add Order foreign key
+ALTER TABLE PaymentInfo
+ADD FOREIGN KEY (orderId) REFERENCES `Order`(orderId) ON DELETE CASCADE;
