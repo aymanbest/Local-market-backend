@@ -17,6 +17,7 @@ import lombok.EqualsAndHashCode;
 @Data
 @Table(name = "Product")
 @EqualsAndHashCode(exclude = {"categories"})
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

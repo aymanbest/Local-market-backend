@@ -10,6 +10,9 @@ import org.springframework.stereotype.Service;
 import com.localmarket.main.entity.user.User;
 import com.localmarket.main.entity.user.Role;
 import org.springframework.transaction.annotation.Transactional;
+import com.localmarket.main.dto.category.CategoryDTO;
+import com.localmarket.main.exception.ApiException;
+import com.localmarket.main.exception.ErrorType;
 
 import java.util.List;
 
@@ -20,17 +23,35 @@ public class CategoryService {
     private final UserRepository userRepository;
 
     @AdminOnly
-    public Category createCategory(CategoryRequest request, String adminEmail) {
-        User admin = userRepository.findByEmail(adminEmail)
-            .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        if (admin.getRole() != Role.ADMIN) {
-            throw new RuntimeException("Only admins can create categories");
+    public CategoryDTO createCategory(CategoryRequest request, String adminEmail) {
+        if (request.getName() == null || request.getName().trim().isEmpty()) {
+            throw new ApiException(ErrorType.INVALID_REQUEST, "Category name cannot be empty");
+        }
+        if (categoryRepository.findByNameIgnoreCase(request.getName()).isPresent()) {
+            throw new ApiException(ErrorType.DUPLICATE_RESOURCE, 
+                                 "Category with name '" + request.getName() + "' already exists");
         }
 
-        Category category = new Category();
-        category.setName(request.getName());
-        return categoryRepository.save(category);
+        User admin = userRepository.findByEmail(adminEmail)
+            .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Admin not found"));
+        
+        if (admin.getRole() != Role.ADMIN) {
+            throw new ApiException(ErrorType.ACCESS_DENIED, "Only admins can create categories");
+        }
+        
+
+        try {
+            Category category = new Category();
+            category.setName(request.getName().trim());
+            Category savedCategory = categoryRepository.save(category);
+            
+            return CategoryDTO.builder()
+                    .categoryId(savedCategory.getCategoryId())
+                    .name(savedCategory.getName())
+                    .build();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create category: " + e.getMessage());
+        }
     }
 
     @Transactional(readOnly = true)

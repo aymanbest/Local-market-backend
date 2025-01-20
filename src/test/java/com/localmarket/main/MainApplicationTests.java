@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.localmarket.main.dto.order.OrderResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.math.BigDecimal;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -139,35 +141,71 @@ class MainApplicationTests {
 				.get("productId").asLong();
 		logger.info(STEP_SUCCESS + " Product created: Fresh Apples");
 
-		// 4. Create Orders
-		logger.info("\n" + STEP_START + " STEP 4: Creating Orders");
-		// 6. Create customer order
-		logger.info("6. Creating customer order...");
+		// 4. Test Customer Order Flow
+		logger.info("\n" + STEP_START + " STEP 4: Testing Customer Order Flow");
 		OrderRequest customerOrderRequest = createOrderRequest(productId, 2);
-		mockMvc.perform(post("/api/orders")
+		MvcResult customerOrderResult = mockMvc.perform(post("/api/orders/checkout")
 				.header("Authorization", "Bearer " + customerToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(customerOrderRequest)))
-				.andExpect(status().isOk());
-		logger.info(STEP_SUCCESS + " Customer order created");
+				.andExpect(status().isOk())
+				.andReturn();
 
-		// 7. Create guest order
-		logger.info("7. Creating guest order...");
+		Long customerOrderId = objectMapper.readTree(customerOrderResult.getResponse().getContentAsString())
+				.get("orderId").asLong();
+
+		PaymentInfo customerPayment = createCardPayment("customer-transaction");
+
+		mockMvc.perform(post("/api/orders/" + customerOrderId + "/pay")
+				.header("Authorization", "Bearer " + customerToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(customerPayment)))
+				.andExpect(status().isOk());
+		logger.info(STEP_SUCCESS + " Customer order completed");
+
+		// 5. Test Guest Order Flow (No Registration)
+		logger.info("\n" + STEP_START + " STEP 5: Testing Guest Order Flow");
 		OrderRequest guestOrderRequest = createGuestOrderRequest(productId);
-		mockMvc.perform(post("/api/orders")
+		MvcResult guestOrderResult = mockMvc.perform(post("/api/orders/checkout")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(guestOrderRequest)))
-				.andExpect(status().isOk());
-		logger.info(STEP_SUCCESS + " Guest order created");
+				.andExpect(status().isOk())
+				.andReturn();
 
-		// 8. Create guest order with account
-		logger.info("8. Creating guest order with account...");
-		OrderRequest guestWithAccountRequest = createGuestWithAccountRequest(productId);
-		mockMvc.perform(post("/api/orders")
+		Long guestOrderId = objectMapper.readTree(guestOrderResult.getResponse().getContentAsString())
+				.get("orderId").asLong();
+		logger.info(STEP_SUCCESS + " Guest order created (abandoned payment)");
+
+		// Try to access abandoned order
+		mockMvc.perform(get("/api/orders/" + guestOrderId)
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isUnauthorized());
+		logger.info(STEP_SUCCESS + " Guest cannot access abandoned order");
+
+		// 6. Test Guest Order Flow (With Registration)
+		logger.info("\n" + STEP_START + " STEP 6: Testing Guest Order with Registration");
+		OrderRequest registerGuestRequest = createGuestWithAccountRequest(productId);
+		MvcResult registerGuestResult = mockMvc.perform(post("/api/orders/checkout")
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(objectMapper.writeValueAsString(guestWithAccountRequest)))
+				.content(objectMapper.writeValueAsString(registerGuestRequest)))
+				.andExpect(status().isOk())
+				.andReturn();
+
+		OrderResponse response = objectMapper.readValue(
+				registerGuestResult.getResponse().getContentAsString(),
+				OrderResponse.class
+		);
+		String newCustomerToken = response.getToken();
+		Long registerGuestOrderId = response.getOrder().getOrderId();
+
+		PaymentInfo newCustomerPayment = createCardPayment("new-customer-transaction");
+
+		mockMvc.perform(post("/api/orders/" + registerGuestOrderId + "/pay")
+				.header("Authorization", "Bearer " + newCustomerToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(newCustomerPayment)))
 				.andExpect(status().isOk());
-		logger.info(STEP_SUCCESS + " Guest order with account created");
+		logger.info(STEP_SUCCESS + " Guest order with registration completed");
 
 		logger.info(SEPARATOR + END_TEST + SEPARATOR);
 	}
@@ -180,12 +218,6 @@ class MainApplicationTests {
 		request.setItems(Collections.singletonList(itemRequest));
 		request.setShippingAddress("123 Customer St");
 		request.setPhoneNumber("1234567890");
-
-		PaymentInfo paymentInfo = new PaymentInfo();
-		paymentInfo.setPaymentMethod(PaymentMethod.CARD);
-		paymentInfo.setTransactionDetails("test-transaction");
-		request.setPaymentInfo(paymentInfo);
-
 		return request;
 	}
 
@@ -210,5 +242,26 @@ class MainApplicationTests {
 		request.setAccountCreation(accountCreation);
 
 		return request;
+	}
+
+	private PaymentInfo createCardPayment(String transactionDetails) {
+		PaymentInfo payment = new PaymentInfo();
+		payment.setPaymentMethod(PaymentMethod.CARD);
+		payment.setTransactionDetails(transactionDetails);
+		payment.setCardNumber("4111111111111111");
+		payment.setCardHolderName("Test User");
+		payment.setExpiryDate("12/25");
+		payment.setCvv("123");
+		payment.setCurrency("USD");
+		return payment;
+	}
+
+	private PaymentInfo createBitcoinPayment(String transactionDetails) {
+		PaymentInfo payment = new PaymentInfo();
+		payment.setPaymentMethod(PaymentMethod.BITCOIN);
+		payment.setTransactionDetails(transactionDetails);
+		payment.setTransactionHash("0x123abc...");
+		payment.setCurrency("BTC");
+		return payment;
 	}
 }

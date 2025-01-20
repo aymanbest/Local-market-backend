@@ -26,37 +26,26 @@ import com.localmarket.main.dto.ErrorResponse;
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
-    private final ObjectMapper objectMapper;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/orders").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/orders/{orderId}").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/orders/checkout").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/orders/*/pay").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/orders/**").authenticated()
+                .requestMatchers("/api/categories/**").permitAll()
+                .requestMatchers("/api/products/**").permitAll()
                 .anyRequest().authenticated()
             )
-            .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((request, response, authException) -> {
-                    response.setContentType("application/json");
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    ErrorResponse error = ErrorResponse.builder()
-                            .status(HttpServletResponse.SC_UNAUTHORIZED)
-                            .message("Authentication required")
-                            .path(request.getRequestURI())
-                            .timestamp(LocalDateTime.now())
-                            .build();
-                    response.getWriter().write(objectMapper.writeValueAsString(error));
-                })
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-            .authenticationProvider(authenticationProvider);
-        
+            .authenticationProvider(authenticationProvider)
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            
         return http.build();
     }
 } 

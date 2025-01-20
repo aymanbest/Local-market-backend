@@ -2,12 +2,14 @@ package com.localmarket.main.entity.user;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Data
 @Table(name = "`User`")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "passwordHash", "role", "createdAt", "updatedAt"})
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

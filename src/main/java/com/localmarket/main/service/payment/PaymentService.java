@@ -18,7 +18,7 @@ public class PaymentService {
 
     public PaymentResponse processPayment(PaymentInfo paymentInfo, BigDecimal amount) {
         // Simulate payment processing
-        boolean isSuccessful = Math.random() > 0.1; // 90% success rate
+        boolean isSuccessful = true; // 90% success rate
         
         if (!isSuccessful) {
             throw new PaymentFailedException("Payment processing failed. Please try again.");

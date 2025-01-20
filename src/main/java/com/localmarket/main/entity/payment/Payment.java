@@ -4,10 +4,12 @@ import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Data
 @Table(name = "PaymentInfo")
+@JsonIgnoreProperties({"orderId"})
 public class Payment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

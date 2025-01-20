@@ -4,6 +4,7 @@ import lombok.Data;
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.localmarket.main.entity.user.User;
 import com.localmarket.main.entity.payment.Payment;
 import java.math.BigDecimal;
@@ -14,6 +15,7 @@ import java.util.List;
 @Entity
 @Data
 @Table(name = "`Order`")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,6 +23,7 @@ public class Order {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customerId")
+    @JsonIgnoreProperties({"passwordHash", "role", "createdAt", "updatedAt"})
     private User customer;
     
     private String guestEmail;

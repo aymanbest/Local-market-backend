@@ -15,11 +15,13 @@ import lombok.EqualsAndHashCode;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.localmarket.main.entity.product.Product;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Data
 @Table(name = "Category")
 @EqualsAndHashCode(exclude = {"products"})
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

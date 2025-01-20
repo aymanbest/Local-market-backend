@@ -16,4 +16,6 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     
     @Query("SELECT DISTINCT c FROM Category c LEFT JOIN FETCH c.products WHERE c.categoryId = :id")
     Optional<Category> findByIdWithProducts(@Param("id") Long id);
+
+    Optional<Category> findByNameIgnoreCase(String name);
 } 

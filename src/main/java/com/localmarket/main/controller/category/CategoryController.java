@@ -8,6 +8,7 @@ import com.localmarket.main.service.auth.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.localmarket.main.dto.category.CategoryDTO;
 
 import java.util.List;
 
@@ -20,7 +21,7 @@ public class CategoryController {
 
     @PostMapping
     @AdminOnly
-    public ResponseEntity<Category> createCategory(
+    public ResponseEntity<CategoryDTO> createCategory(
             @RequestBody CategoryRequest request,
             @RequestHeader("Authorization") String token) {
         String adminEmail = jwtService.extractUsername(token.substring(7));

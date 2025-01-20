@@ -95,8 +95,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         
         // Allow guest orders
-        if ("POST".equals(method) && path.equals("/api/orders")) {
-            return true;
+        if ("POST".equals(method)) {
+            return path.equals("/api/orders/checkout") ||    // Allow checkout
+                   path.matches("/api/orders/\\d+/pay");     // Allow payment for any order ID
         }
         
         return false;

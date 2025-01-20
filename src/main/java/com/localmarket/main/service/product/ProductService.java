@@ -16,6 +16,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.Optional;
+import java.math.BigDecimal;
+import org.springframework.dao.DataIntegrityViolationException;
+import com.localmarket.main.exception.ApiException;
+import com.localmarket.main.exception.ErrorType;
 
 import com.localmarket.main.dto.product.ProductDTO;
 
@@ -29,28 +33,49 @@ public class ProductService {
 
     @ProducerOnly
     public Product createProduct(ProductRequest request, String producerEmail) {
+        // Validate request
+        if (request.getName() == null || request.getName().trim().isEmpty()) {
+            throw new ApiException(ErrorType.INVALID_REQUEST, "Product name cannot be empty");
+        }
+        if (request.getPrice() == null || request.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ApiException(ErrorType.INVALID_REQUEST, "Product price must be greater than zero");
+        }
+        if (request.getQuantity() == null || request.getQuantity() < 0) {
+            throw new ApiException(ErrorType.INVALID_REQUEST, "Product quantity cannot be negative");
+        }
+
+        // Verify producer
         User producer = userRepository.findByEmail(producerEmail)
-            .orElseThrow(() -> new RuntimeException("Producer not found"));
+            .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Producer not found"));
         
         if (producer.getRole() != Role.PRODUCER) {
-            throw new RuntimeException("Only producers can create products");
+            throw new ApiException(ErrorType.INVALID_REQUEST, "Only producers can create products");
         }
 
-        Product product = new Product();
-        product.setName(request.getName());
-        product.setDescription(request.getDescription());
-        product.setPrice(request.getPrice());
-        product.setQuantity(request.getQuantity());
-        product.setImageUrl(request.getImageUrl());
-        product.setProducer(producer);
+        try {
+            Product product = new Product();
+            product.setName(request.getName().trim());
+            product.setDescription(request.getDescription());
+            product.setPrice(request.getPrice());
+            product.setQuantity(request.getQuantity());
+            product.setImageUrl(request.getImageUrl());
+            product.setProducer(producer);
 
-        if (request.getCategoryIds() != null) {
-            Set<Category> categories = categoryRepository.findAllById(request.getCategoryIds())
-                .stream().collect(Collectors.toSet());
-            product.setCategories(categories);
+            if (request.getCategoryIds() != null) {
+                Set<Category> categories = categoryRepository.findAllById(request.getCategoryIds())
+                    .stream().collect(Collectors.toSet());
+                if (categories.size() != request.getCategoryIds().size()) {
+                    throw new ApiException(ErrorType.RESOURCE_NOT_FOUND, "One or more categories not found");
+                }
+                product.setCategories(categories);
+            }
+
+            return productRepository.save(product);
+        } catch (DataIntegrityViolationException e) {
+            throw new ApiException(ErrorType.DUPLICATE_RESOURCE, "Product with similar details already exists");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create product: " + e.getMessage());
         }
-
-        return productRepository.save(product);
     }
 
     @Transactional(readOnly = true)
