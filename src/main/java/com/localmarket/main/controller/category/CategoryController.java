@@ -24,8 +24,9 @@ public class CategoryController {
     public ResponseEntity<CategoryDTO> createCategory(
             @RequestBody CategoryRequest request,
             @RequestHeader("Authorization") String token) {
-        String adminEmail = jwtService.extractUsername(token.substring(7));
-        return ResponseEntity.ok(categoryService.createCategory(request, adminEmail));
+        String jwt = token.substring(7);
+        Long adminId = jwtService.extractUserId(jwt);
+        return ResponseEntity.ok(categoryService.createCategory(request, adminId));
     }
 
     @GetMapping
@@ -42,14 +43,21 @@ public class CategoryController {
     @AdminOnly
     public ResponseEntity<Category> updateCategory(
             @PathVariable Long id,
-            @RequestBody CategoryRequest request) {
-        return ResponseEntity.ok(categoryService.updateCategory(id, request));
+            @RequestBody CategoryRequest request,
+            @RequestHeader("Authorization") String token) {
+        String jwt = token.substring(7);
+        Long adminId = jwtService.extractUserId(jwt);
+        return ResponseEntity.ok(categoryService.updateCategory(id, request, adminId));
     }
 
     @DeleteMapping("/{id}")
     @AdminOnly
-    public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
-        categoryService.deleteCategory(id);
+    public ResponseEntity<Void> deleteCategory(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String token) {
+        String jwt = token.substring(7);
+        Long adminId = jwtService.extractUserId(jwt);
+        categoryService.deleteCategory(id, adminId);
         return ResponseEntity.noContent().build();
     }
 } 

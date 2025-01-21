@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import com.localmarket.main.entity.order.OrderStatus;
 import java.util.List;
 import com.localmarket.main.dto.order.OrderResponse;
+import com.localmarket.main.dto.user.UserInfo;
 
 
 @RestController
@@ -26,11 +27,16 @@ public class OrderController {
     public ResponseEntity<Order> createOrder(
             @RequestBody OrderRequest request,
             @RequestHeader(value = "Authorization", required = false) String token) {
-        String userEmail = null;
+        UserInfo userInfo = null;
         if (token != null && token.startsWith("Bearer ")) {
-            userEmail = jwtService.extractUsername(token.substring(7));
+            String jwt = token.substring(7);
+            userInfo = new UserInfo(
+                jwtService.extractUsername(jwt),
+                jwtService.extractUserId(jwt),
+                jwtService.extractRole(jwt)
+            );
         }
-        return ResponseEntity.ok(orderService.createOrder(request, userEmail));
+        return ResponseEntity.ok(orderService.createOrder(request, userInfo));
     }
 
     @PostMapping("/checkout")
@@ -61,8 +67,9 @@ public class OrderController {
     @GetMapping
     public ResponseEntity<List<Order>> getUserOrders(
             @RequestHeader("Authorization") String token) {
-        String userEmail = jwtService.extractUsername(token.substring(7));
-        return ResponseEntity.ok(orderService.getUserOrders(userEmail));
+        String jwt = token.substring(7);
+        Long userId = jwtService.extractUserId(jwt);
+        return ResponseEntity.ok(orderService.getUserOrders(userId));
     }
 
     @GetMapping("/{orderId}")
@@ -79,23 +86,26 @@ public class OrderController {
     @GetMapping("/my-orders")
     public ResponseEntity<List<Order>> getMyOrders(
             @RequestHeader("Authorization") String token) {
-        String userEmail = jwtService.extractUsername(token.substring(7));
-        return ResponseEntity.ok(orderService.getUserOrders(userEmail));
+        String jwt = token.substring(7);
+        Long userId = jwtService.extractUserId(jwt);
+        return ResponseEntity.ok(orderService.getUserOrders(userId));
     }
 
     @GetMapping("/my-orders/status/{status}")
     public ResponseEntity<List<Order>> getMyOrdersByStatus(
             @RequestHeader("Authorization") String token,
             @PathVariable OrderStatus status) {
-        String userEmail = jwtService.extractUsername(token.substring(7));
-        return ResponseEntity.ok(orderService.getUserOrdersByStatus(userEmail, status));
+        String jwt = token.substring(7);
+        Long userId = jwtService.extractUserId(jwt);
+        return ResponseEntity.ok(orderService.getUserOrdersByStatus(userId, status));
     }
 
     @GetMapping("/my-orders/{orderId}")
     public ResponseEntity<Order> getMyOrder(
             @RequestHeader("Authorization") String token,
             @PathVariable Long orderId) {
-        String userEmail = jwtService.extractUsername(token.substring(7));
-        return ResponseEntity.ok(orderService.getUserOrder(orderId, userEmail));
+        String jwt = token.substring(7);
+        Long userId = jwtService.extractUserId(jwt);
+        return ResponseEntity.ok(orderService.getUserOrder(orderId, userId));
     }
 } 

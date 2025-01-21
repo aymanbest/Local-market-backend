@@ -26,8 +26,9 @@ public class ProducerApplicationController {
     public ResponseEntity<ProducerApplicationDTO> submitApplication(
             @RequestBody ProducerApplicationRequest request,
             @RequestHeader("Authorization") String token) {
-        String customerEmail = jwtService.extractUsername(token.substring(7));
-        return ResponseEntity.ok(applicationService.submitApplication(request, customerEmail));
+        String jwt = token.substring(7);
+        Long customerId = jwtService.extractUserId(jwt);
+        return ResponseEntity.ok(applicationService.submitApplication(request, customerId));
     }
 
     @GetMapping
@@ -60,14 +61,16 @@ public class ProducerApplicationController {
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<ProducerApplicationDTO> getMyApplication(
             @RequestHeader("Authorization") String token) {
-        String customerEmail = jwtService.extractUsername(token.substring(7));
-        return ResponseEntity.ok(applicationService.getCustomerApplication(customerEmail));
+        String jwt = token.substring(7);
+        Long customerId = jwtService.extractUserId(jwt);
+        return ResponseEntity.ok(applicationService.getCustomerApplication(customerId));
     }
 
     @GetMapping("/status")
     public ResponseEntity<String> checkApplicationStatus(
             @RequestHeader("Authorization") String token) {
-        String customerEmail = jwtService.extractUsername(token.substring(7));
-        return ResponseEntity.ok(applicationService.checkApplicationStatus(customerEmail));
+        String jwt = token.substring(7);
+        Long customerId = jwtService.extractUserId(jwt);
+        return ResponseEntity.ok(applicationService.checkApplicationStatus(customerId));
     }
 } 

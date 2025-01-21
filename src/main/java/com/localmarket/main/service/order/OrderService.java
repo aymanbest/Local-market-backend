@@ -29,6 +29,8 @@ import com.localmarket.main.service.payment.PaymentService;
 import com.localmarket.main.entity.user.Role;
 import com.localmarket.main.dto.order.OrderResponse;
 import com.localmarket.main.entity.payment.PaymentMethod;
+import com.localmarket.main.dto.user.UserInfo;
+
 
 @Service
 @RequiredArgsConstructor
@@ -41,31 +43,16 @@ public class OrderService {
     private final PaymentService paymentService;
     private final PaymentRepository paymentRepository;
 
-    public Order createOrder(OrderRequest request, String userEmail) {
+    public Order createOrder(OrderRequest request, UserInfo userInfo) {
         Order order = new Order();
         
-        // Handle user authentication/creation
-        if (userEmail == null) {
-            if (request.getAccountCreation() != null && request.getAccountCreation().isCreateAccount()) {
-                // Create new account and authenticate
-                RegisterRequest registerRequest = new RegisterRequest();
-                registerRequest.setEmail(request.getGuestEmail());
-                registerRequest.setUsername(request.getAccountCreation().getUsername());
-                registerRequest.setPassword(request.getAccountCreation().getPassword());
-                AuthResponse authResponse = authService.register(registerRequest);
-                
-                User newUser = userRepository.findByEmail(authResponse.getEmail())
-                    .orElseThrow(() -> new RuntimeException("User creation failed"));
-                order.setCustomer(newUser);
-            } else {
-                order.setGuestEmail(request.getGuestEmail());
-            }
-        } else {
-            User customer = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (userInfo != null) {
+            User customer = userRepository.getReferenceById(userInfo.getUserId());
             order.setCustomer(customer);
+        } else {
+            order.setGuestEmail(request.getGuestEmail());
         }
-
+        
         // Calculate total price and process payment first
         BigDecimal totalPrice = calculateTotalPrice(request.getItems());
         PaymentResponse paymentResponse = paymentService.processPayment(request.getPaymentInfo(), totalPrice);
@@ -82,7 +69,7 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("Product not found"));
                 
             // Check if producer is trying to order their own product
-            if (userEmail != null && product.getProducer().getEmail().equals(userEmail)) {
+            if (userInfo != null && product.getProducer().getEmail().equals(userInfo.getEmail())) {
                 throw new RuntimeException("Producers cannot order their own products");
             }
             
@@ -119,10 +106,8 @@ public class OrderService {
         return orderRepository.save(savedOrder);
     }
 
-    public List<Order> getUserOrders(String userEmail) {
-        User user = userRepository.findByEmail(userEmail)
-            .orElseThrow(() -> new RuntimeException("User not found"));
-        return orderRepository.findByCustomer(user);
+    public List<Order> getUserOrders(Long userId) {
+        return orderRepository.findByCustomerUserId(userId);
     }
 
     public Order getOrder(Long orderId, String userEmail) {
@@ -140,16 +125,12 @@ public class OrderService {
         return order;
     }
 
-    public List<Order> getUserOrdersByStatus(String userEmail, OrderStatus status) {
-        User user = userRepository.findByEmail(userEmail)
-            .orElseThrow(() -> new RuntimeException("User not found"));
-        return orderRepository.findByCustomerAndStatus(user, status);
+    public List<Order> getUserOrdersByStatus(Long userId, OrderStatus status) {
+        return orderRepository.findByCustomerUserIdAndStatus(userId, status);
     }
 
-    public Order getUserOrder(Long orderId, String userEmail) {
-        User user = userRepository.findByEmail(userEmail)
-            .orElseThrow(() -> new RuntimeException("User not found"));
-        return orderRepository.findByOrderIdAndCustomer(orderId, user)
+    public Order getUserOrder(Long orderId, Long userId) {
+        return orderRepository.findByOrderIdAndCustomerUserId(orderId, userId)
             .orElseThrow(() -> new RuntimeException("Order not found or unauthorized"));
     }
 

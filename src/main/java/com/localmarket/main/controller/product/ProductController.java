@@ -23,8 +23,9 @@ public class ProductController {
     public ResponseEntity<Product> createProduct(
             @RequestBody ProductRequest request,
             @RequestHeader("Authorization") String token) {
-        String producerEmail = jwtService.extractUsername(token.substring(7));
-        return ResponseEntity.ok(productService.createProduct(request, producerEmail));
+        String jwt = token.substring(7);
+        Long producerId = jwtService.extractUserId(jwt);
+        return ResponseEntity.ok(productService.createProduct(request, producerId));
     }
 
     @GetMapping("/{id}")
@@ -38,8 +39,9 @@ public class ProductController {
             @PathVariable Long id,
             @RequestBody ProductRequest request,
             @RequestHeader("Authorization") String token) {
-        String producerEmail = jwtService.extractUsername(token.substring(7));
-        return ResponseEntity.ok(productService.updateProduct(id, request, producerEmail));
+        String jwt = token.substring(7);
+        Long producerId = jwtService.extractUserId(jwt);
+        return ResponseEntity.ok(productService.updateProduct(id, request, producerId));
     }
 
     @DeleteMapping("/{id}")
@@ -47,8 +49,9 @@ public class ProductController {
     public ResponseEntity<Void> deleteProduct(
             @PathVariable Long id,
             @RequestHeader("Authorization") String token) {
-        String producerEmail = jwtService.extractUsername(token.substring(7));
-        productService.deleteProduct(id, producerEmail);
+        String jwt = token.substring(7);
+        Long producerId = jwtService.extractUserId(jwt);
+        productService.deleteProduct(id, producerId);
         return ResponseEntity.noContent().build();
     }
 

@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.Optional;
-import java.math.BigDecimal;
 import org.springframework.dao.DataIntegrityViolationException;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
@@ -32,24 +31,12 @@ public class ProductService {
     private final UserRepository userRepository;
 
     @ProducerOnly
-    public Product createProduct(ProductRequest request, String producerEmail) {
-        // Validate request
-        if (request.getName() == null || request.getName().trim().isEmpty()) {
-            throw new ApiException(ErrorType.INVALID_REQUEST, "Product name cannot be empty");
-        }
-        if (request.getPrice() == null || request.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new ApiException(ErrorType.INVALID_REQUEST, "Product price must be greater than zero");
-        }
-        if (request.getQuantity() == null || request.getQuantity() < 0) {
-            throw new ApiException(ErrorType.INVALID_REQUEST, "Product quantity cannot be negative");
-        }
-
-        // Verify producer
-        User producer = userRepository.findByEmail(producerEmail)
-            .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Producer not found"));
-        
+    public Product createProduct(ProductRequest request, Long producerId) {
+        User producer = userRepository.findById(producerId)
+            .orElseThrow(() -> new RuntimeException("Producer not found"));
+            
         if (producer.getRole() != Role.PRODUCER) {
-            throw new ApiException(ErrorType.INVALID_REQUEST, "Only producers can create products");
+            throw new RuntimeException("Only producers can create products");
         }
 
         try {
@@ -91,11 +78,11 @@ public class ProductService {
 
 
     @ProducerOnly
-    public Product updateProduct(Long id, ProductRequest request, String producerEmail) {
+    public Product updateProduct(Long id, ProductRequest request, Long producerId) {
         Product product = productRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Product not found"));
             
-        if (!product.getProducer().getEmail().equals(producerEmail)) {
+        if (!product.getProducer().getUserId().equals(producerId)) {
             throw new RuntimeException("You can only update your own products");
         }
 
@@ -115,11 +102,11 @@ public class ProductService {
     }
 
     @ProducerOnly
-    public void deleteProduct(Long id, String producerEmail) {
+    public void deleteProduct(Long id, Long producerId) {
         Product product = productRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Product not found"));
             
-        if (!product.getProducer().getEmail().equals(producerEmail)) {
+        if (!product.getProducer().getUserId().equals(producerId)) {
             throw new RuntimeException("You can only delete your own products");
         }
 

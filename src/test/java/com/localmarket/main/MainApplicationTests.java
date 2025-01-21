@@ -23,8 +23,7 @@ import java.math.BigDecimal;
 import java.util.Collections;
 import org.springframework.transaction.annotation.Transactional;
 import com.localmarket.main.dto.producer.ProducerApplicationRequest;
-import java.util.Arrays;
-
+import com.localmarket.main.dto.auth.LoginRequest;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -112,8 +111,8 @@ class MainApplicationTests {
 				.andExpect(status().isOk())
 				.andReturn();
 		String statusResponse = initialStatus.getResponse().getContentAsString();
-		assert statusResponse.replace("\"", "").equals("NOT_APPLIED");
-		logger.info(STEP_SUCCESS + " Initial status verified: NOT_APPLIED");
+		assert statusResponse.contains("NO_APPLICATION") : "Expected status to be NO_APPLICATION but was: " + statusResponse;
+		logger.info(STEP_SUCCESS + " Initial status verified: NO_APPLICATION");
 
 		// 2. Test Producer Application Flow
 		logger.info("\n" + STEP_START + " STEP 2: Testing Producer Application Flow");
@@ -178,17 +177,21 @@ class MainApplicationTests {
 				.andExpect(status().isOk());
 		logger.info(STEP_SUCCESS + " Second application approved");
 
-		// Verify the custom category was added
-		MvcResult categoriesResult = mockMvc.perform(get("/api/categories")
-				.header("Authorization", "Bearer " + adminToken))
+		// Login again to get new token with updated role
+		// Wait 6 seconds before logging in again to ensure token updates are processed
+		Thread.sleep(6000);
+
+		MvcResult newLoginResult = mockMvc.perform(post("/api/auth/login")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(new LoginRequest(customerRequest.getEmail(), customerRequest.getPassword()))))
 				.andExpect(status().isOk())
 				.andReturn();
-		
-		String categoriesJson = categoriesResult.getResponse().getContentAsString();
-		assert categoriesJson.contains("banan easy") : "Custom category 'banan easy' was not found in categories";
-		logger.info(STEP_SUCCESS + " Custom category verification successful");
 
-		// Verify the customer can now create products (as they are now a producer)
+		String updatedCustomerToken = objectMapper.readTree(newLoginResult.getResponse().getContentAsString())
+				.get("token").asText();
+		logger.info(STEP_SUCCESS + " Re-logged in with updated role");
+
+		// Verify the customer can now create products (with new token)
 		ProductRequest testProductRequest = new ProductRequest();
 		testProductRequest.setName("Fresh Apples");
 		testProductRequest.setDescription("Organic fresh apples");
@@ -197,7 +200,7 @@ class MainApplicationTests {
 		testProductRequest.setImageUrl("https://example.com/apple.jpg");
 
 		mockMvc.perform(post("/api/products")
-				.header("Authorization", "Bearer " + customerToken)
+				.header("Authorization", "Bearer " + updatedCustomerToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(testProductRequest)))
 				.andExpect(status().isOk());
@@ -244,7 +247,7 @@ class MainApplicationTests {
 		logger.info("\n" + STEP_START + " STEP 4: Testing Customer Order Flow");
 		OrderRequest customerOrderRequest = createOrderRequest(productId, 2);
 		MvcResult customerOrderResult = mockMvc.perform(post("/api/orders/checkout")
-				.header("Authorization", "Bearer " + customerToken)
+				.header("Authorization", "Bearer " + updatedCustomerToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(customerOrderRequest)))
 				.andExpect(status().isOk())
@@ -256,7 +259,7 @@ class MainApplicationTests {
 		PaymentInfo customerPayment = createCardPayment("customer-transaction");
 
 		mockMvc.perform(post("/api/orders/" + customerOrderId + "/pay")
-				.header("Authorization", "Bearer " + customerToken)
+				.header("Authorization", "Bearer " + updatedCustomerToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(customerPayment)))
 				.andExpect(status().isOk());

@@ -55,15 +55,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String userEmail = jwtService.extractUsername(jwt);
+        String role = jwtService.extractRole(jwt);
+
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-            
             UserDetails userDetails = new org.springframework.security.core.userdetails.User(
-                user.getEmail(),
-                user.getPasswordHash(),
-                Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name()))
+                userEmail,
+                "", // No need for password as we're using token-based auth
+                Collections.singletonList(new SimpleGrantedAuthority(role))
             );
             
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(

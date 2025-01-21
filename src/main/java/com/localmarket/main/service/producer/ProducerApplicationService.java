@@ -18,6 +18,7 @@ import java.util.Optional;
 import com.localmarket.main.util.InputValidator;
 import com.localmarket.main.dto.category.CategoryRequest;
 import com.localmarket.main.service.category.CategoryService;
+import com.localmarket.main.security.TokenBlacklist;
 
 @Service
 @RequiredArgsConstructor
@@ -25,11 +26,12 @@ public class ProducerApplicationService {
     private final ProducerApplicationRepository applicationRepository;
     private final UserRepository userRepository;
     private final CategoryService categoryService;
+    private final TokenBlacklist tokenBlacklist;
 
 
     @Transactional
-    public ProducerApplicationDTO submitApplication(ProducerApplicationRequest request, String customerEmail) {
-        User customer = userRepository.findByEmail(customerEmail)
+    public ProducerApplicationDTO submitApplication(ProducerApplicationRequest request, Long customerId) {
+        User customer = userRepository.findById(customerId)
             .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Customer not found"));
             
         if (customer.getRole() != Role.CUSTOMER) {
@@ -110,7 +112,7 @@ public class ProducerApplicationService {
                         .findFirst()
                         .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "No admin found to create category"));
                     
-                    categoryService.createCategory(categoryRequest, admin.getEmail());
+                    categoryService.createCategory(categoryRequest, admin.getUserId());
                     
                     // Update application categories
                     String categories = application.getCategories();
@@ -126,6 +128,8 @@ public class ProducerApplicationService {
             }
             
             userRepository.save(customer);
+            // Force token invalidation for this user
+            tokenBlacklist.blacklistUserTokens(customer.getUserId());
         } else {
             application.setStatus(ApplicationStatus.DECLINED);
             application.setDeclineReason(declineReason);
@@ -146,38 +150,24 @@ public class ProducerApplicationService {
                 .toList();
     }
 
-    public ProducerApplicationDTO getCustomerApplication(String customerEmail) {
-        User customer = userRepository.findByEmail(customerEmail)
+    public ProducerApplicationDTO getCustomerApplication(Long customerId) {
+        User customer = userRepository.findById(customerId)
             .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Customer not found"));
         ProducerApplication application = applicationRepository.findByCustomer(customer)
             .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "No application found"));
         return mapToDTO(application);
     }
 
-    public String checkApplicationStatus(String customerEmail) {
-        User customer = userRepository.findByEmail(customerEmail)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+    public String checkApplicationStatus(Long customerId) {
+        User customer = userRepository.findById(customerId)
+            .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Customer not found"));
+            
+        Optional<ProducerApplication> application = applicationRepository.findByCustomer(customer);
         
-        if (customer.getRole() == Role.PRODUCER) {
-            return "ALREADY_PRODUCER";
+        if (application.isEmpty()) {
+            return "NO_APPLICATION";
         }
         
-        // First check for any pending applications
-        Optional<ProducerApplication> pendingApplication = applicationRepository
-            .findByCustomerAndStatus(customer, ApplicationStatus.PENDING);
-        
-        if (pendingApplication.isPresent()) {
-            return "PENDING";
-        }
-        
-        // If no pending applications, get the latest one
-        Optional<ProducerApplication> latestApplication = applicationRepository
-            .findTopByCustomerOrderByCreatedAtDesc(customer);
-        
-        if (latestApplication.isEmpty()) {
-            return "NOT_APPLIED";
-        }
-        
-        return latestApplication.get().getStatus().toString();
+        return application.get().getStatus().name();
     }
 }
