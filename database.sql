@@ -88,6 +88,27 @@ CREATE TABLE Review (
     FOREIGN KEY (customerId) REFERENCES User(userId) ON DELETE CASCADE
 );
 
+-- Table: ProducerApplication
+CREATE TABLE ProducerApplication (
+    applicationId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    customerId BIGINT NOT NULL,
+    businessName VARCHAR(255),
+    businessDescription VARCHAR(500) NOT NULL,
+    categories VARCHAR(255) NOT NULL,
+    customCategory VARCHAR(255),
+    businessAddress TEXT NOT NULL,
+    cityRegion VARCHAR(255) NOT NULL,
+    customCityRegion VARCHAR(255),
+    yearsOfExperience INT,
+    websiteOrSocialLink VARCHAR(255),
+    messageToAdmin TEXT,
+    status ENUM('PENDING', 'APPROVED', 'DECLINED') DEFAULT 'PENDING',
+    declineReason TEXT,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (customerId) REFERENCES User(userId) ON DELETE CASCADE
+);
+
 -- Update PaymentInfo to add Order foreign key
 ALTER TABLE PaymentInfo
 ADD FOREIGN KEY (orderId) REFERENCES `Order`(orderId) ON DELETE CASCADE;

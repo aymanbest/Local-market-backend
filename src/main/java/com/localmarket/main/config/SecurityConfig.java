@@ -13,10 +13,6 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import com.localmarket.main.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletResponse;
-import java.time.LocalDateTime;
-import com.localmarket.main.dto.ErrorResponse;
 
 
 @Configuration
@@ -38,6 +34,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/orders/**").authenticated()
                 .requestMatchers("/api/categories/**").permitAll()
                 .requestMatchers("/api/products/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/producer-applications/status").authenticated()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session

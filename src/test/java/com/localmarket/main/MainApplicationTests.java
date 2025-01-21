@@ -22,6 +22,8 @@ import org.slf4j.LoggerFactory;
 import java.math.BigDecimal;
 import java.util.Collections;
 import org.springframework.transaction.annotation.Transactional;
+import com.localmarket.main.dto.producer.ProducerApplicationRequest;
+import java.util.Arrays;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -104,8 +106,105 @@ class MainApplicationTests {
 				.get("token").asText();
 		logger.info(STEP_SUCCESS + " Customer created: " + customerRequest.getEmail());
 
-		// 2. Create Category
-		logger.info("\n" + STEP_START + " STEP 2: Creating Category");
+		// Check initial status (NOT_APPLIED)
+		MvcResult initialStatus = mockMvc.perform(get("/api/producer-applications/status")
+				.header("Authorization", "Bearer " + customerToken))
+				.andExpect(status().isOk())
+				.andReturn();
+		String statusResponse = initialStatus.getResponse().getContentAsString();
+		assert statusResponse.replace("\"", "").equals("NOT_APPLIED");
+		logger.info(STEP_SUCCESS + " Initial status verified: NOT_APPLIED");
+
+		// 2. Test Producer Application Flow
+		logger.info("\n" + STEP_START + " STEP 2: Testing Producer Application Flow");
+
+		// Submit application
+		ProducerApplicationRequest applicationRequest = new ProducerApplicationRequest();
+		applicationRequest.setBusinessName("Fresh Farm");
+		applicationRequest.setBusinessDescription("Local organic farm");
+		applicationRequest.setCategories(new String[] { "Fruits", "Vegetables" });
+		applicationRequest.setBusinessAddress("123 Farm Road");
+		applicationRequest.setCityRegion("Rural County");
+		applicationRequest.setYearsOfExperience(5);
+		applicationRequest.setWebsiteOrSocialLink("https://freshfarm.com");
+		applicationRequest.setMessageToAdmin("Excited to join the platform!");
+
+		MvcResult applicationResult = mockMvc.perform(post("/api/producer-applications")
+				.header("Authorization", "Bearer " + customerToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(applicationRequest)))
+				.andExpect(status().isOk())
+				.andReturn();
+
+		Long applicationId = objectMapper.readTree(applicationResult.getResponse().getContentAsString())
+				.get("applicationId").asLong();
+		logger.info(STEP_SUCCESS + " Producer application submitted");
+
+		// Admin declines first application
+		mockMvc.perform(post("/api/producer-applications/" + applicationId + "/decline")
+				.header("Authorization", "Bearer " + adminToken)
+				.param("reason", "More experience needed")
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isOk());
+		logger.info(STEP_SUCCESS + " First application declined");
+
+		// Submit second application with custom category
+		ProducerApplicationRequest secondApplicationRequest = new ProducerApplicationRequest();
+		secondApplicationRequest.setBusinessName("Fresh Farm");
+		secondApplicationRequest.setBusinessDescription("Local organic farm");
+		secondApplicationRequest.setCategories(new String[] {"Fruits", "Vegetables"});
+		secondApplicationRequest.setCustomCategory("banan easy");
+		secondApplicationRequest.setBusinessAddress("123 Farm Road");
+		secondApplicationRequest.setCityRegion("Rural County");
+		secondApplicationRequest.setYearsOfExperience(10);
+		secondApplicationRequest.setWebsiteOrSocialLink("https://freshfarm.com");
+		secondApplicationRequest.setMessageToAdmin("Reapplying with more experience");
+
+		MvcResult secondApplicationResult = mockMvc.perform(post("/api/producer-applications")
+				.header("Authorization", "Bearer " + customerToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(secondApplicationRequest)))
+				.andExpect(status().isOk())
+				.andReturn();
+		
+		Long secondApplicationId = objectMapper.readTree(secondApplicationResult.getResponse().getContentAsString())
+				.get("applicationId").asLong();
+		logger.info(STEP_SUCCESS + " Second producer application submitted");
+
+		// Admin approves second application
+		mockMvc.perform(post("/api/producer-applications/" + secondApplicationId + "/approve")
+				.header("Authorization", "Bearer " + adminToken)
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isOk());
+		logger.info(STEP_SUCCESS + " Second application approved");
+
+		// Verify the custom category was added
+		MvcResult categoriesResult = mockMvc.perform(get("/api/categories")
+				.header("Authorization", "Bearer " + adminToken))
+				.andExpect(status().isOk())
+				.andReturn();
+		
+		String categoriesJson = categoriesResult.getResponse().getContentAsString();
+		assert categoriesJson.contains("banan easy") : "Custom category 'banan easy' was not found in categories";
+		logger.info(STEP_SUCCESS + " Custom category verification successful");
+
+		// Verify the customer can now create products (as they are now a producer)
+		ProductRequest testProductRequest = new ProductRequest();
+		testProductRequest.setName("Fresh Apples");
+		testProductRequest.setDescription("Organic fresh apples");
+		testProductRequest.setPrice(new BigDecimal("2.99"));
+		testProductRequest.setQuantity(100);
+		testProductRequest.setImageUrl("https://example.com/apple.jpg");
+
+		mockMvc.perform(post("/api/products")
+				.header("Authorization", "Bearer " + customerToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(testProductRequest)))
+				.andExpect(status().isOk());
+		logger.info(STEP_SUCCESS + " Verified role change: Customer can now create products as Producer");
+
+		// 3. Create Category
+		logger.info("\n" + STEP_START + " STEP 3: Creating Category");
 		CategoryRequest categoryRequest = new CategoryRequest();
 		categoryRequest.setName("Fruits");
 
@@ -120,8 +219,8 @@ class MainApplicationTests {
 				.get("categoryId").asLong();
 		logger.info(STEP_SUCCESS + " Category created: " + categoryRequest.getName());
 
-		// 3. Create Product
-		logger.info("\n" + STEP_START + " STEP 3: Creating Product");
+		// 4. Create Product
+		logger.info("\n" + STEP_START + " STEP 4: Creating Product");
 		ProductRequest productRequest = new ProductRequest();
 		productRequest.setName("Fresh Apples");
 		productRequest.setDescription("Organic fresh apples");
@@ -193,8 +292,7 @@ class MainApplicationTests {
 
 		OrderResponse response = objectMapper.readValue(
 				registerGuestResult.getResponse().getContentAsString(),
-				OrderResponse.class
-		);
+				OrderResponse.class);
 		String newCustomerToken = response.getToken();
 		Long registerGuestOrderId = response.getOrder().getOrderId();
 
