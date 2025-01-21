@@ -5,7 +5,6 @@ import com.localmarket.main.dto.account.RegisterRequest;
 import com.localmarket.main.dto.auth.AuthRequest;
 
 import com.localmarket.main.service.auth.AuthService;
-import com.localmarket.main.security.TokenBlacklist;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController {
     private final AuthService authService;
-    private final TokenBlacklist tokenBlacklist;
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
@@ -30,8 +28,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@RequestHeader("Authorization") String token) {
-        String jwt = token.substring(7);
-        tokenBlacklist.blacklist(jwt);
+        authService.logout(token);
         return ResponseEntity.ok().build();
     }
 } 

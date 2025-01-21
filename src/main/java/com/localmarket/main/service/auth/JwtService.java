@@ -6,10 +6,9 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import lombok.RequiredArgsConstructor;
-import com.localmarket.main.security.TokenBlacklist;
 import com.localmarket.main.entity.user.User;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import com.localmarket.main.repository.user.UserRepository;
 
 import java.security.Key;
 import java.util.Base64;
@@ -25,16 +24,17 @@ public class JwtService {
     @Value("${jwt.secret}")
     private String secretKey;
     
-    private final TokenBlacklist tokenBlacklist;
+    private final UserRepository userRepository;
 
-    public JwtService(TokenBlacklist tokenBlacklist) {
-        this.tokenBlacklist = tokenBlacklist;
+    public JwtService(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     public String generateToken(User user) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getUserId());
         claims.put("role", user.getRole().name());
+        claims.put("tokenVersion", user.getTokenVersion());
         
         return Jwts.builder()
                 .setClaims(claims)
@@ -49,12 +49,13 @@ public class JwtService {
         try {
             final Claims claims = extractAllClaims(token);
             Long userId = claims.get("userId", Long.class);
-            LocalDateTime issuedAt = claims.getIssuedAt().toInstant()
-                .atZone(ZoneId.systemDefault())
-                .toLocalDateTime();
+            Integer tokenVersion = claims.get("tokenVersion", Integer.class);
+            
+            User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
                 
             return !isTokenExpired(token) && 
-                   !tokenBlacklist.isTokenInvalidated(userId, issuedAt);
+                   tokenVersion.equals(user.getTokenVersion());
         } catch (Exception e) {
             return false;
         }
@@ -84,6 +85,10 @@ public class JwtService {
         return extractAllClaims(token).get("role", String.class);
     }
 
+    public Integer extractTokenVersion(String token) {
+        return extractAllClaims(token).get("tokenVersion", Integer.class);
+    }
+
     private <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
@@ -91,5 +96,11 @@ public class JwtService {
 
     private boolean isTokenExpired(String token) {
         return extractAllClaims(token).getExpiration().before(new Date());
+    }
+
+    private LocalDateTime getTokenIssuedAt(String token) {
+        return extractAllClaims(token).getIssuedAt().toInstant()
+            .atZone(ZoneId.systemDefault())
+            .toLocalDateTime();
     }
 } 

@@ -1,3 +1,4 @@
+create database localmarket;
 use localmarket;
 -- Table: User
 CREATE TABLE User (
@@ -7,7 +8,8 @@ CREATE TABLE User (
     passwordHash VARCHAR(255) NOT NULL,
     role  ENUM('CUSTOMER', 'PRODUCER', 'ADMIN') NOT NULL,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    tokenVersion INT DEFAULT 0
 );
 
 -- Table: Product

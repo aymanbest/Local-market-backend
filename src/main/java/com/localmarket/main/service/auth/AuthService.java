@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.authentication.BadCredentialsException;
 import com.localmarket.main.entity.user.Role;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -59,5 +60,19 @@ public class AuthService {
                 .email(user.getEmail())
                 .role(user.getRole().name())
                 .build();
+    }
+
+    @Transactional
+    public void logout(String token) {
+        String jwt = token.substring(7);
+        Long userId = jwtService.extractUserId(jwt);
+        
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+            
+        // Increment token version and reset to 0 if it reaches 10
+        int newVersion = (user.getTokenVersion() + 1) % 10;
+        user.setTokenVersion(newVersion);
+        userRepository.save(user);
     }
 } 

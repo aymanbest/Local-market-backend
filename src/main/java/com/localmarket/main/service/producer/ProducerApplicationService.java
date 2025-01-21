@@ -18,7 +18,7 @@ import java.util.Optional;
 import com.localmarket.main.util.InputValidator;
 import com.localmarket.main.dto.category.CategoryRequest;
 import com.localmarket.main.service.category.CategoryService;
-import com.localmarket.main.security.TokenBlacklist;
+
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +26,7 @@ public class ProducerApplicationService {
     private final ProducerApplicationRepository applicationRepository;
     private final UserRepository userRepository;
     private final CategoryService categoryService;
-    private final TokenBlacklist tokenBlacklist;
+
 
 
     @Transactional
@@ -99,7 +99,12 @@ public class ProducerApplicationService {
             User customer = application.getCustomer();
             customer.setRole(Role.PRODUCER);
             
-            // Add custom category if present
+            // Increment token version and reset to 0 if it reaches 10
+            int newVersion = (customer.getTokenVersion() + 1) % 10;
+            customer.setTokenVersion(newVersion);
+            userRepository.save(customer);
+            
+            // Handle custom category if present
             if (application.getCustomCategory() != null && !application.getCustomCategory().trim().isEmpty()) {
                 String customCategory = application.getCustomCategory().trim();
                 CategoryRequest categoryRequest = new CategoryRequest();
@@ -126,10 +131,6 @@ public class ProducerApplicationService {
                     }
                 }
             }
-            
-            userRepository.save(customer);
-            // Force token invalidation for this user
-            tokenBlacklist.blacklistUserTokens(customer.getUserId());
         } else {
             application.setStatus(ApplicationStatus.DECLINED);
             application.setDeclineReason(declineReason);

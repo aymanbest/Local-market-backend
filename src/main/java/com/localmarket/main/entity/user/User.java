@@ -35,6 +35,9 @@ public class User {
     @Column(name = "updatedAt")
     private LocalDateTime updatedAt;
     
+    @Column(name = "tokenVersion")
+    private Integer tokenVersion = 0;
+    
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

@@ -49,33 +49,48 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String jwt = authHeader.substring(7);
         
-        if (!jwtService.isTokenValid(jwt)) {
-            handleUnauthorizedResponse(response, request, "Invalid or expired token");
-            return;
-        }
+        try {
+            // Validate token and token version
+            if (!jwtService.isTokenValid(jwt)) {
+                handleUnauthorizedResponse(response, request, "Invalid or expired token");
+                return;
+            }
 
-        String userEmail = jwtService.extractUsername(jwt);
-        String role = jwtService.extractRole(jwt);
+            String userEmail = jwtService.extractUsername(jwt);
+            String role = jwtService.extractRole(jwt);
+            Long userId = jwtService.extractUserId(jwt);
+            Integer tokenVersion = jwtService.extractTokenVersion(jwt);
 
+            // Double check token version matches current user version
+            User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                
+            if (!tokenVersion.equals(user.getTokenVersion())) {
+                handleUnauthorizedResponse(response, request, "Token has been invalidated");
+                return;
+            }
 
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = new org.springframework.security.core.userdetails.User(
-                userEmail,
-                "", // No need for password as we're using token-based auth
-                Collections.singletonList(new SimpleGrantedAuthority(role))
-            );
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = new org.springframework.security.core.userdetails.User(
+                    userEmail,
+                    "", // No need for password as we're using token-based auth
+                    Collections.singletonList(new SimpleGrantedAuthority(role))
+                );
+                
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                    userDetails,
+                    null,
+                    userDetails.getAuthorities()
+                );
+                
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
             
-            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                userDetails,
-                null,
-                userDetails.getAuthorities()
-            );
-            
-            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+            filterChain.doFilter(request, response);
+        } catch (Exception e) {
+            handleUnauthorizedResponse(response, request, "Invalid token");
         }
-        
-        filterChain.doFilter(request, response);
     }
 
     private boolean isPublicEndpoint(HttpServletRequest request) {
@@ -95,8 +110,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         // Allow guest orders
         if ("POST".equals(method)) {
-            return path.equals("/api/orders/checkout") ||    // Allow checkout
-                   path.matches("/api/orders/\\d+/pay");     // Allow payment for any order ID
+            return path.equals("/api/orders/checkout") ||
+                   path.matches("/api/orders/\\d+/pay");
         }
         
         return false;
