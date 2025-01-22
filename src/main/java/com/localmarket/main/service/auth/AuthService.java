@@ -12,6 +12,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.authentication.BadCredentialsException;
 import com.localmarket.main.entity.user.Role;
 import org.springframework.transaction.annotation.Transactional;
+import com.localmarket.main.exception.ApiException;
+import com.localmarket.main.exception.ErrorType;
+import com.localmarket.main.repository.token.TokenRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -19,10 +22,11 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final TokenRepository tokenRepository;
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already exists");
+            throw new ApiException(ErrorType.EMAIL_ALREADY_EXISTS, "An account with this email already exists");
         }
 
         User user = new User();
@@ -33,6 +37,7 @@ public class AuthService {
         
         User savedUser = userRepository.save(user);
         String token = jwtService.generateToken(savedUser);
+        tokenRepository.storeToken(token, savedUser.getUserId());
         
         return AuthResponse.builder()
                 .token(token)
@@ -52,6 +57,7 @@ public class AuthService {
         }
         
         String token = jwtService.generateToken(user);
+        tokenRepository.storeToken(token, user.getUserId());
         
         return AuthResponse.builder()
                 .token(token)

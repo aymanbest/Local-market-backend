@@ -2,7 +2,6 @@ package com.localmarket.main.exception;
 
 import com.localmarket.main.dto.ErrorResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -12,57 +11,19 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import jakarta.validation.ConstraintViolationException;
 
 
 @RestControllerAdvice
 @RequiredArgsConstructor
 public class GlobalExceptionHandler {
     
-    @ExceptionHandler({
-        BadCredentialsException.class,
-        UsernameNotFoundException.class,
-        AuthenticationCredentialsNotFoundException.class
-    })
-    public ResponseEntity<ErrorResponse> handleAuthenticationException(
-            Exception ex, 
-            HttpServletRequest request) {
-        ErrorResponse error = ErrorResponse.builder()
-                .status(HttpStatus.UNAUTHORIZED.value())
-                .message(ex.getMessage())
-                .path(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
-        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
-    }
-
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDeniedException(
-            AccessDeniedException ex, 
-            HttpServletRequest request) {
-        ErrorResponse error = ErrorResponse.builder()
-                .status(HttpStatus.FORBIDDEN.value())
-                .message("Access denied")
-                .path(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
-        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
-    }
-
-    @ExceptionHandler(PaymentFailedException.class)
-    public ResponseEntity<ErrorResponse> handlePaymentFailedException(PaymentFailedException ex) {
-        ErrorResponse error = ErrorResponse.builder()
-            .status(HttpStatus.BAD_REQUEST.value())
-            .message(ex.getMessage())
-            .path("/api/orders")
-            .timestamp(LocalDateTime.now())
-            .build();
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-    }
-
-
-
     @ExceptionHandler(ApiException.class)
-    public ResponseEntity<ErrorResponse> handleApiException(ApiException ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleApiException(
+            ApiException ex, 
+            HttpServletRequest request) {
         ErrorResponse error = ErrorResponse.builder()
                 .status(ex.getErrorType().getStatus().value())
                 .message(ex.getMessage())
@@ -72,14 +33,58 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, ex.getErrorType().getStatus());
     }
 
+    @ExceptionHandler({
+        BadCredentialsException.class,
+        UsernameNotFoundException.class,
+        AuthenticationCredentialsNotFoundException.class
+    })
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(
+            Exception ex, 
+            HttpServletRequest request) {
+        ApiException apiEx = new ApiException(ErrorType.INVALID_CREDENTIALS, ex.getMessage());
+        return handleApiException(apiEx, request);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(
+            AccessDeniedException ex, 
+            HttpServletRequest request) {
+        ApiException apiEx = new ApiException(ErrorType.ACCESS_DENIED, "Access denied to this resource");
+        return handleApiException(apiEx, request);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
+            DataIntegrityViolationException ex,
+            HttpServletRequest request) {
+        ApiException apiEx = new ApiException(ErrorType.DUPLICATE_RESOURCE, "Resource already exists");
+        return handleApiException(apiEx, request);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationExceptions(
+            MethodArgumentNotValidException ex,
+            HttpServletRequest request) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .reduce("", (a, b) -> a + "; " + b);
+        ApiException apiEx = new ApiException(ErrorType.VALIDATION_FAILED, message);
+        return handleApiException(apiEx, request);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(
+            ConstraintViolationException ex,
+            HttpServletRequest request) {
+        ApiException apiEx = new ApiException(ErrorType.VALIDATION_FAILED, ex.getMessage());
+        return handleApiException(apiEx, request);
+    }
+
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleUnexpectedException(Exception ex, HttpServletRequest request) {
-        ErrorResponse error = ErrorResponse.builder()
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .message("An unexpected error occurred")
-                .path(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
-        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<ErrorResponse> handleUnexpectedException(
+            Exception ex, 
+            HttpServletRequest request) {
+        ApiException apiEx = new ApiException(ErrorType.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
+        return handleApiException(apiEx, request);
     }
 } 

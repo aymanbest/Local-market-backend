@@ -21,6 +21,8 @@ import com.localmarket.main.entity.user.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import com.localmarket.main.dto.ErrorResponse;
+import com.localmarket.main.repository.token.TokenRepository;
+import com.localmarket.main.exception.ApiException;
 
 @Component
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final TokenRepository tokenRepository;
 
     @Override
     protected void doFilterInternal(
@@ -43,16 +46,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         final String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            handleUnauthorizedResponse(response, request, "Authentication required");
+            if (!isPublicPath(request.getRequestURI(), request.getMethod())) {
+                handleUnauthorizedResponse(response, request, "Missing or invalid authorization header");
+                return;
+            }
+            filterChain.doFilter(request, response);
             return;
         }
 
-        String jwt = authHeader.substring(7);
+        final String jwt = authHeader.substring(7);
         
         try {
-            // Validate token and token version
-            if (!jwtService.isTokenValid(jwt)) {
-                handleUnauthorizedResponse(response, request, "Invalid or expired token");
+            // Verify token is still valid in TokenRepository
+            if (!tokenRepository.isTokenValid(jwt)) {
+                handleUnauthorizedResponse(response, request, "Token has been invalidated");
                 return;
             }
 
@@ -88,8 +95,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
             
             filterChain.doFilter(request, response);
-        } catch (Exception e) {
-            handleUnauthorizedResponse(response, request, "Invalid token");
+        } catch (ApiException e) {
+            handleUnauthorizedResponse(response, request, e.getMessage());
+            return;
         }
     }
 
@@ -97,6 +105,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String method = request.getMethod();
         
+        // Auth endpoints
+        if (path.startsWith("/api/auth/")) {
+            return true;
+        }
+        
+        // Public GET endpoints
+        if ("GET".equals(method)) {
+            return path.startsWith("/api/products") || 
+                   path.startsWith("/api/categories");
+        }
+        
+        // Allow guest orders
+        if ("POST".equals(method)) {
+            return path.equals("/api/orders/checkout") ||
+                   path.matches("/api/orders/\\d+/pay");
+        }
+        
+        return false;
+    }
+
+    private boolean isPublicPath(String path, String method) {
         // Auth endpoints
         if (path.startsWith("/api/auth/")) {
             return true;

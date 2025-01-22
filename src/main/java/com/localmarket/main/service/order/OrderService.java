@@ -30,6 +30,8 @@ import com.localmarket.main.entity.user.Role;
 import com.localmarket.main.dto.order.OrderResponse;
 import com.localmarket.main.entity.payment.PaymentMethod;
 import com.localmarket.main.dto.user.UserInfo;
+import com.localmarket.main.exception.ApiException;
+import com.localmarket.main.exception.ErrorType;
 
 
 @Service
@@ -225,11 +227,11 @@ public class OrderService {
         if (paymentInfo.getPaymentMethod() == PaymentMethod.CARD) {
             if (paymentInfo.getCardNumber() == null || paymentInfo.getCardHolderName() == null || 
                 paymentInfo.getExpiryDate() == null || paymentInfo.getCvv() == null) {
-                throw new RuntimeException("Invalid card payment details");
+                throw new ApiException(ErrorType.VALIDATION_FAILED, "Invalid card payment details");
             }
         } else if (paymentInfo.getPaymentMethod() == PaymentMethod.BITCOIN) {
             if (paymentInfo.getTransactionHash() == null) {
-                throw new RuntimeException("You didnt provide a transaction hash");
+                throw new ApiException(ErrorType.VALIDATION_FAILED, "Transaction hash is required for Bitcoin payments");
             }
         }
     }

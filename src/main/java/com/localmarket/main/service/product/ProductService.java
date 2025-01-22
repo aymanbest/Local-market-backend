@@ -33,10 +33,10 @@ public class ProductService {
     @ProducerOnly
     public Product createProduct(ProductRequest request, Long producerId) {
         User producer = userRepository.findById(producerId)
-            .orElseThrow(() -> new RuntimeException("Producer not found"));
+            .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Producer not found"));
             
         if (producer.getRole() != Role.PRODUCER) {
-            throw new RuntimeException("Only producers can create products");
+            throw new ApiException(ErrorType.ACCESS_DENIED, "Only producers can create products");
         }
 
         try {
@@ -73,17 +73,18 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Product getProduct(Long id) {
         return productRepository.findByIdWithCategories(id)
-            .orElseThrow(() -> new RuntimeException("Product not found"));
+        .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, 
+            "Product with id " + id + " not found"));
     }
 
 
     @ProducerOnly
     public Product updateProduct(Long id, ProductRequest request, Long producerId) {
         Product product = productRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Product not found"));
+            .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
             
         if (!product.getProducer().getUserId().equals(producerId)) {
-            throw new RuntimeException("You can only update your own products");
+            throw new ApiException(ErrorType.PRODUCT_ACCESS_DENIED, "You don't have permission to modify this product");
         }
 
         product.setName(request.getName());
@@ -104,10 +105,10 @@ public class ProductService {
     @ProducerOnly
     public void deleteProduct(Long id, Long producerId) {
         Product product = productRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Product not found"));
+            .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
             
         if (!product.getProducer().getUserId().equals(producerId)) {
-            throw new RuntimeException("You can only delete your own products");
+            throw new ApiException(ErrorType.PRODUCT_ACCESS_DENIED, "You can only delete your own products");
         }
 
         productRepository.delete(product);
