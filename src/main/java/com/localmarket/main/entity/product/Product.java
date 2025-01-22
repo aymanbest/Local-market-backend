@@ -12,6 +12,13 @@ import java.util.HashSet;
 import java.util.Set;
 import lombok.ToString;
 import lombok.EqualsAndHashCode;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
 
 @Entity
 @Data
@@ -23,15 +30,29 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long productId;
     
+    @NotNull(message = "Producer is required")
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "producerId")
     @JsonIgnoreProperties({"passwordHash", "createdAt", "updatedAt", "email"})
     private User producer;
     
+    @NotBlank(message = "Product name is required")
+    @Size(min = 2, max = 255, message = "Product name must be between 2 and 255 characters")
     private String name;
+    
+    @Size(max = 1000, message = "Description cannot exceed 1000 characters")
     private String description;
+    
+    @NotNull(message = "Price is required")
+    @DecimalMin(value = "0.01", message = "Price must be greater than 0")
+    @Digits(integer = 8, fraction = 2, message = "Price must have at most 8 digits and 2 decimal places")
     private BigDecimal price;
+    
+    @NotNull(message = "Quantity is required")
+    @Min(value = 0, message = "Quantity cannot be negative")
     private Integer quantity;
+    
+    
     private String imageUrl;
     
     @ManyToMany(fetch = FetchType.LAZY)

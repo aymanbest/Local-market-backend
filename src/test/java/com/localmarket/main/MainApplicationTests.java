@@ -318,7 +318,7 @@ class MainApplicationTests {
 		itemRequest.setQuantity(quantity);
 		request.setItems(Collections.singletonList(itemRequest));
 		request.setShippingAddress("123 Customer St");
-		request.setPhoneNumber("1234567890");
+		request.setPhoneNumber("+12345678901");
 		return request;
 	}
 
@@ -326,7 +326,7 @@ class MainApplicationTests {
 		OrderRequest request = createOrderRequest(productId, 1);
 		request.setGuestEmail("guest@test.com");
 		request.setShippingAddress("456 Guest St");
-		request.setPhoneNumber("0987654321");
+		request.setPhoneNumber("+12345678901");
 		return request;
 	}
 
@@ -334,7 +334,7 @@ class MainApplicationTests {
 		OrderRequest request = createOrderRequest(productId, 1);
 		request.setGuestEmail("newcustomer@test.com");
 		request.setShippingAddress("789 New Customer St");
-		request.setPhoneNumber("1122334455");
+		request.setPhoneNumber("+12345678901");
 
 		AccountCreationRequest accountCreation = new AccountCreationRequest();
 		accountCreation.setCreateAccount(true);

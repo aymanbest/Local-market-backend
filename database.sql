@@ -100,7 +100,6 @@ CREATE TABLE ProducerApplication (
     customCategory VARCHAR(255),
     businessAddress TEXT NOT NULL,
     cityRegion VARCHAR(255) NOT NULL,
-    customCityRegion VARCHAR(255),
     yearsOfExperience INT,
     websiteOrSocialLink VARCHAR(255),
     messageToAdmin TEXT,

@@ -55,7 +55,6 @@ public class ProducerApplicationService {
         application.setCustomCategory(request.getCustomCategory());
         application.setBusinessAddress(request.getBusinessAddress());
         application.setCityRegion(request.getCityRegion());
-        application.setCustomCityRegion(request.getCustomCityRegion());
         application.setYearsOfExperience(request.getYearsOfExperience());
         application.setWebsiteOrSocialLink(request.getWebsiteOrSocialLink());
         application.setMessageToAdmin(request.getMessageToAdmin());
@@ -74,7 +73,6 @@ public class ProducerApplicationService {
                 .customCategory(application.getCustomCategory())
                 .businessAddress(application.getBusinessAddress())
                 .cityRegion(application.getCityRegion())
-                .customCityRegion(application.getCustomCityRegion())
                 .yearsOfExperience(application.getYearsOfExperience())
                 .websiteOrSocialLink(application.getWebsiteOrSocialLink())
                 .messageToAdmin(application.getMessageToAdmin())

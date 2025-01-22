@@ -3,6 +3,11 @@ package com.localmarket.main.entity.user;
 import jakarta.persistence.*;
 import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
@@ -16,14 +21,21 @@ public class User {
     @Column(name = "userId")
     private Long userId;
     
+    @NotBlank(message = "Username is required")
+    @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
+    @Pattern(regexp = "^[a-zA-Z0-9._-]+$", message = "Username can only contain letters, numbers, dots, underscores and hyphens")
     @Column(name = "username")
     private String username;
     
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
     @Column(name = "email")
     private String email;
     
+    @NotBlank(message = "Password hash is required")
     @Column(name = "passwordHash")
     private String passwordHash;
+    
     
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
