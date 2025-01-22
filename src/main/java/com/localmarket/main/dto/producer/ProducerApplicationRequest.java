@@ -1,12 +1,13 @@
 package com.localmarket.main.dto.producer;
 
 import lombok.Data;
+import java.util.Set;
 
 @Data
 public class ProducerApplicationRequest {
     private String businessName;
     private String businessDescription;
-    private String[] categories;
+    private Set<Long> categoryIds;
     private String customCategory;
     private String businessAddress;
     private String cityRegion;

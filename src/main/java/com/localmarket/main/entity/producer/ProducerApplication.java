@@ -30,8 +30,8 @@ public class ProducerApplication {
     @Size(max = 500, message = "Business description cannot exceed 500 characters")
     private String businessDescription;
     
-    @NotBlank(message = "Categories are required")
-    private String categories;
+    @Column(name = "category_ids")
+    private String categoryIds;
     
     @Size(max = 255, message = "Custom category cannot exceed 255 characters")
     private String customCategory;

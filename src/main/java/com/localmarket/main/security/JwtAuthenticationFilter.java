@@ -104,6 +104,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private boolean isPublicEndpoint(HttpServletRequest request) {
         String path = request.getRequestURI();
         String method = request.getMethod();
+        String guestToken = request.getParameter("guestToken");
         
         // Auth endpoints
         if (path.startsWith("/api/auth/")) {
@@ -113,7 +114,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Public GET endpoints
         if ("GET".equals(method)) {
             return path.startsWith("/api/products") || 
-                   path.startsWith("/api/categories");
+                   path.startsWith("/api/categories") ||
+                   (path.startsWith("/api/orders/") && guestToken != null);
         }
         
         // Allow guest orders
@@ -134,7 +136,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Public GET endpoints
         if ("GET".equals(method)) {
             return path.startsWith("/api/products") || 
-                   path.startsWith("/api/categories");
+                   path.startsWith("/api/categories") ||
+                   (path.startsWith("/api/orders/") && path.contains("?guestToken="));
         }
         
         // Allow guest orders

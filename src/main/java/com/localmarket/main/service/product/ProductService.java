@@ -7,7 +7,6 @@ import com.localmarket.main.repository.category.CategoryRepository;
 import com.localmarket.main.repository.product.ProductRepository;
 import com.localmarket.main.repository.user.UserRepository;
 import com.localmarket.main.security.ProducerOnly;
-import com.localmarket.main.entity.user.Role;
 import com.localmarket.main.dto.product.ProductRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +20,7 @@ import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 
 import com.localmarket.main.dto.product.ProductDTO;
+import java.math.BigDecimal;
 
 
 @Service
@@ -32,20 +32,17 @@ public class ProductService {
 
     @ProducerOnly
     public Product createProduct(ProductRequest request, Long producerId) {
-        User producer = userRepository.findById(producerId)
-            .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Producer not found"));
-            
-        if (producer.getRole() != Role.PRODUCER) {
-            throw new ApiException(ErrorType.ACCESS_DENIED, "Only producers can create products");
-        }
-
         try {
+            validateProductPrice(request.getPrice());
+            
             Product product = new Product();
             product.setName(request.getName().trim());
             product.setDescription(request.getDescription());
             product.setPrice(request.getPrice());
             product.setQuantity(request.getQuantity());
             product.setImageUrl(request.getImageUrl());
+            User producer = userRepository.findById(producerId)
+                .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Producer not found"));
             product.setProducer(producer);
 
             if (request.getCategoryIds() != null) {
@@ -60,8 +57,6 @@ public class ProductService {
             return productRepository.save(product);
         } catch (DataIntegrityViolationException e) {
             throw new ApiException(ErrorType.DUPLICATE_RESOURCE, "Product with similar details already exists");
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create product: " + e.getMessage());
         }
     }
 
@@ -73,13 +68,14 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Product getProduct(Long id) {
         return productRepository.findByIdWithCategories(id)
-        .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, 
-            "Product with id " + id + " not found"));
+            .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, 
+                "Product with id " + id + " not found"));
     }
 
 
     @ProducerOnly
     public Product updateProduct(Long id, ProductRequest request, Long producerId) {
+        validateProductPrice(request.getPrice());
         Product product = productRepository.findById(id)
             .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
             
@@ -116,6 +112,10 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<Product> getProductsByCategory(Long categoryId) {
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new ApiException(ErrorType.CATEGORY_NOT_FOUND, 
+                "Category with id " + categoryId + " not found");
+        }
         return productRepository.findByCategoriesCategoryId(categoryId);
     }
 
@@ -147,4 +147,24 @@ public class ProductService {
         return productRepository.findByIdWithCategories(id)
             .map(this::convertToDTO);
     }
+
+    private void validateProductPrice(BigDecimal price) {
+        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ApiException(ErrorType.INVALID_PRODUCT_PRICE, 
+                "Product price must be greater than 0");
+        }
+        
+        // Validate maximum price (e.g., 999999.99)
+        if (price.compareTo(new BigDecimal("999999.99")) > 0) {
+            throw new ApiException(ErrorType.INVALID_PRODUCT_PRICE, 
+                "Product price cannot exceed 999999.99");
+        }
+        
+        // Validate decimal places
+        if (price.scale() > 2) {
+            throw new ApiException(ErrorType.INVALID_PRODUCT_PRICE, 
+                "Product price cannot have more than 2 decimal places");
+        }
+    }
+
 } 

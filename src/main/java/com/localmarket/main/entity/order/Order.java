@@ -66,6 +66,12 @@ public class Order {
     @JoinColumn(name = "paymentId")
     private Payment payment;
     
+    @Column(name = "guest_token")
+    private String guestToken;
+    
+    @Column(name = "expiresAt")
+    private LocalDateTime expiresAt;
+    
     @PrePersist
     protected void onCreate() {
         orderDate = LocalDateTime.now();

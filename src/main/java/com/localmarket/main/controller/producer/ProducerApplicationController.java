@@ -2,6 +2,7 @@ package com.localmarket.main.controller.producer;
 
 import com.localmarket.main.dto.producer.ProducerApplicationRequest;
 import com.localmarket.main.dto.producer.ProducerApplicationDTO;
+import com.localmarket.main.dto.producer.ApplicationDeclineRequest;
 
 import com.localmarket.main.service.producer.ProducerApplicationService;
 import com.localmarket.main.service.auth.JwtService;
@@ -45,16 +46,18 @@ public class ProducerApplicationController {
 
     @PostMapping("/{applicationId}/approve")
     @AdminOnly
-    public ResponseEntity<ProducerApplicationDTO> approveApplication(@PathVariable Long applicationId) {
-        return ResponseEntity.ok(applicationService.processApplication(applicationId, true, null));
+    public ResponseEntity<ProducerApplicationDTO> approveApplication(
+            @PathVariable Long applicationId,
+            @RequestParam(required = false) Boolean approveCC) {
+        return ResponseEntity.ok(applicationService.processApplication(applicationId, true, null, approveCC));
     }
 
     @PostMapping("/{applicationId}/decline")
     @AdminOnly
     public ResponseEntity<ProducerApplicationDTO> declineApplication(
             @PathVariable Long applicationId,
-            @RequestParam String reason) {
-        return ResponseEntity.ok(applicationService.processApplication(applicationId, false, reason));
+            @RequestBody ApplicationDeclineRequest request) {
+        return ResponseEntity.ok(applicationService.processApplication(applicationId, false, request.getReason(), false));
     }
 
     @GetMapping("/my-application")

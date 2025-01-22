@@ -13,6 +13,8 @@ import com.localmarket.main.entity.order.OrderStatus;
 import java.util.List;
 import com.localmarket.main.dto.order.OrderResponse;
 import com.localmarket.main.dto.user.UserInfo;
+import com.localmarket.main.exception.ApiException;
+import com.localmarket.main.exception.ErrorType;
 
 
 @RestController
@@ -73,14 +75,19 @@ public class OrderController {
     }
 
     @GetMapping("/{orderId}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<Order> getOrder(
             @PathVariable Long orderId,
-            @RequestHeader(value = "Authorization", required = false) String token) {
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @RequestParam(value = "guestToken", required = false) String guestToken) {
+        if (token == null && guestToken == null) {
+            throw new ApiException(ErrorType.ACCESS_DENIED, "Authentication required");
+        }
         String userEmail = null;
         if (token != null && token.startsWith("Bearer ")) {
             userEmail = jwtService.extractUsername(token.substring(7));
         }
-        return ResponseEntity.ok(orderService.getOrder(orderId, userEmail));
+        return ResponseEntity.ok(orderService.getOrder(orderId, userEmail, guestToken));
     }
 
     @GetMapping("/my-orders")

@@ -35,15 +35,15 @@
 ## Producer Applications Endpoints
 `/api/producer-applications`
 
-| Method | Endpoint               | Description                    | Auth Required | Role     | Body                        |
-|--------|----------------------|--------------------------------|---------------|----------|-----------------------------|
-| POST   | /                    | Submit producer application    | Yes          | Customer | `ProducerApplicationRequest`|
-| GET    | /                    | Get all applications          | Yes          | Admin    | None                        |
-| GET    | /pending             | Get pending applications      | Yes          | Admin    | None                        |
-| POST   | /{id}/approve        | Approve application           | Yes          | Admin    | None                        |
-| POST   | /{id}/decline        | Decline application           | Yes          | Admin    | `reason` (query param)      |
-| GET    | /my-application      | Get user's application        | Yes          | Customer | None                        |
-| GET    | /status              | Check application status      | Yes          | Customer | None                        |
+| Method | Endpoint               | Description                    | Auth Required | Role     | Body/Params                   |
+|--------|----------------------|--------------------------------|---------------|----------|-------------------------------|
+| POST   | /                    | Submit producer application    | Yes          | Customer | `ProducerApplicationRequest`  |
+| GET    | /                    | Get all applications          | Yes          | Admin    | None                          |
+| GET    | /pending             | Get pending applications      | Yes          | Admin    | None                          |
+| POST   | /{id}/approve        | Approve application           | Yes          | Admin    | `approveCC` (query param)     |
+| POST   | /{id}/decline        | Decline application           | Yes          | Admin    | `reason`                      |
+| GET    | /my-application      | Get user's application        | Yes          | Customer | None                          |
+| GET    | /status              | Check application status      | Yes          | Customer | None                          |
 
 ## Orders Endpoints
 `/api/orders`

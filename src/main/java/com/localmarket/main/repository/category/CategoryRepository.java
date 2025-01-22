@@ -18,4 +18,6 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findByIdWithProducts(@Param("id") Long id);
 
     Optional<Category> findByNameIgnoreCase(String name);
+
+    Optional<Category> findByName(String name);
 } 

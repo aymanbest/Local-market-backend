@@ -11,9 +11,10 @@ public enum ErrorType {
     // Authentication/Authorization errors
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED),
     INVALID_SESSION(HttpStatus.UNAUTHORIZED),
-    ACCESS_DENIED(HttpStatus.FORBIDDEN),
+    ACCESS_DENIED(HttpStatus.UNAUTHORIZED),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED),
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED),
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND),
     
     // Validation errors
     INVALID_REQUEST(HttpStatus.BAD_REQUEST),
@@ -27,19 +28,19 @@ public enum ErrorType {
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT),
     USERNAME_ALREADY_EXISTS(HttpStatus.CONFLICT),
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST),
-    ACCOUNT_LOCKED(HttpStatus.FORBIDDEN),
-    ACCOUNT_DISABLED(HttpStatus.FORBIDDEN),
+    ACCOUNT_LOCKED(HttpStatus.FORBIDDEN), //todo
+    ACCOUNT_DISABLED(HttpStatus.FORBIDDEN), //todo
     
     // Order related errors
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND),
     ORDER_ACCESS_DENIED(HttpStatus.FORBIDDEN),
     ORDER_INVALID_STATE(HttpStatus.BAD_REQUEST),
-    ORDER_ALREADY_PROCESSED(HttpStatus.CONFLICT),
+    ORDER_ALREADY_PROCESSED(HttpStatus.CONFLICT), 
     ORDER_CANCELLATION_FAILED(HttpStatus.BAD_REQUEST),
     
     // Product related errors
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND),
-    PRODUCT_ACCESS_DENIED(HttpStatus.FORBIDDEN),
+    PRODUCT_ACCESS_DENIED(HttpStatus.UNAUTHORIZED),
     INSUFFICIENT_STOCK(HttpStatus.BAD_REQUEST),
     PRODUCT_ALREADY_EXISTS(HttpStatus.CONFLICT),
     INVALID_PRODUCT_PRICE(HttpStatus.BAD_REQUEST),
@@ -51,7 +52,7 @@ public enum ErrorType {
     // Producer related errors
     PRODUCER_NOT_FOUND(HttpStatus.NOT_FOUND),
     PRODUCER_ALREADY_EXISTS(HttpStatus.CONFLICT),
-    PRODUCER_ACCESS_DENIED(HttpStatus.FORBIDDEN),
+    PRODUCER_ACCESS_DENIED(HttpStatus.UNAUTHORIZED),
     
     // File related errors
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR),

@@ -4,7 +4,6 @@ import com.localmarket.main.entity.category.Category;
 import com.localmarket.main.dto.category.CategoryRequest;
 import com.localmarket.main.service.category.CategoryService;
 import com.localmarket.main.security.AdminOnly;
-import com.localmarket.main.service.auth.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,16 +16,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CategoryController {
     private final CategoryService categoryService;
-    private final JwtService jwtService;
 
     @PostMapping
     @AdminOnly
-    public ResponseEntity<CategoryDTO> createCategory(
-            @RequestBody CategoryRequest request,
-            @RequestHeader("Authorization") String token) {
-        String jwt = token.substring(7);
-        Long adminId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(categoryService.createCategory(request, adminId));
+    public ResponseEntity<CategoryDTO> createCategory(@RequestBody CategoryRequest request) {
+        return ResponseEntity.ok(categoryService.createCategory(request));
     }
 
     @GetMapping
@@ -43,21 +37,14 @@ public class CategoryController {
     @AdminOnly
     public ResponseEntity<Category> updateCategory(
             @PathVariable Long id,
-            @RequestBody CategoryRequest request,
-            @RequestHeader("Authorization") String token) {
-        String jwt = token.substring(7);
-        Long adminId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(categoryService.updateCategory(id, request, adminId));
+            @RequestBody CategoryRequest request) {
+        return ResponseEntity.ok(categoryService.updateCategory(id, request));
     }
 
     @DeleteMapping("/{id}")
     @AdminOnly
-    public ResponseEntity<Void> deleteCategory(
-            @PathVariable Long id,
-            @RequestHeader("Authorization") String token) {
-        String jwt = token.substring(7);
-        Long adminId = jwtService.extractUserId(jwt);
-        categoryService.deleteCategory(id, adminId);
+    public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
+        categoryService.deleteCategory(id);
         return ResponseEntity.noContent().build();
     }
 } 

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDateTime;
 
 import com.localmarket.main.repository.order.OrderRepository;
 import com.localmarket.main.repository.product.ProductRepository;
@@ -25,6 +26,7 @@ import com.localmarket.main.dto.account.RegisterRequest;
 import com.localmarket.main.dto.auth.AuthResponse;
 import com.localmarket.main.dto.payment.PaymentResponse;
 import com.localmarket.main.service.auth.AuthService;
+import com.localmarket.main.service.auth.TokenService;
 import com.localmarket.main.service.payment.PaymentService;
 import com.localmarket.main.entity.user.Role;
 import com.localmarket.main.dto.order.OrderResponse;
@@ -44,8 +46,10 @@ public class OrderService {
     private final AuthService authService;
     private final PaymentService paymentService;
     private final PaymentRepository paymentRepository;
+    private final TokenService tokenService;
 
     public Order createOrder(OrderRequest request, UserInfo userInfo) {
+        validateOrderStock(request.getItems());
         Order order = new Order();
         
         if (userInfo != null) {
@@ -112,16 +116,29 @@ public class OrderService {
         return orderRepository.findByCustomerUserId(userId);
     }
 
-    public Order getOrder(Long orderId, String userEmail) {
+    public Order getOrder(Long orderId, String userEmail, String guestToken) {
         Order order = orderRepository.findById(orderId)
-            .orElseThrow(() -> new RuntimeException("Order not found"));
+            .orElseThrow(() -> new ApiException(ErrorType.ORDER_NOT_FOUND, 
+                "Order with id " + orderId + " not found"));
             
-        if (userEmail != null) {
-            if (order.getCustomer() != null && !order.getCustomer().getEmail().equals(userEmail)) {
-                throw new RuntimeException("Access denied");
+        boolean hasAccess = false;
+        
+        // Check customer access
+        if (userEmail != null && order.getCustomer() != null) {
+            if (order.getCustomer().getEmail().equals(userEmail)) {
+                hasAccess = true;
             }
-        } else if (order.getGuestEmail() == null) {
-            throw new RuntimeException("Access denied");
+        }
+        
+        // Check guest token access
+        if (guestToken != null) {
+            if (validateGuestAccess(order, guestToken)) {
+                hasAccess = true;
+            }
+        }
+        
+        if (!hasAccess) {
+            throw new ApiException(ErrorType.ACCESS_DENIED, "Access denied");
         }
         
         return order;
@@ -133,7 +150,8 @@ public class OrderService {
 
     public Order getUserOrder(Long orderId, Long userId) {
         return orderRepository.findByOrderIdAndCustomerUserId(orderId, userId)
-            .orElseThrow(() -> new RuntimeException("Order not found or unauthorized"));
+            .orElseThrow(() -> new ApiException(ErrorType.ORDER_NOT_FOUND, 
+                "Order not found or unauthorized"));
     }
 
     private BigDecimal calculateTotalPrice(List<OrderItemRequest> items) {
@@ -148,18 +166,22 @@ public class OrderService {
 
     @Transactional
     public OrderResponse createPendingOrder(OrderRequest request, String userEmail) {
+        validateOrderStock(request.getItems());
         Order order = new Order();
-        String token = null;
+        String accessToken = null;
         
-        // Set customer or guest email
-        if (userEmail != null) {
-            User customer = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-            order.setCustomer(customer);
-        } else if (request.getGuestEmail() != null && request.getShippingAddress() != null) {
+        // Always generate guest token regardless of user status
+        String guestToken = tokenService.generateGuestToken(request.getGuestEmail());
+        order.setGuestToken(guestToken);
+        order.setExpiresAt(LocalDateTime.now().plusHours(24));
+        
+        if (userEmail == null) {
             order.setGuestEmail(request.getGuestEmail());
+            accessToken = guestToken;
         } else {
-            throw new RuntimeException("Either user token or guest email with shipping address is required");
+            User customer = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "User not found"));
+            order.setCustomer(customer);
         }
         
         // Handle account creation if requested
@@ -175,11 +197,11 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("User creation failed"));
                 
             order.setCustomer(newCustomer);
-            order.setGuestEmail(null);
-            token = authResponse.getToken();
+            // Don't clear guest email and token
+            accessToken = authResponse.getToken();
         }
         
-        // Rest of the method remains the same
+        // Rest of the order creation logic remains the same
         order.setShippingAddress(request.getShippingAddress());
         order.setPhoneNumber(request.getPhoneNumber());
         order.setStatus(OrderStatus.PENDING);
@@ -193,7 +215,7 @@ public class OrderService {
         return OrderResponse.builder()
             .orderId(savedOrder.getOrderId())
             .order(savedOrder)
-            .token(token)
+            .accessToken(accessToken)
             .build();
     }
 
@@ -262,4 +284,30 @@ public class OrderService {
         }
         return orderItems;
     }
+
+    private boolean validateGuestAccess(Order order, String guestToken) {
+        if (order.getGuestToken() == null || !order.getGuestToken().equals(guestToken)) {
+            return false;
+        }
+        
+        LocalDateTime now = LocalDateTime.now();
+        return order.getExpiresAt() != null && now.isBefore(order.getExpiresAt());
+    }
+
+    private void validateOrderStock(List<OrderItemRequest> items) {
+        for (OrderItemRequest item : items) {
+            Product product = productRepository.findById(item.getProductId())
+                .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, 
+                    "Product not found"));
+                    
+            if (product.getQuantity() < item.getQuantity()) {
+                throw new ApiException(ErrorType.INSUFFICIENT_STOCK, 
+                    String.format("Insufficient stock for product '%s'. Available: %d, Requested: %d", 
+                        product.getName(), 
+                        product.getQuantity(), 
+                        item.getQuantity()));
+            }
+        }
+    }
+
 } 

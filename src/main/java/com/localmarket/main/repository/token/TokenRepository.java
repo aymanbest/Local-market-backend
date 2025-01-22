@@ -46,7 +46,7 @@ public class TokenRepository {
     public boolean isTokenValid(String token) {
         TokenInfo info = tokenStore.get(token);
         if (info == null) {
-            throw new ApiException(ErrorType.INVALID_SESSION, "Token not found");
+            throw new ApiException(ErrorType.INVALID_TOKEN, "Token not found");
         }
         
         // Check if this is still the active token for this user
@@ -58,7 +58,7 @@ public class TokenRepository {
         
         if (info.expiresAt.isBefore(LocalDateTime.now())) {
             invalidateToken(token);
-            throw new ApiException(ErrorType.INVALID_SESSION, "Session has expired");
+            throw new ApiException(ErrorType.TOKEN_EXPIRED, "Token has expired");
         }
         return true;
     }

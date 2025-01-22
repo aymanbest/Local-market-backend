@@ -15,9 +15,14 @@ import java.util.List;
 import com.localmarket.main.entity.user.User;
 import com.localmarket.main.dto.producer.ProducerApplicationDTO;
 import java.util.Optional;
-import com.localmarket.main.util.InputValidator;
 import com.localmarket.main.dto.category.CategoryRequest;
 import com.localmarket.main.service.category.CategoryService;
+import java.util.Set;
+import java.util.stream.Collectors;
+import com.localmarket.main.repository.category.CategoryRepository;
+import com.localmarket.main.entity.category.Category;
+import java.util.Arrays;
+import com.localmarket.main.dto.category.CategoryDTO;
 
 
 @Service
@@ -26,6 +31,7 @@ public class ProducerApplicationService {
     private final ProducerApplicationRepository applicationRepository;
     private final UserRepository userRepository;
     private final CategoryService categoryService;
+    private final CategoryRepository categoryRepository;
 
 
 
@@ -42,16 +48,23 @@ public class ProducerApplicationService {
             throw new ApiException(ErrorType.INVALID_REQUEST, "You already have a pending application");
         }
 
-        // Validate custom category if present
-        if (request.getCustomCategory() != null && !request.getCustomCategory().trim().isEmpty()) {
-            request.setCustomCategory(InputValidator.sanitizeCategory(request.getCustomCategory()));
+        // Validate that all category IDs exist
+        Set<Long> validCategoryIds = categoryRepository.findAllById(request.getCategoryIds())
+            .stream()
+            .map(Category::getCategoryId)
+            .collect(Collectors.toSet());
+        
+        if (validCategoryIds.size() != request.getCategoryIds().size()) {
+            throw new ApiException(ErrorType.RESOURCE_NOT_FOUND, "One or more categories not found");
         }
 
         ProducerApplication application = new ProducerApplication();
         application.setCustomer(customer);
         application.setBusinessName(request.getBusinessName());
         application.setBusinessDescription(request.getBusinessDescription());
-        application.setCategories(String.join(",", request.getCategories()));
+        application.setCategoryIds(request.getCategoryIds().stream()
+            .map(String::valueOf)
+            .collect(Collectors.joining(",")));
         application.setCustomCategory(request.getCustomCategory());
         application.setBusinessAddress(request.getBusinessAddress());
         application.setCityRegion(request.getCityRegion());
@@ -63,13 +76,17 @@ public class ProducerApplicationService {
     }
 
     private ProducerApplicationDTO mapToDTO(ProducerApplication application) {
+        String[] categories = Arrays.stream(application.getCategoryIds().split(","))
+            .map(id -> categoryRepository.getReferenceById(Long.parseLong(id)).getName())
+            .toArray(String[]::new);
+
         return ProducerApplicationDTO.builder()
                 .applicationId(application.getApplicationId())
                 .customerEmail(application.getCustomer().getEmail())
                 .customerUsername(application.getCustomer().getUsername())
                 .businessName(application.getBusinessName())
                 .businessDescription(application.getBusinessDescription())
-                .categories(application.getCategories().split(","))
+                .categories(categories)
                 .customCategory(application.getCustomCategory())
                 .businessAddress(application.getBusinessAddress())
                 .cityRegion(application.getCityRegion())
@@ -84,7 +101,7 @@ public class ProducerApplicationService {
     }
 
     @Transactional
-    public ProducerApplicationDTO processApplication(Long applicationId, boolean approved, String declineReason) {
+    public ProducerApplicationDTO processApplication(Long applicationId, boolean approved, String declineReason, Boolean approveCustomCategory) {
         ProducerApplication application = applicationRepository.findById(applicationId)
             .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Application not found"));
             
@@ -97,33 +114,29 @@ public class ProducerApplicationService {
             User customer = application.getCustomer();
             customer.setRole(Role.PRODUCER);
             
-            // Increment token version and reset to 0 if it reaches 10
             int newVersion = (customer.getTokenVersion() + 1) % 10;
             customer.setTokenVersion(newVersion);
             userRepository.save(customer);
             
-            // Handle custom category if present
-            if (application.getCustomCategory() != null && !application.getCustomCategory().trim().isEmpty()) {
+            // Handle custom category if present and admin approved it
+            if (approveCustomCategory != null && approveCustomCategory 
+                && application.getCustomCategory() != null 
+                && !application.getCustomCategory().trim().isEmpty()) {
+                
                 String customCategory = application.getCustomCategory().trim();
                 CategoryRequest categoryRequest = new CategoryRequest();
                 categoryRequest.setName(customCategory);
                 
                 try {
-                    // Find an admin user to create the category
-                    User admin = userRepository.findByRole(Role.ADMIN)
-                        .stream()
-                        .findFirst()
-                        .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "No admin found to create category"));
-                    
-                    categoryService.createCategory(categoryRequest, admin.getUserId());
-                    
-                    // Update application categories
-                    String categories = application.getCategories();
-                    application.setCategories(categories + "," + customCategory);
+                    CategoryDTO newCategory = categoryService.createCategory(categoryRequest);
+                    String categories = application.getCategoryIds();
+                    application.setCategoryIds(categories + "," + newCategory.getCategoryId());
                 } catch (ApiException e) {
-                    if (e.getErrorType() == ErrorType.DUPLICATE_RESOURCE) {
-                        String categories = application.getCategories();
-                        application.setCategories(categories + "," + customCategory);
+                    if (e.getErrorType() == ErrorType.CATEGORY_ALREADY_EXISTS) {
+                        Category existingCategory = categoryRepository.findByName(customCategory)
+                            .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Category not found"));
+                        String categories = application.getCategoryIds();
+                        application.setCategoryIds(categories + "," + existingCategory.getCategoryId());
                     } else {
                         throw e;
                     }
@@ -153,7 +166,7 @@ public class ProducerApplicationService {
         User customer = userRepository.findById(customerId)
             .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Customer not found"));
         ProducerApplication application = applicationRepository.findByCustomer(customer)
-            .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "No application found"));
+            .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "No application found for this customer"));
         return mapToDTO(application);
     }
 

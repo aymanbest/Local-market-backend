@@ -23,8 +23,7 @@ public class ProductController {
     public ResponseEntity<Product> createProduct(
             @RequestBody ProductRequest request,
             @RequestHeader("Authorization") String token) {
-        String jwt = token.substring(7);
-        Long producerId = jwtService.extractUserId(jwt);
+        Long producerId = jwtService.extractUserId(token.substring(7));
         return ResponseEntity.ok(productService.createProduct(request, producerId));
     }
 
@@ -39,8 +38,7 @@ public class ProductController {
             @PathVariable Long id,
             @RequestBody ProductRequest request,
             @RequestHeader("Authorization") String token) {
-        String jwt = token.substring(7);
-        Long producerId = jwtService.extractUserId(jwt);
+        Long producerId = jwtService.extractUserId(token.substring(7));
         return ResponseEntity.ok(productService.updateProduct(id, request, producerId));
     }
 
@@ -49,8 +47,7 @@ public class ProductController {
     public ResponseEntity<Void> deleteProduct(
             @PathVariable Long id,
             @RequestHeader("Authorization") String token) {
-        String jwt = token.substring(7);
-        Long producerId = jwtService.extractUserId(jwt);
+        Long producerId = jwtService.extractUserId(token.substring(7));
         productService.deleteProduct(id, producerId);
         return ResponseEntity.noContent().build();
     }

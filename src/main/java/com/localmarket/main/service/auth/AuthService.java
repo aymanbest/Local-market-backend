@@ -26,7 +26,7 @@ public class AuthService {
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new ApiException(ErrorType.EMAIL_ALREADY_EXISTS, "An account with this email already exists");
+            throw new ApiException(ErrorType.EMAIL_ALREADY_EXISTS, "Email already registered");
         }
 
         User user = new User();
@@ -34,11 +34,11 @@ public class AuthService {
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole() != null ? request.getRole() : Role.CUSTOMER);
-        
+
         User savedUser = userRepository.save(user);
         String token = jwtService.generateToken(savedUser);
         tokenRepository.storeToken(token, savedUser.getUserId());
-        
+
         return AuthResponse.builder()
                 .token(token)
                 .userId(savedUser.getUserId())
@@ -50,15 +50,15 @@ public class AuthService {
 
     public AuthResponse login(AuthRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("Invalid email or password"));
-                
+                .orElseThrow(() -> new ApiException(ErrorType.INVALID_CREDENTIALS, "Invalid email or password"));
+
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new BadCredentialsException("Invalid email or password");
         }
-        
+
         String token = jwtService.generateToken(user);
         tokenRepository.storeToken(token, user.getUserId());
-        
+
         return AuthResponse.builder()
                 .token(token)
                 .userId(user.getUserId())
@@ -72,13 +72,14 @@ public class AuthService {
     public void logout(String token) {
         String jwt = token.substring(7);
         Long userId = jwtService.extractUserId(jwt);
-        
+
         User user = userRepository.findById(userId)
-            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-            
+                .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND,
+                        "uSER with id " + userId + " not found"));
+
         // Increment token version and reset to 0 if it reaches 10
         int newVersion = (user.getTokenVersion() + 1) % 10;
         user.setTokenVersion(newVersion);
         userRepository.save(user);
     }
-} 
+}

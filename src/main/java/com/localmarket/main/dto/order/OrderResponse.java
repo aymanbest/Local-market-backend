@@ -12,6 +12,6 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class OrderResponse {
     private Long orderId;
-    private String token;  // Optional, only present when account is created
     private Order order;
+    private String accessToken;  // Add this field
 } 

@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.UUID;
 import com.localmarket.main.exception.PaymentFailedException;
+import com.localmarket.main.exception.ApiException;
+import com.localmarket.main.exception.ErrorType;
 
 @Service
 @RequiredArgsConstructor
@@ -21,7 +23,8 @@ public class PaymentService {
         boolean isSuccessful = true; // 90% success rate
         
         if (!isSuccessful) {
-            throw new PaymentFailedException("Payment processing failed. Please try again.");
+            throw new ApiException(ErrorType.PAYMENT_FAILED, 
+                "Payment processing failed. Please try again.");
         }
 
         // Create payment record
@@ -35,4 +38,5 @@ public class PaymentService {
         
         return new PaymentResponse(savedPayment.getPaymentId(), savedPayment.getTransactionId());
     }
+
 } 
