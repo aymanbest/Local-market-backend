@@ -75,7 +75,7 @@ public class OrderController {
     }
 
     @GetMapping("/{orderId}")
-    @PreAuthorize("permitAll()")
+    // @PreAuthorize("permitAll()")
     public ResponseEntity<Order> getOrder(
             @PathVariable Long orderId,
             @RequestHeader(value = "Authorization", required = false) String token,

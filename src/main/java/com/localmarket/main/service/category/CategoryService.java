@@ -6,7 +6,7 @@ import com.localmarket.main.dto.category.CategoryRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.localmarket.main.dto.category.CategoryDTO;
+import com.localmarket.main.dto.category.CategoryResponse;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,13 +19,13 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
 
 
-    public CategoryDTO createCategory(CategoryRequest request) {
+    public CategoryResponse createCategory(CategoryRequest request) {
         try {
             Category category = new Category();
             category.setName(request.getName());
             
             Category savedCategory = categoryRepository.save(category);
-            return CategoryDTO.builder()
+            return CategoryResponse.builder()
                 .categoryId(savedCategory.getCategoryId())
                 .name(savedCategory.getName())
                 .productCount(0)

@@ -13,5 +13,5 @@ import lombok.AllArgsConstructor;
 public class OrderResponse {
     private Long orderId;
     private Order order;
-    private String accessToken;  // Add this field
+    private String accessToken; 
 } 

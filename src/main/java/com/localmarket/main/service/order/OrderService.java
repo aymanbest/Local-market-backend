@@ -63,7 +63,7 @@ public class OrderService {
         BigDecimal totalPrice = calculateTotalPrice(request.getItems());
         PaymentResponse paymentResponse = paymentService.processPayment(request.getPaymentInfo(), totalPrice);
         Payment payment = paymentRepository.findById(paymentResponse.getPaymentId())
-            .orElseThrow(() -> new RuntimeException("Payment not found"));
+            .orElseThrow(() -> new ApiException(ErrorType.PAYMENT_NOT_FOUND, "Payment not found"));
 
         order.setShippingAddress(request.getShippingAddress());
         order.setPhoneNumber(request.getPhoneNumber());
@@ -72,16 +72,16 @@ public class OrderService {
         
         for (OrderItemRequest itemRequest : request.getItems()) {
             Product product = productRepository.findById(itemRequest.getProductId())
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
                 
             // Check if producer is trying to order their own product
             if (userInfo != null && product.getProducer().getEmail().equals(userInfo.getEmail())) {
-                throw new RuntimeException("Producers cannot order their own products");
+                throw new ApiException(ErrorType.ACCESS_DENIED, "Producers cannot order their own products");
             }
             
             // Check stock availability
             if (product.getQuantity() < itemRequest.getQuantity()) {
-                throw new RuntimeException("Insufficient stock for product: " + product.getName());
+                throw new ApiException(ErrorType.INSUFFICIENT_STOCK, "Insufficient stock for product: " + product.getName());
             }
             
             OrderItem orderItem = new OrderItem();
@@ -158,7 +158,7 @@ public class OrderService {
         return items.stream()
             .map(item -> {
                 Product product = productRepository.findById(item.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Product not found"));
+                    .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
                 return product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
             })
             .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -194,7 +194,7 @@ public class OrderService {
             
             AuthResponse authResponse = authService.register(registerRequest);
             User newCustomer = userRepository.findByEmail(request.getGuestEmail())
-                .orElseThrow(() -> new RuntimeException("User creation failed"));
+                .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User creation failed"));
                 
             order.setCustomer(newCustomer);
             // Don't clear guest email and token
@@ -222,11 +222,11 @@ public class OrderService {
     @Transactional
     public Order processOrderPayment(Long orderId, PaymentInfo paymentInfo, String userEmail) {
         Order order = orderRepository.findById(orderId)
-            .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+            .orElseThrow(() -> new ApiException(ErrorType.ORDER_NOT_FOUND, "Order not found: " + orderId));
             
         // Verify order ownership
         if (!canAccessOrder(order, userEmail)) {
-            throw new RuntimeException("Access denied");
+            throw new ApiException(ErrorType.ACCESS_DENIED, "Access denied");
         }
 
         // Validate payment info based on method
@@ -237,7 +237,7 @@ public class OrderService {
         
         // Update order with payment info
         Payment payment = paymentRepository.findById(paymentResponse.getPaymentId())
-            .orElseThrow(() -> new RuntimeException("Payment not found"));
+            .orElseThrow(() -> new ApiException(ErrorType.PAYMENT_NOT_FOUND, "Payment not found"));
         payment.setOrderId(order.getOrderId());
         order.setPayment(payment);
         order.setStatus(OrderStatus.ACCEPTED);
@@ -273,7 +273,7 @@ public class OrderService {
         List<OrderItem> orderItems = new ArrayList<>();
         for (OrderItemRequest itemRequest : itemRequests) {
             Product product = productRepository.findById(itemRequest.getProductId())
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
                 
             OrderItem orderItem = new OrderItem();
             orderItem.setOrder(order);

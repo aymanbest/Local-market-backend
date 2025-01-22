@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.util.Set;
 
 @Data
-public class ProductDTO {
+public class ProductResponse {
     private Long productId;
     private String name;
     private String description;
@@ -23,10 +23,10 @@ public class ProductDTO {
     private Role producerRole;
     private Set<Category> categories;
 
-    public ProductDTO() {
+    public ProductResponse() {
     }
 
-    public ProductDTO(
+    public ProductResponse(
             Long productId, 
             String name, 
             String description, 
@@ -53,7 +53,7 @@ public class ProductDTO {
         this.producerRole = producerRole;
     }
 
-    public ProductDTO(
+    public ProductResponse(
             Long productId, 
             String name, 
             String description, 

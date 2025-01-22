@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @Data
 @Builder
-public class ProducerApplicationDTO {
+public class ProducerApplicationResponse {
     private Long applicationId;
     private String customerEmail;
     private String customerUsername;

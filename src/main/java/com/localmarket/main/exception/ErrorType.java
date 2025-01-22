@@ -37,6 +37,13 @@ public enum ErrorType {
     ORDER_INVALID_STATE(HttpStatus.BAD_REQUEST),
     ORDER_ALREADY_PROCESSED(HttpStatus.CONFLICT), 
     ORDER_CANCELLATION_FAILED(HttpStatus.BAD_REQUEST),
+
+    // Payment related errors
+    PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND),
+    PAYMENT_ACCESS_DENIED(HttpStatus.UNAUTHORIZED),
+    PAYMENT_INVALID_STATE(HttpStatus.BAD_REQUEST),
+    PAYMENT_ALREADY_PROCESSED(HttpStatus.CONFLICT), 
+    PAYMENT_CANCELLATION_FAILED(HttpStatus.BAD_REQUEST),
     
     // Product related errors
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND),

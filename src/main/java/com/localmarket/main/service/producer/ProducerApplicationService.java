@@ -13,7 +13,7 @@ import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.entity.producer.ApplicationStatus;
 import java.util.List;
 import com.localmarket.main.entity.user.User;
-import com.localmarket.main.dto.producer.ProducerApplicationDTO;
+import com.localmarket.main.dto.producer.ProducerApplicationResponse;
 import java.util.Optional;
 import com.localmarket.main.dto.category.CategoryRequest;
 import com.localmarket.main.service.category.CategoryService;
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 import com.localmarket.main.repository.category.CategoryRepository;
 import com.localmarket.main.entity.category.Category;
 import java.util.Arrays;
-import com.localmarket.main.dto.category.CategoryDTO;
+import com.localmarket.main.dto.category.CategoryResponse;
 
 
 @Service
@@ -36,7 +36,7 @@ public class ProducerApplicationService {
 
 
     @Transactional
-    public ProducerApplicationDTO submitApplication(ProducerApplicationRequest request, Long customerId) {
+    public ProducerApplicationResponse submitApplication(ProducerApplicationRequest request, Long customerId) {
         User customer = userRepository.findById(customerId)
             .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Customer not found"));
             
@@ -75,12 +75,12 @@ public class ProducerApplicationService {
         return mapToDTO(applicationRepository.save(application));
     }
 
-    private ProducerApplicationDTO mapToDTO(ProducerApplication application) {
+    private ProducerApplicationResponse mapToDTO(ProducerApplication application) {
         String[] categories = Arrays.stream(application.getCategoryIds().split(","))
             .map(id -> categoryRepository.getReferenceById(Long.parseLong(id)).getName())
             .toArray(String[]::new);
 
-        return ProducerApplicationDTO.builder()
+        return ProducerApplicationResponse.builder()
                 .applicationId(application.getApplicationId())
                 .customerEmail(application.getCustomer().getEmail())
                 .customerUsername(application.getCustomer().getUsername())
@@ -101,7 +101,7 @@ public class ProducerApplicationService {
     }
 
     @Transactional
-    public ProducerApplicationDTO processApplication(Long applicationId, boolean approved, String declineReason, Boolean approveCustomCategory) {
+    public ProducerApplicationResponse processApplication(Long applicationId, boolean approved, String declineReason, Boolean approveCustomCategory) {
         ProducerApplication application = applicationRepository.findById(applicationId)
             .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Application not found"));
             
@@ -128,7 +128,7 @@ public class ProducerApplicationService {
                 categoryRequest.setName(customCategory);
                 
                 try {
-                    CategoryDTO newCategory = categoryService.createCategory(categoryRequest);
+                    CategoryResponse newCategory = categoryService.createCategory(categoryRequest);
                     String categories = application.getCategoryIds();
                     application.setCategoryIds(categories + "," + newCategory.getCategoryId());
                 } catch (ApiException e) {
@@ -150,19 +150,19 @@ public class ProducerApplicationService {
         return mapToDTO(applicationRepository.save(application));
     }
 
-    public List<ProducerApplicationDTO> getAllApplications() {
+    public List<ProducerApplicationResponse> getAllApplications() {
         return applicationRepository.findAll().stream()
                 .map(this::mapToDTO)
                 .toList();
     }
 
-    public List<ProducerApplicationDTO> getApplicationsByStatus(ApplicationStatus status) {
+    public List<ProducerApplicationResponse> getApplicationsByStatus(ApplicationStatus status) {
         return applicationRepository.findByStatus(status).stream()
                 .map(this::mapToDTO)
                 .toList();
     }
 
-    public ProducerApplicationDTO getCustomerApplication(Long customerId) {
+    public ProducerApplicationResponse getCustomerApplication(Long customerId) {
         User customer = userRepository.findById(customerId)
             .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Customer not found"));
         ProducerApplication application = applicationRepository.findByCustomer(customer)

@@ -19,7 +19,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 
-import com.localmarket.main.dto.product.ProductDTO;
+import com.localmarket.main.dto.product.ProductResponse;
 import java.math.BigDecimal;
 
 
@@ -119,8 +119,8 @@ public class ProductService {
         return productRepository.findByCategoriesCategoryId(categoryId);
     }
 
-    private ProductDTO convertToDTO(Product product) {
-        return new ProductDTO(
+    private ProductResponse convertToDTO(Product product) {
+        return new ProductResponse(
             product.getProductId(),
             product.getName(),
             product.getDescription(),
@@ -137,13 +137,13 @@ public class ProductService {
         );
     }
 
-    public List<ProductDTO> getAllProductsWithCategories() {
+    public List<ProductResponse> getAllProductsWithCategories() {
         return productRepository.findAllWithCategories().stream()
             .map(this::convertToDTO)
             .collect(Collectors.toList());
     }
 
-    public Optional<ProductDTO> getProductByIdWithCategories(Long id) {
+    public Optional<ProductResponse> getProductByIdWithCategories(Long id) {
         return productRepository.findByIdWithCategories(id)
             .map(this::convertToDTO);
     }

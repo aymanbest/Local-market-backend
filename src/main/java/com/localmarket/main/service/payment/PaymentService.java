@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.UUID;
-import com.localmarket.main.exception.PaymentFailedException;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 

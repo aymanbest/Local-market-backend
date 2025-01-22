@@ -7,7 +7,7 @@ import com.localmarket.main.security.AdminOnly;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.localmarket.main.dto.category.CategoryDTO;
+import com.localmarket.main.dto.category.CategoryResponse;
 
 import java.util.List;
 
@@ -19,7 +19,7 @@ public class CategoryController {
 
     @PostMapping
     @AdminOnly
-    public ResponseEntity<CategoryDTO> createCategory(@RequestBody CategoryRequest request) {
+    public ResponseEntity<CategoryResponse> createCategory(@RequestBody CategoryRequest request) {
         return ResponseEntity.ok(categoryService.createCategory(request));
     }
 

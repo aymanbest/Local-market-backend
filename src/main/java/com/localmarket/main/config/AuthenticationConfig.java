@@ -6,7 +6,6 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import com.localmarket.main.repository.user.UserRepository;
 import com.localmarket.main.entity.user.User;
@@ -14,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import java.util.Collections;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import com.localmarket.main.exception.ApiException;
+import com.localmarket.main.exception.ErrorType;
 
 
 @Configuration
@@ -26,13 +27,14 @@ public class AuthenticationConfig {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(username -> {
             User user = userRepository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND , "User not found"));
             
             return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
                 user.getPasswordHash(),
                 Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name()))
             );
+            
         });
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;

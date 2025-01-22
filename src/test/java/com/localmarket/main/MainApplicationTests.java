@@ -34,7 +34,7 @@ import com.localmarket.main.dto.producer.ApplicationDeclineRequest;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-// @Transactional
+@Transactional
 class MainApplicationTests {
 
 	private static final Logger logger = LoggerFactory.getLogger(MainApplicationTests.class);

@@ -1,7 +1,7 @@
 package com.localmarket.main.controller.producer;
 
 import com.localmarket.main.dto.producer.ProducerApplicationRequest;
-import com.localmarket.main.dto.producer.ProducerApplicationDTO;
+import com.localmarket.main.dto.producer.ProducerApplicationResponse;
 import com.localmarket.main.dto.producer.ApplicationDeclineRequest;
 
 import com.localmarket.main.service.producer.ProducerApplicationService;
@@ -24,7 +24,7 @@ public class ProducerApplicationController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('CUSTOMER')")
-    public ResponseEntity<ProducerApplicationDTO> submitApplication(
+    public ResponseEntity<ProducerApplicationResponse> submitApplication(
             @RequestBody ProducerApplicationRequest request,
             @RequestHeader("Authorization") String token) {
         String jwt = token.substring(7);
@@ -34,19 +34,19 @@ public class ProducerApplicationController {
 
     @GetMapping
     @AdminOnly
-    public ResponseEntity<List<ProducerApplicationDTO>> getAllApplications() {
+    public ResponseEntity<List<ProducerApplicationResponse>> getAllApplications() {
         return ResponseEntity.ok(applicationService.getAllApplications());
     }
 
     @GetMapping("/pending")
     @AdminOnly
-    public ResponseEntity<List<ProducerApplicationDTO>> getPendingApplications() {
+    public ResponseEntity<List<ProducerApplicationResponse>> getPendingApplications() {
         return ResponseEntity.ok(applicationService.getApplicationsByStatus(ApplicationStatus.PENDING));
     }
 
     @PostMapping("/{applicationId}/approve")
     @AdminOnly
-    public ResponseEntity<ProducerApplicationDTO> approveApplication(
+    public ResponseEntity<ProducerApplicationResponse> approveApplication(
             @PathVariable Long applicationId,
             @RequestParam(required = false) Boolean approveCC) {
         return ResponseEntity.ok(applicationService.processApplication(applicationId, true, null, approveCC));
@@ -54,7 +54,7 @@ public class ProducerApplicationController {
 
     @PostMapping("/{applicationId}/decline")
     @AdminOnly
-    public ResponseEntity<ProducerApplicationDTO> declineApplication(
+    public ResponseEntity<ProducerApplicationResponse> declineApplication(
             @PathVariable Long applicationId,
             @RequestBody ApplicationDeclineRequest request) {
         return ResponseEntity.ok(applicationService.processApplication(applicationId, false, request.getReason(), false));
@@ -62,7 +62,7 @@ public class ProducerApplicationController {
 
     @GetMapping("/my-application")
     @PreAuthorize("hasAuthority('CUSTOMER')")
-    public ResponseEntity<ProducerApplicationDTO> getMyApplication(
+    public ResponseEntity<ProducerApplicationResponse> getMyApplication(
             @RequestHeader("Authorization") String token) {
         String jwt = token.substring(7);
         Long customerId = jwtService.extractUserId(jwt);
