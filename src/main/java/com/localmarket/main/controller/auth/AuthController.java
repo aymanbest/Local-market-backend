@@ -1,7 +1,7 @@
 package com.localmarket.main.controller.auth;
 
 import com.localmarket.main.dto.auth.AuthResponse;
-import com.localmarket.main.dto.account.RegisterRequest;
+import com.localmarket.main.dto.auth.RegisterRequest;
 import com.localmarket.main.dto.auth.AuthRequest;
 
 import com.localmarket.main.service.auth.AuthService;

@@ -30,6 +30,7 @@ public enum ErrorType {
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST),
     ACCOUNT_LOCKED(HttpStatus.FORBIDDEN), //todo
     ACCOUNT_DISABLED(HttpStatus.FORBIDDEN), //todo
+    UNAUTHORIZED_ROLE_ASSIGNMENT(HttpStatus.BAD_REQUEST),
     
     // Order related errors
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND),

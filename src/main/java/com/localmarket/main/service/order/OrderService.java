@@ -22,8 +22,8 @@ import com.localmarket.main.entity.payment.Payment;
 import com.localmarket.main.dto.payment.PaymentInfo;
 import com.localmarket.main.dto.order.OrderRequest;
 import com.localmarket.main.dto.order.OrderItemRequest;
-import com.localmarket.main.dto.account.RegisterRequest;
 import com.localmarket.main.dto.auth.AuthResponse;
+import com.localmarket.main.dto.auth.RegisterRequest;
 import com.localmarket.main.dto.payment.PaymentResponse;
 import com.localmarket.main.service.auth.AuthService;
 import com.localmarket.main.service.auth.TokenService;
@@ -190,8 +190,8 @@ public class OrderService {
             registerRequest.setEmail(request.getGuestEmail());
             registerRequest.setUsername(request.getAccountCreation().getUsername());
             registerRequest.setPassword(request.getAccountCreation().getPassword());
-            registerRequest.setRole(Role.CUSTOMER);
-            
+            registerRequest.setFirstname(request.getAccountCreation().getFirstname());
+            registerRequest.setLastname(request.getAccountCreation().getLastname());
             AuthResponse authResponse = authService.register(registerRequest);
             User newCustomer = userRepository.findByEmail(request.getGuestEmail())
                 .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User creation failed"));

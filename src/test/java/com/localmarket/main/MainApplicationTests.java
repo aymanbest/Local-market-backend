@@ -57,51 +57,31 @@ class MainApplicationTests {
 	@Test
 	void applicationFlowTest() throws Exception {
 		String timestamp = String.valueOf(System.currentTimeMillis());
-
 		logger.info(SEPARATOR + START_TEST + SEPARATOR);
 
-		// 1. Register Users
-		logger.info(STEP_START + " STEP 1: Creating Users");
-		// Admin registration
-		RegisterRequest adminRequest = new RegisterRequest();
-		adminRequest.setUsername("admin" + timestamp);
-		adminRequest.setEmail("admin" + timestamp + "@test.com");
-		adminRequest.setPassword("admin123");
-		adminRequest.setRole("ADMIN");
+		// 1. Login as admin (using seeded admin account)
+		logger.info(STEP_START + " STEP 1: Admin Login");
+		LoginRequest adminLoginRequest = new LoginRequest();
+		adminLoginRequest.setEmail("admin@localmarket.com");
+		adminLoginRequest.setPassword("admin123");
 
-		MvcResult adminResult = mockMvc.perform(post("/api/auth/register")
+		MvcResult adminResult = mockMvc.perform(post("/api/auth/login")
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(objectMapper.writeValueAsString(adminRequest)))
+				.content(objectMapper.writeValueAsString(adminLoginRequest)))
 				.andExpect(status().isOk())
 				.andReturn();
 
 		String adminToken = objectMapper.readTree(adminResult.getResponse().getContentAsString())
 				.get("token").asText();
-		logger.info(STEP_SUCCESS + " Admin created: " + adminRequest.getEmail());
+		logger.info(STEP_SUCCESS + " Admin logged in");
 
-		// Producer registration
-		RegisterRequest producerRequest = new RegisterRequest();
-		producerRequest.setUsername("producer" + timestamp);
-		producerRequest.setEmail("producer" + timestamp + "@test.com");
-		producerRequest.setPassword("producer123");
-		producerRequest.setRole("PRODUCER");
-
-		MvcResult producerResult = mockMvc.perform(post("/api/auth/register")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(objectMapper.writeValueAsString(producerRequest)))
-				.andExpect(status().isOk())
-				.andReturn();
-
-		String producerToken = objectMapper.readTree(producerResult.getResponse().getContentAsString())
-				.get("token").asText();
-		logger.info(STEP_SUCCESS + " Producer created: " + producerRequest.getEmail());
-
-		// Customer registration
+		// Register a customer who will become a producer
 		RegisterRequest customerRequest = new RegisterRequest();
 		customerRequest.setUsername("customer" + timestamp);
+		customerRequest.setFirstname("customer" + timestamp);
+		customerRequest.setLastname("customer" + timestamp);
 		customerRequest.setEmail("customer" + timestamp + "@test.com");
 		customerRequest.setPassword("customer123");
-		customerRequest.setRole("CUSTOMER");
 
 		MvcResult customerResult = mockMvc.perform(post("/api/auth/register")
 				.contentType(MediaType.APPLICATION_JSON)
@@ -279,7 +259,7 @@ class MainApplicationTests {
 		productRequest.setCategoryIds(Collections.singleton(categoryId));
 
 		MvcResult productResult = mockMvc.perform(post("/api/products")
-				.header("Authorization", "Bearer " + producerToken)
+				.header("Authorization", "Bearer " + updatedCustomerToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(productRequest)))
 				.andExpect(status().isOk())
@@ -410,6 +390,8 @@ class MainApplicationTests {
 		accountCreation.setCreateAccount(true);
 		accountCreation.setUsername("newcustomer");
 		accountCreation.setPassword("newcustomer123");
+		accountCreation.setFirstname("New");
+		accountCreation.setLastname("Customer");
 		request.setAccountCreation(accountCreation);
 
 		return request;

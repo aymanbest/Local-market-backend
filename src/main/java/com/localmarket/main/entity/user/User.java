@@ -31,6 +31,16 @@ public class User {
     @Email(message = "Invalid email format")
     @Column(name = "email")
     private String email;
+
+    @NotBlank(message = "First name is required")
+    @Size(min = 3, max = 50, message = "First name must be between 3 and 50 characters")
+    @Column(name = "firstname")
+    private String firstname;
+
+    @NotBlank(message = "Last name is required")
+    @Size(min = 3, max = 50, message = "Last name must be between 3 and 50 characters")
+    @Column(name = "lastname")
+    private String lastname;
     
     @NotBlank(message = "Password hash is required")
     @Column(name = "passwordHash")

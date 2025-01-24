@@ -1,8 +1,8 @@
 package com.localmarket.main.service.auth;
 
-import com.localmarket.main.dto.account.RegisterRequest;
 import com.localmarket.main.dto.auth.AuthRequest;
 import com.localmarket.main.dto.auth.AuthResponse;
+import com.localmarket.main.dto.auth.RegisterRequest;
 import com.localmarket.main.entity.user.User;
 import com.localmarket.main.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.repository.token.TokenRepository;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 @Service
 @RequiredArgsConstructor
@@ -25,45 +26,42 @@ public class AuthService {
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new ApiException(ErrorType.EMAIL_ALREADY_EXISTS, "Email already registered");
+            throw new ApiException(ErrorType.EMAIL_ALREADY_EXISTS, "Email already exists");
         }
 
+        // Ignore any role sent in request
         User user = new User();
         user.setUsername(request.getUsername());
+        user.setFirstname(request.getFirstname());
+        user.setLastname(request.getLastname());
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole() != null ? request.getRole() : Role.CUSTOMER);
-
+        user.setRole(Role.CUSTOMER); // Always set CUSTOMER role
+        
         User savedUser = userRepository.save(user);
         String token = jwtService.generateToken(savedUser);
         tokenRepository.storeToken(token, savedUser.getUserId());
-
+        
         return AuthResponse.builder()
                 .token(token)
-                .userId(savedUser.getUserId())
-                .username(savedUser.getUsername())
-                .email(savedUser.getEmail())
-                .role(savedUser.getRole().name())
+                .status("Registration successful")
                 .build();
     }
 
     public AuthResponse login(AuthRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new ApiException(ErrorType.INVALID_CREDENTIALS, "Invalid email or password"));
-
+                .orElseThrow(() -> new UsernameNotFoundException("Invalid email or password"));
+        
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new BadCredentialsException("Invalid email or password");
         }
-
+        
         String token = jwtService.generateToken(user);
         tokenRepository.storeToken(token, user.getUserId());
-
+        
         return AuthResponse.builder()
                 .token(token)
-                .userId(user.getUserId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .role(user.getRole().name())
+                .status("Login successful")
                 .build();
     }
 
