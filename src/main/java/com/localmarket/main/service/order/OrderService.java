@@ -28,7 +28,6 @@ import com.localmarket.main.dto.payment.PaymentResponse;
 import com.localmarket.main.service.auth.AuthService;
 import com.localmarket.main.service.auth.TokenService;
 import com.localmarket.main.service.payment.PaymentService;
-import com.localmarket.main.entity.user.Role;
 import com.localmarket.main.dto.order.OrderResponse;
 import com.localmarket.main.entity.payment.PaymentMethod;
 import com.localmarket.main.dto.user.UserInfo;

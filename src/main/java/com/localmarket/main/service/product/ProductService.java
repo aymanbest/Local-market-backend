@@ -21,6 +21,9 @@ import com.localmarket.main.exception.ErrorType;
 
 import com.localmarket.main.dto.product.ProductResponse;
 import java.math.BigDecimal;
+import java.util.Map;
+import com.localmarket.main.dto.product.ProducerProductsResponse;
+import com.localmarket.main.dto.user.FilterUsersResponse;
 
 
 @Service
@@ -31,7 +34,7 @@ public class ProductService {
     private final UserRepository userRepository;
 
     @ProducerOnly
-    public Product createProduct(ProductRequest request, Long producerId) {
+    public ProductResponse createProduct(ProductRequest request, Long producerId) {
         try {
             validateProductPrice(request.getPrice());
             
@@ -54,27 +57,14 @@ public class ProductService {
                 product.setCategories(categories);
             }
 
-            return productRepository.save(product);
+            return convertToDTO(productRepository.save(product));
         } catch (DataIntegrityViolationException e) {
             throw new ApiException(ErrorType.DUPLICATE_RESOURCE, "Product with similar details already exists");
         }
     }
 
-    @Transactional(readOnly = true)
-    public List<Product> getAllProducts() {
-        return productRepository.findAllWithCategories();
-    }
-
-    @Transactional(readOnly = true)
-    public Product getProduct(Long id) {
-        return productRepository.findByIdWithCategories(id)
-            .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, 
-                "Product with id " + id + " not found"));
-    }
-
-
     @ProducerOnly
-    public Product updateProduct(Long id, ProductRequest request, Long producerId) {
+    public ProductResponse updateProduct(Long id, ProductRequest request, Long producerId) {
         validateProductPrice(request.getPrice());
         Product product = productRepository.findById(id)
             .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
@@ -95,7 +85,7 @@ public class ProductService {
             product.setCategories(categories);
         }
 
-        return productRepository.save(product);
+        return convertToDTO(productRepository.save(product));
     }
 
     @ProducerOnly
@@ -110,16 +100,16 @@ public class ProductService {
         productRepository.delete(product);
     }
 
-    @Transactional(readOnly = true)
-    public List<Product> getProductsByCategory(Long categoryId) {
-        if (!categoryRepository.existsById(categoryId)) {
-            throw new ApiException(ErrorType.CATEGORY_NOT_FOUND, 
-                "Category with id " + categoryId + " not found");
-        }
-        return productRepository.findByCategoriesCategoryId(categoryId);
-    }
-
     private ProductResponse convertToDTO(Product product) {
+        User producer = product.getProducer();
+        FilterUsersResponse producerDTO = new FilterUsersResponse(
+            producer.getUserId(),
+            producer.getUsername(),
+            producer.getFirstname(),
+            producer.getLastname(),
+            producer.getEmail()
+        );
+        
         return new ProductResponse(
             product.getProductId(),
             product.getName(),
@@ -129,23 +119,55 @@ public class ProductService {
             product.getImageUrl(),
             product.getCreatedAt(),
             product.getUpdatedAt(),
-            product.getProducer().getUserId(),
-            product.getProducer().getUsername(),
-            product.getProducer().getEmail(),
-            product.getProducer().getRole(),
+            producerDTO,
             product.getCategories()
         );
     }
 
-    public List<ProductResponse> getAllProductsWithCategories() {
-        return productRepository.findAllWithCategories().stream()
-            .map(this::convertToDTO)
-            .collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public List<ProducerProductsResponse> getAllProductsGroupedByProducer() {
+        List<Product> allProducts = productRepository.findAllWithCategories();
+        return groupProductsByProducer(allProducts);
     }
 
+    @Transactional(readOnly = true)
     public Optional<ProductResponse> getProductByIdWithCategories(Long id) {
         return productRepository.findByIdWithCategories(id)
             .map(this::convertToDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProducerProductsResponse> getProductsByCategory(Long categoryId) {
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new ApiException(ErrorType.CATEGORY_NOT_FOUND, 
+                "Category with id " + categoryId + " not found");
+        }
+        
+        List<Product> products = productRepository.findByCategoriesCategoryId(categoryId);
+        return groupProductsByProducer(products);
+    }
+
+    private List<ProducerProductsResponse> groupProductsByProducer(List<Product> products) {
+        Map<User, List<Product>> groupedProducts = products.stream()
+            .collect(Collectors.groupingBy(Product::getProducer));
+        
+        return groupedProducts.entrySet().stream()
+            .map(entry -> {
+                User producer = entry.getKey();
+                List<ProductResponse> productResponses = entry.getValue().stream()
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList());
+                    
+                return new ProducerProductsResponse(
+                    producer.getUserId(),
+                    producer.getUsername(),
+                    producer.getFirstname(),
+                    producer.getLastname(),
+                    producer.getEmail(),
+                    productResponses
+                );
+            })
+            .collect(Collectors.toList());
     }
 
     private void validateProductPrice(BigDecimal price) {
@@ -154,17 +176,14 @@ public class ProductService {
                 "Product price must be greater than 0");
         }
         
-        // Validate maximum price (e.g., 999999.99)
         if (price.compareTo(new BigDecimal("999999.99")) > 0) {
             throw new ApiException(ErrorType.INVALID_PRODUCT_PRICE, 
                 "Product price cannot exceed 999999.99");
         }
         
-        // Validate decimal places
         if (price.scale() > 2) {
             throw new ApiException(ErrorType.INVALID_PRODUCT_PRICE, 
                 "Product price cannot have more than 2 decimal places");
         }
     }
-
 } 

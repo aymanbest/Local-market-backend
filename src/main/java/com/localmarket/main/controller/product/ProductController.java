@@ -7,7 +7,11 @@ import com.localmarket.main.security.ProducerOnly;
 import com.localmarket.main.service.auth.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import com.localmarket.main.dto.product.ProducerProductsResponse;
 import org.springframework.web.bind.annotation.*;
+import com.localmarket.main.dto.product.ProductResponse;
+import com.localmarket.main.exception.ApiException;
+import com.localmarket.main.exception.ErrorType;
 
 import java.util.List;
 
@@ -20,7 +24,7 @@ public class ProductController {
 
     @PostMapping
     @ProducerOnly
-    public ResponseEntity<Product> createProduct(
+    public ResponseEntity<ProductResponse> createProduct(
             @RequestBody ProductRequest request,
             @RequestHeader("Authorization") String token) {
         Long producerId = jwtService.extractUserId(token.substring(7));
@@ -28,13 +32,15 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProduct(@PathVariable Long id) {
-        return ResponseEntity.ok(productService.getProduct(id));
+    public ResponseEntity<ProductResponse> getProduct(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.getProductByIdWithCategories(id)
+            .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, 
+                "Product with id " + id + " not found")));
     }
 
     @PutMapping("/{id}")
     @ProducerOnly
-    public ResponseEntity<Product> updateProduct(
+    public ResponseEntity<ProductResponse> updateProduct(
             @PathVariable Long id,
             @RequestBody ProductRequest request,
             @RequestHeader("Authorization") String token) {
@@ -53,12 +59,12 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Product>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllProducts());
+    public ResponseEntity<List<ProducerProductsResponse>> getAllProducts() {
+        return ResponseEntity.ok(productService.getAllProductsGroupedByProducer());
     }
 
     @GetMapping("/category/{categoryId}")
-    public ResponseEntity<List<Product>> getProductsByCategory(@PathVariable Long categoryId) {
+    public ResponseEntity<List<ProducerProductsResponse>> getProductsByCategory(@PathVariable Long categoryId) {
         return ResponseEntity.ok(productService.getProductsByCategory(categoryId));
     }
 } 
