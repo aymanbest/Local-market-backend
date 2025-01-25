@@ -33,9 +33,15 @@ public class UserController {
     // create user
     @PostMapping
     @AdminOnly
-    public ResponseEntity<User> createUser(@RequestBody User user, @RequestHeader("Authorization") String token) {
-        User savedUser = userService.saveUser(user);
-        return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
+    public ResponseEntity<User> createUser(@RequestBody User user,
+     @RequestHeader("Authorization") String token) {
+        try {
+            User savedUser = userService.saveUser(user);
+            return ResponseEntity.ok(savedUser);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                 .body(null);
+        }
     }
 
     // Get Users with optional role filter

@@ -8,6 +8,9 @@ import com.localmarket.main.dto.payment.PaymentInfo;
 import com.localmarket.main.dto.product.ProductRequest;
 import com.localmarket.main.dto.user.AccountCreationRequest;
 import com.localmarket.main.entity.payment.PaymentMethod;
+import com.localmarket.main.entity.user.Role;
+import com.localmarket.main.entity.user.User;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -25,12 +28,18 @@ import org.springframework.transaction.annotation.Transactional;
 import com.localmarket.main.dto.producer.ProducerApplicationRequest;
 import com.localmarket.main.dto.auth.LoginRequest;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import org.springframework.jdbc.core.JdbcTemplate;
 import java.time.LocalDateTime;
 import java.util.Set;
 import com.localmarket.main.dto.producer.ApplicationDeclineRequest;
+
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -53,6 +62,64 @@ class MainApplicationTests {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
+
+	@Test
+    void applicationFlowTest1() throws Exception {
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        System.out.println(SEPARATOR + START_TEST + SEPARATOR);
+
+        // 1. Login as admin (using seeded admin account)
+        System.out.println(STEP_START + " STEP 1: Admin Login");
+        LoginRequest adminLoginRequest = new LoginRequest();
+        adminLoginRequest.setEmail("admin@localmarket.com");
+        adminLoginRequest.setPassword("admin123");
+
+        MvcResult adminResult = mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(adminLoginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String adminToken = objectMapper.readTree(adminResult.getResponse().getContentAsString())
+                .get("token").asText();
+        System.out.println(STEP_SUCCESS + " Admin logged in");
+
+        
+        // 2. Create a new User (Admin CRUD Test)
+        System.out.println(STEP_START + " STEP 2: Create User (Admin)");
+        User newUser = new User();
+        newUser.setUsername("john_doe");
+        newUser.setEmail("john.doe@example.com");
+        newUser.setFirstname("John");
+        newUser.setLastname("Doe");
+        newUser.setPasswordHash("hashed_password");
+        newUser.setRole(Role.ADMIN);
+
+
+		MvcResult createResult = mockMvc.perform(post("/api/users")
+                .header("Authorization", "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(newUser)))
+                .andExpect(status().isCreated() ) 
+                .andReturn();
+
+        String createdUserId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .get("userId").asText();
+        System.out.println(STEP_SUCCESS + " User created with ID: " + createdUserId);
+
+
+		// 3. Get the created User
+        System.out.println(STEP_START + " STEP 3: Get User by ID");
+        mockMvc.perform(get("/api/users/" + createdUserId)
+                .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(content().json("{\"userId\":" + createdUserId + "}"))
+                .andReturn();
+        System.out.println(STEP_SUCCESS + " User fetched successfully");
+
+
+    }
+
 
 	@Test
 	void applicationFlowTest() throws Exception {
@@ -92,6 +159,35 @@ class MainApplicationTests {
 		String customerToken = objectMapper.readTree(customerResult.getResponse().getContentAsString())
 				.get("token").asText();
 		logger.info(STEP_SUCCESS + " Customer created: " + customerRequest.getEmail());
+
+
+
+		// basic user CRUD
+
+        
+
+
+
+		// Fetch Users by Role
+		logger.info(STEP_START + " STEP 2: Fetch Users by Role");
+		MvcResult userRoleResult = mockMvc.perform(get("/api/users/role/ADMIN")
+				.header("Authorization","Bearer " + adminToken)
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isOk())
+				// Check that there are exactly 2 admins in the response
+				.andExpect(jsonPath("$.length()").value(2))  // Expect 2 admins
+				// You can also check the email of the first and second admins
+				.andExpect(jsonPath("$[0].email").value("admin12@example.com"))
+				.andExpect(jsonPath("$[1].email").value("admin@localmarket.com"))
+				.andReturn();
+
+		String userRoleResponse = userRoleResult.getResponse().getContentAsString();
+		logger.info("Fetched Users: " + userRoleResponse);
+		logger.info(STEP_SUCCESS + " STEP 2: Fetch Users by Role Successful");
+
+		logger.info(SEPARATOR + END_TEST + SEPARATOR);
+
+
 
 		// Check initial status (NOT_APPLIED)
 		MvcResult initialStatus = mockMvc.perform(get("/api/producer-applications/status")
