@@ -38,11 +38,23 @@ public class UserController {
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
     }
 
-    // Get all Users
+    // Get Users with optional role filter
     @GetMapping
     @AdminOnly
-    public List<User> getUsers(@RequestHeader("Authorization") String token) {
-        return userService.getAllUsers();
+    public List<FilterUsersResponse> getUsers(
+            @RequestParam(required = false) Role role,
+            @RequestHeader("Authorization") String token) {
+        List<User> users = (role != null) 
+            ? userService.findUsersByRole(role)
+            : userService.getAllUsers();
+            
+        return users.stream()
+                .map(user -> new FilterUsersResponse(
+                    user.getUsername(), 
+                    user.getEmail(), 
+                    user.getFirstname(), 
+                    user.getLastname()))
+                .collect(Collectors.toList());
     }
 
     // Get User by ID
@@ -74,18 +86,6 @@ public class UserController {
         }
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
-    }
-
-    
-   
-    @GetMapping("/role/{role}")
-    @AdminOnly
-    public List<FilterUsersResponse> getUsersByRole(@PathVariable Role role,
-                                                @RequestHeader("Authorization") String token) {
-        List<User> users = userService.findUsersByRole(role);
-        return users.stream()
-                    .map(user -> new FilterUsersResponse(user.getUsername(), user.getEmail(), user.getFirstname(), user.getLastname()))
-                    .collect(Collectors.toList());
     }
 }
 
