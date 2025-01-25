@@ -24,27 +24,55 @@ public class AuthService {
     private final JwtService jwtService;
     private final TokenRepository tokenRepository;
 
-    public AuthResponse register(RegisterRequest request) {
+    public AuthResponse register(RegisterRequest request, String authHeader) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new ApiException(ErrorType.EMAIL_ALREADY_EXISTS, "Email already exists");
         }
 
-        // Ignore any role sent in request
+        Role roleToAssign = Role.CUSTOMER; // Default role
+
+        // Check if admin is trying to assign a role
+        if (request.getRole() != null && request.getRole() != Role.CUSTOMER) {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                throw new ApiException(ErrorType.UNAUTHORIZED_ROLE_ASSIGNMENT, 
+                    "Admin authorization required to assign non-customer roles");
+            }
+
+            String jwt = authHeader.substring(7);
+            String role = jwtService.extractRole(jwt);
+
+            if (!"ADMIN".equals(role)) {
+                throw new ApiException(ErrorType.UNAUTHORIZED_ROLE_ASSIGNMENT, 
+                    "Only admins can assign non-customer roles");
+            }
+
+            roleToAssign = request.getRole();
+        }
+
         User user = new User();
         user.setUsername(request.getUsername());
         user.setFirstname(request.getFirstname());
         user.setLastname(request.getLastname());
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setRole(Role.CUSTOMER); // Always set CUSTOMER role
+        user.setRole(roleToAssign);
         
         User savedUser = userRepository.save(user);
         String token = jwtService.generateToken(savedUser);
-        tokenRepository.storeToken(token, savedUser.getUserId());
+        if (roleToAssign == Role.CUSTOMER) {
+            tokenRepository.storeToken(token, savedUser.getUserId());
+        }
+        String statusMessage = "Registration successful";
+        
+        if (roleToAssign == Role.CUSTOMER) {
+            tokenRepository.storeToken(token, savedUser.getUserId());
+        } else {
+            statusMessage = "User created by admin with role: " + roleToAssign;
+        }
         
         return AuthResponse.builder()
                 .token(token)
-                .status("Registration successful")
+                .status(statusMessage)
                 .build();
     }
 

@@ -192,7 +192,7 @@ public class OrderService {
             registerRequest.setPassword(request.getAccountCreation().getPassword());
             registerRequest.setFirstname(request.getAccountCreation().getFirstname());
             registerRequest.setLastname(request.getAccountCreation().getLastname());
-            AuthResponse authResponse = authService.register(registerRequest);
+            AuthResponse authResponse = authService.register(registerRequest, null);
             User newCustomer = userRepository.findByEmail(request.getGuestEmail())
                 .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User creation failed"));
                 
