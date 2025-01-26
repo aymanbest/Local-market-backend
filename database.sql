@@ -11,7 +11,8 @@ CREATE TABLE User (
     role  ENUM('CUSTOMER', 'PRODUCER', 'ADMIN') NOT NULL,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    tokenVersion INT DEFAULT 0
+    tokenVersion INT DEFAULT 0,
+    lastLogin DATETIME
 );
 
 -- Table: Product
@@ -64,7 +65,7 @@ CREATE TABLE `Order` (
     shippingAddress TEXT NOT NULL,
     phoneNumber VARCHAR(20) NOT NULL,
     orderDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('PENDING', 'ACCEPTED', 'DECLINED', 'COMPLETED') DEFAULT 'PENDING',
+    status ENUM('PENDING', 'ACCEPTED', 'DECLINED', 'DELIVERED', 'CANCELLED', 'RETURNED') DEFAULT 'PENDING',
     totalPrice DECIMAL(10, 2) NOT NULL,
     paymentId BIGINT,
     FOREIGN KEY (customerId) REFERENCES User(userId) ON DELETE SET NULL,
@@ -117,3 +118,11 @@ CREATE TABLE ProducerApplication (
 -- Update PaymentInfo to add Order foreign key
 ALTER TABLE PaymentInfo
 ADD FOREIGN KEY (orderId) REFERENCES `Order`(orderId) ON DELETE CASCADE;
+
+-- Add indexes for analytics queries
+ALTER TABLE User ADD INDEX idx_created_at (createdAt);
+ALTER TABLE User ADD INDEX idx_role_created_at (role, createdAt);
+ALTER TABLE `Order` ADD INDEX idx_order_date (orderDate);
+ALTER TABLE `Order` ADD INDEX idx_status_date (status, orderDate);
+ALTER TABLE PaymentInfo ADD INDEX idx_created_at (createdAt);
+ALTER TABLE PaymentInfo ADD INDEX idx_status_created (paymentStatus, createdAt);

@@ -8,6 +8,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Value;
+import java.time.LocalDateTime;
 
 @Component
 @RequiredArgsConstructor
@@ -39,6 +40,7 @@ public class AdminSeeder implements CommandLineRunner {
             admin.setLastname(adminLastname);
             admin.setEmail(adminEmail);
             admin.setPasswordHash(passwordEncoder.encode(adminPassword));
+            admin.setLastLogin(LocalDateTime.now());
             admin.setRole(Role.ADMIN);
             
             userRepository.save(admin);

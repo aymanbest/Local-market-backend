@@ -60,6 +60,9 @@ public class User {
     @Column(name = "tokenVersion")
     private Integer tokenVersion = 0;
     
+    @Column(name = "lastLogin")
+    private LocalDateTime lastLogin;
+    
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

@@ -309,4 +309,50 @@ public class OrderService {
         }
     }
 
+    @Transactional
+    public Order updateOrderStatus(Long orderId, OrderStatus newStatus, Long producerId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new ApiException(ErrorType.ORDER_NOT_FOUND, "Order not found"));
+
+        // Verify that the producer owns at least one product in the order
+        boolean hasAccess = order.getItems().stream()
+            .anyMatch(item -> item.getProduct().getProducer().getUserId().equals(producerId));
+
+        if (!hasAccess) {
+            throw new ApiException(ErrorType.ACCESS_DENIED, 
+                "You can only update status for orders containing your products");
+        }
+
+        // Validate status transitions
+        validateStatusTransition(order.getStatus(), newStatus);
+        
+        order.setStatus(newStatus);
+        return orderRepository.save(order);
+    }
+
+    private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
+        // Define valid status transitions
+        if (currentStatus == OrderStatus.PENDING) {
+            if (newStatus != OrderStatus.ACCEPTED && newStatus != OrderStatus.DECLINED) {
+                throw new ApiException(ErrorType.INVALID_STATUS_TRANSITION, 
+                    "Pending orders can only be accepted or declined");
+            }
+        } else if (currentStatus == OrderStatus.ACCEPTED) {
+            if (newStatus != OrderStatus.DELIVERED && newStatus != OrderStatus.CANCELLED) {
+                throw new ApiException(ErrorType.INVALID_STATUS_TRANSITION, 
+                    "Accepted orders can only be delivered or cancelled");
+            }
+        } else if (currentStatus == OrderStatus.DELIVERED) {
+            if (newStatus != OrderStatus.RETURNED) {
+                throw new ApiException(ErrorType.INVALID_STATUS_TRANSITION, 
+                    "Delivered orders can only be marked as returned");
+            }
+        } else if (currentStatus == OrderStatus.DECLINED || 
+                   currentStatus == OrderStatus.CANCELLED || 
+                   currentStatus == OrderStatus.RETURNED) {
+            throw new ApiException(ErrorType.INVALID_STATUS_TRANSITION, 
+                "Cannot change status of orders that are declined, cancelled, or returned");
+        }
+    }
+
 } 

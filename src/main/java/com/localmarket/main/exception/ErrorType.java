@@ -38,6 +38,7 @@ public enum ErrorType {
     ORDER_INVALID_STATE(HttpStatus.BAD_REQUEST),
     ORDER_ALREADY_PROCESSED(HttpStatus.CONFLICT), 
     ORDER_CANCELLATION_FAILED(HttpStatus.BAD_REQUEST),
+    INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST),
 
     // Payment related errors
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND),
@@ -74,6 +75,8 @@ public enum ErrorType {
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR),
     SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE),
     DATABASE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
+
+    
 
     private final HttpStatus status;
 

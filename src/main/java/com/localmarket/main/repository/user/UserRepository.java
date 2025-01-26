@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 import com.localmarket.main.entity.user.Role;
+import java.time.LocalDateTime;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -15,4 +16,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     void deleteById(Long id);  
     Optional<User> findByEmail(String email);
     List<User> findByRole(Role role);
+    long countByCreatedAtBefore(LocalDateTime date);
+    long countByRoleAndCreatedAtBetween(Role role, LocalDateTime start, LocalDateTime end);
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+    long countByLastLoginBetween(LocalDateTime start, LocalDateTime end);
 } 

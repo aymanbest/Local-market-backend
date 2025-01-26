@@ -23,6 +23,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.localmarket.main.dto.error.ErrorResponse;
+import com.localmarket.main.security.ProducerOnly;
+import io.swagger.v3.oas.annotations.Parameter;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -149,5 +151,38 @@ public class OrderController {
         String jwt = token.substring(7);
         Long userId = jwtService.extractUserId(jwt);
         return ResponseEntity.ok(orderService.getUserOrder(orderId, userId));
+    }
+
+    @Operation(
+        summary = "Update order status", 
+        description = "Update order status (Producer only). Valid status transitions:\n\n" +
+            "- PENDING → ACCEPTED or DECLINED\n" +
+            "- ACCEPTED → DELIVERED or CANCELLED\n" +
+            "- DELIVERED → RETURNED\n" +
+            "- DECLINED/CANCELLED/RETURNED → No further transitions allowed"
+    )
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Order status updated successfully", 
+            content = @Content(schema = @Schema(implementation = Order.class))),
+        @ApiResponse(responseCode = "403", description = "Not authorized to update this order", 
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Order not found", 
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid status transition", 
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PutMapping("/{orderId}/status")
+    @ProducerOnly
+    public ResponseEntity<Order> updateOrderStatus(
+            @PathVariable Long orderId,
+            @Parameter(description = "New status. Must follow valid transition rules", 
+                schema = @Schema(allowableValues = {
+                    "ACCEPTED", "DECLINED", "DELIVERED", "CANCELLED", "RETURNED"
+                }))
+            @RequestParam OrderStatus status,
+            @RequestHeader("Authorization") String token) {
+        Long producerId = jwtService.extractUserId(token.substring(7));
+        return ResponseEntity.ok(orderService.updateOrderStatus(orderId, status, producerId));
     }
 } 

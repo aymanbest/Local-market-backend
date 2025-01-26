@@ -74,6 +74,8 @@ public class Order {
     
     @PrePersist
     protected void onCreate() {
-        orderDate = LocalDateTime.now();
+        if (orderDate == null) {
+            orderDate = LocalDateTime.now();
+        }
     }
 } 
