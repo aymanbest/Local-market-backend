@@ -5,7 +5,6 @@ import com.localmarket.main.dto.category.CategoryRequest;
 import com.localmarket.main.dto.order.OrderItemRequest;
 import com.localmarket.main.dto.order.OrderRequest;
 import com.localmarket.main.dto.payment.PaymentInfo;
-import com.localmarket.main.dto.product.ProductRequest;
 import com.localmarket.main.dto.user.AccountCreationRequest;
 import com.localmarket.main.entity.payment.PaymentMethod;
 import org.junit.jupiter.api.Test;
@@ -19,7 +18,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.localmarket.main.dto.order.OrderResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.math.BigDecimal;
 import java.util.Collections;
 import org.springframework.transaction.annotation.Transactional;
 import com.localmarket.main.dto.producer.ProducerApplicationRequest;
@@ -31,6 +29,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.time.LocalDateTime;
 import java.util.Set;
 import com.localmarket.main.dto.producer.ApplicationDeclineRequest;
+import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
+import org.springframework.mock.web.MockPart;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+
+
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -217,18 +220,23 @@ class MainApplicationTests {
 				.get("token").asText();
 		logger.info(STEP_SUCCESS + " Re-logged in with updated role");
 
-		// Verify the customer can now create products (with new token)
-		ProductRequest testProductRequest = new ProductRequest();
-		testProductRequest.setName("Fresh Apples");
-		testProductRequest.setDescription("Organic fresh apples");
-		testProductRequest.setPrice(new BigDecimal("2.99"));
-		testProductRequest.setQuantity(100);
-		testProductRequest.setImageUrl("https://example.com/apple.jpg");
+		// 4. Create Product
+		logger.info("\n" + STEP_START + " STEP 4: Creating Product");
+		
+		MockMultipartHttpServletRequestBuilder multipartRequest = 
+			MockMvcRequestBuilders.multipart("/api/products");
+			
+		multipartRequest
+				.part(new MockPart("name", "Fresh Apples".getBytes()))
+				.part(new MockPart("description", "Organic fresh apples".getBytes()))
+				.part(new MockPart("price", "2.99".getBytes()))
+				.part(new MockPart("quantity", "100".getBytes()))
+				.part(new MockPart("categoryIds", fruitsCategoryId.toString().getBytes()))
+				.part(new MockPart("imageUrl", "https://example.com/image.jpg".getBytes()));
 
-		mockMvc.perform(post("/api/products")
+		mockMvc.perform(multipartRequest
 				.header("Authorization", "Bearer " + updatedCustomerToken)
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(objectMapper.writeValueAsString(testProductRequest)))
+				.contentType(MediaType.MULTIPART_FORM_DATA))
 				.andExpect(status().isOk());
 		logger.info(STEP_SUCCESS + " Verified role change: Customer can now create products as Producer");
 
@@ -250,18 +258,21 @@ class MainApplicationTests {
 
 		// 4. Create Product
 		logger.info("\n" + STEP_START + " STEP 4: Creating Product");
-		ProductRequest productRequest = new ProductRequest();
-		productRequest.setName("Fresh Apples");
-		productRequest.setDescription("Organic fresh apples");
-		productRequest.setPrice(new BigDecimal("2.99"));
-		productRequest.setQuantity(100);
-		productRequest.setImageUrl("https://example.com/apple.jpg");
-		productRequest.setCategoryIds(Collections.singleton(categoryId));
+		
+		MockMultipartHttpServletRequestBuilder multipartRequest2 = 
+			MockMvcRequestBuilders.multipart("/api/products");
+			
+		multipartRequest2
+				.part(new MockPart("name", "Fresh Apples".getBytes()))
+				.part(new MockPart("description", "Organic fresh apples".getBytes()))
+				.part(new MockPart("price", "2.99".getBytes()))
+				.part(new MockPart("quantity", "100".getBytes()))
+				.part(new MockPart("categoryIds", categoryId.toString().getBytes()))
+				.part(new MockPart("imageUrl", "https://example.com/image2.jpg".getBytes()));
 
-		MvcResult productResult = mockMvc.perform(post("/api/products")
+		MvcResult productResult = mockMvc.perform(multipartRequest2
 				.header("Authorization", "Bearer " + updatedCustomerToken)
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(objectMapper.writeValueAsString(productRequest)))
+				.contentType(MediaType.MULTIPART_FORM_DATA))
 				.andExpect(status().isOk())
 				.andReturn();
 

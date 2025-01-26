@@ -24,6 +24,8 @@ import java.math.BigDecimal;
 import java.util.Map;
 import com.localmarket.main.dto.product.ProducerProductsResponse;
 import com.localmarket.main.dto.user.FilterUsersResponse;
+import com.localmarket.main.service.storage.FileStorageService;
+import org.springframework.web.multipart.MultipartFile;
 
 
 @Service
@@ -32,9 +34,10 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
 
     @ProducerOnly
-    public ProductResponse createProduct(ProductRequest request, Long producerId) {
+    public ProductResponse createProduct(ProductRequest request, MultipartFile image, Long producerId) {
         try {
             validateProductPrice(request.getPrice());
             
@@ -43,12 +46,20 @@ public class ProductService {
             product.setDescription(request.getDescription());
             product.setPrice(request.getPrice());
             product.setQuantity(request.getQuantity());
-            product.setImageUrl(request.getImageUrl());
+            
+            // Handle image: prefer uploaded file over URL
+            if (image != null && !image.isEmpty()) {
+                String filename = fileStorageService.storeFile(image);
+                product.setImageUrl("/api/products/images/" + filename);
+            } else if (request.getImageUrl() != null && !request.getImageUrl().trim().isEmpty()) {
+                product.setImageUrl(request.getImageUrl().trim());
+            }
+
             User producer = userRepository.findById(producerId)
                 .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Producer not found"));
             product.setProducer(producer);
 
-            if (request.getCategoryIds() != null) {
+            if (request.getCategoryIds() != null && !request.getCategoryIds().isEmpty()) {
                 Set<Category> categories = categoryRepository.findAllById(request.getCategoryIds())
                     .stream().collect(Collectors.toSet());
                 if (categories.size() != request.getCategoryIds().size()) {
@@ -64,20 +75,25 @@ public class ProductService {
     }
 
     @ProducerOnly
-    public ProductResponse updateProduct(Long id, ProductRequest request, Long producerId) {
+    public ProductResponse updateProduct(Long id, ProductRequest request, MultipartFile image, Long producerId) {
         validateProductPrice(request.getPrice());
         Product product = productRepository.findById(id)
             .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
             
         if (!product.getProducer().getUserId().equals(producerId)) {
-            throw new ApiException(ErrorType.PRODUCT_ACCESS_DENIED, "You don't have permission to modify this product");
+            throw new ApiException(ErrorType.PRODUCT_ACCESS_DENIED, "You can only update your own products");
         }
 
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
         product.setQuantity(request.getQuantity());
-        product.setImageUrl(request.getImageUrl());
+        if (image != null) {
+            String filename = fileStorageService.storeFile(image);
+            product.setImageUrl("/api/products/images/" + filename);
+        } else if (request.getImageUrl() != null) {
+            product.setImageUrl(request.getImageUrl());
+        }
 
         if (request.getCategoryIds() != null) {
             Set<Category> categories = categoryRepository.findAllById(request.getCategoryIds())
