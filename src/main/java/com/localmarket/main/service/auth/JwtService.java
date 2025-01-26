@@ -8,7 +8,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.localmarket.main.entity.user.User;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import com.localmarket.main.repository.producer.ProducerApplicationRepository;
 import com.localmarket.main.repository.user.UserRepository;
+import com.localmarket.main.entity.user.Role;
 
 import java.security.Key;
 import java.util.Base64;
@@ -25,9 +28,11 @@ public class JwtService {
     private String secretKey;
     
     private final UserRepository userRepository;
+    private final ProducerApplicationRepository applicationRepository;
 
-    public JwtService(UserRepository userRepository) {
+    public JwtService(UserRepository userRepository, ProducerApplicationRepository applicationRepository) {
         this.userRepository = userRepository;
+        this.applicationRepository = applicationRepository;
     }
 
     public String generateToken(User user) {
@@ -39,6 +44,14 @@ public class JwtService {
         claims.put("email", user.getEmail());
         claims.put("role", user.getRole().name());
         claims.put("tokenVersion", user.getTokenVersion());
+
+        // Get application status if user is a customer
+        if (user.getRole() == Role.CUSTOMER) {
+            String status = applicationRepository.findByCustomer(user)
+                .map(app -> app.getStatus().name())
+                .orElse("NO_APPLICATION");
+            claims.put("applicationStatus", status);
+        }
 
         return Jwts.builder()
                 .setClaims(claims)

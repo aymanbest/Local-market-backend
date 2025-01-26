@@ -1,4 +1,4 @@
-package com.localmarket.main.dto;
+package com.localmarket.main.dto.error;
 
 import lombok.Data;
 import lombok.Builder;

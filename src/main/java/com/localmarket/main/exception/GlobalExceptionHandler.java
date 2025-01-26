@@ -1,10 +1,12 @@
 package com.localmarket.main.exception;
 
-import com.localmarket.main.dto.ErrorResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import com.localmarket.main.dto.error.ErrorResponse;
+
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import org.springframework.security.access.AccessDeniedException;

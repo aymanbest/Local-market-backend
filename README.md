@@ -1,4 +1,4 @@
-# Local Market API Documentation
+# Local Market API Documentation (NEEDS UPDATING)
 
 ## Authentication Endpoints
 `/api/auth`
@@ -9,54 +9,134 @@
 | POST   | /login     | Login to get access token  | No           | `AuthRequest` (email, password)         |
 | POST   | /logout    | Logout and blacklist token | Yes          | None                                   |
 
-## Categories Endpoints
-`/api/categories`
-
-| Method | Endpoint    | Description              | Auth Required | Role  | Body                |
-|--------|------------|--------------------------|---------------|-------|---------------------|
-| POST   | /          | Create new category      | Yes          | Admin | `CategoryRequest`   |
-| GET    | /          | Get all categories       | No           | -     | None                |
-| GET    | /{id}      | Get category by ID       | No           | -     | None                |
-| PUT    | /{id}      | Update category          | Yes          | Admin | `CategoryRequest`   |
-| DELETE | /{id}      | Delete category          | Yes          | Admin | None                |
-
 ## Products Endpoints
 `/api/products`
 
-| Method | Endpoint           | Description              | Auth Required | Role     | Body             |
-|--------|-------------------|--------------------------|---------------|----------|------------------|
-| POST   | /                 | Create new product       | Yes          | Producer | `ProductRequest` |
-| GET    | /                 | Get all products         | No           | -        | None             |
-| GET    | /{id}            | Get product by ID        | No           | -        | None             |
-| PUT    | /{id}            | Update product           | Yes          | Producer | `ProductRequest` |
-| DELETE | /{id}            | Delete product           | Yes          | Producer | None             |
-| GET    | /category/{id}   | Get products by category | No           | -        | None             |
+| Method | Endpoint           | Description              | Auth Required | Role     | Request Type        | Body/Parameters    |
+|--------|-------------------|--------------------------|---------------|----------|--------------------|--------------------|
+| POST   | /                 | Create new product       | Yes          | Producer | Multipart Form     | See example below  |
+| GET    | /                 | Get all products         | No           | -        | -                  | None               |
+| GET    | /{id}            | Get product by ID        | No           | -        | -                  | None               |
+| PUT    | /{id}            | Update product           | Yes          | Producer | Multipart Form     | See example below  |
+| DELETE | /{id}            | Delete product           | Yes          | Producer | -                  | None               |
+| GET    | /category/{id}   | Get products by category | No           | -        | -                  | None               |
+| GET    | /images/{filename}| Get product image       | No           | -        | -                  | None               |
 
-## Producer Applications Endpoints
+### Product Create/Update Request Example
+```http
+POST /api/products
+Content-Type: multipart/form-data
+
+name: "Fresh Apples"
+description: "Organic fresh apples"
+price: "2.99"
+quantity: "100"
+categoryIds: "1,2,3"
+imageUrl: "https://example.com/apple.jpg" (optional)
+image: [file] (optional, but either imageUrl or image must be provided)
+```
+
+[Rest of existing documentation remains unchanged...]
+
+## Request/Response Types
+
+### ProductRequest
+```json
+{
+  "name": "string",
+  "description": "string",
+  "price": "decimal",
+  "quantity": "integer",
+  "categoryIds": "string (comma-separated)",
+  "imageUrl": "string (optional)"
+}
+```
+
+### ProductResponse
+```json
+{
+  "productId": "long",
+  "name": "string",
+  "description": "string",
+  "price": "decimal",
+  "quantity": "integer",
+  "imageUrl": "string",
+  "categories": [
+    {
+      "categoryId": "long",
+      "name": "string"
+    }
+  ],
+  "producer": {
+    "userId": "long",
+    "username": "string"
+  }
+}
+```
+## Producer Application Endpoints
 `/api/producer-applications`
 
-| Method | Endpoint               | Description                    | Auth Required | Role     | Body/Params                   |
-|--------|----------------------|--------------------------------|---------------|----------|-------------------------------|
-| POST   | /                    | Submit producer application    | Yes          | Customer | `ProducerApplicationRequest`  |
-| GET    | /                    | Get all applications          | Yes          | Admin    | None                          |
-| GET    | /pending             | Get pending applications      | Yes          | Admin    | None                          |
-| POST   | /{id}/approve        | Approve application           | Yes          | Admin    | `approveCC` (query param)     |
-| POST   | /{id}/decline        | Decline application           | Yes          | Admin    | `reason`                      |
-| GET    | /my-application      | Get user's application        | Yes          | Customer | None                          |
-| GET    | /status              | Check application status      | Yes          | Customer | None                          |
+| Method | Endpoint            | Description                | Auth Required | Role  | Body/Parameters                |
+|--------|-------------------|----------------------------|---------------|-------|-------------------------------|
+| POST   | /                 | Submit producer application| Yes          | User  | `ProducerApplicationRequest`  |
+| GET    | /                 | Get all applications       | Yes          | Admin | None                          |
+| GET    | /pending          | Get pending applications   | Yes          | Admin | None                          |
+| POST   | /{id}/approve     | Approve application        | Yes          | Admin | `approveCC` (optional)        |
+| POST   | /{id}/decline     | Decline application        | Yes          | Admin | `ApplicationDeclineRequest`   |
 
-## Orders Endpoints
+### ProducerApplicationRequest Example
+```json
+{
+  "businessName": "string",
+  "businessAddress": "string",
+  "businessDescription": "string",
+  "phoneNumber": "string",
+  "categories": "string[] (optional)",
+  "customCategory": "string (optional)",
+  "cityRegion": "string (optional)",
+  "customCityRegion": "string (optional)",
+  "yearsOfExperience": "integer (optional)",
+  "websiteOrSocialLink": "string (optional)"
+}
+```
+
+## Order Endpoints
 `/api/orders`
 
-| Method | Endpoint                    | Description                | Auth Required | Role  | Body            |
-|--------|---------------------------|----------------------------|---------------|-------|-----------------|
-| POST   | /                         | Create order               | Optional     | -     | `OrderRequest`  |
-| POST   | /checkout                 | Create pending order       | Optional     | -     | `OrderRequest`  |
-| POST   | /{orderId}/pay           | Process payment            | Optional     | -     | `PaymentInfo`   |
-| GET    | /                         | Get user orders            | Yes          | -     | None            |
-| GET    | /{orderId}               | Get specific order         | Optional     | -     | None            |
-| GET    | /my-orders               | Get authenticated user orders| Yes         | -     | None            |
-| GET    | /my-orders/status/{status}| Get orders by status      | Yes          | -     | None            |
-| GET    | /my-orders/{orderId}     | Get specific user order    | Yes          | -     | None            |
+| Method | Endpoint            | Description           | Auth Required | Role  | Body/Parameters          |
+|--------|-------------------|-----------------------|---------------|-------|------------------------|
+| POST   | /                 | Create order          | No           | Any   | `OrderRequest`         |
+| GET    | /                 | Get all orders        | Yes          | Admin | None                  |
+| GET    | /{id}            | Get order by ID       | Yes          | User  | None                  |
+| GET    | /guest/{id}?guestToken={token}   | Get guest order       | No           | Any   | None                  |
 
+### OrderRequest Example
+```json
+{
+  "items": [{
+    "productId": "long",
+    "quantity": "integer"
+  }],
+  "shippingAddress": "string",
+  "phoneNumber": "string",
+  "guestEmail": "string (optional)",
+  "guestToken": "string (optional)",
+  "accountCreation": {
+    "createAccount": "boolean",
+    "username": "string",
+    "password": "string",
+    "firstname": "string",
+    "lastname": "string"
+  },
+  "payment": {
+    "paymentMethod": "CARD|BITCOIN",
+    "cardNumber": "string (for CARD)",
+    "cardHolderName": "string (for CARD)",
+    "expiryDate": "string (for CARD)",
+    "cvv": "string (for CARD)",
+    "transactionHash": "string (for BITCOIN)",
+    "currency": "string"
+  }
+}
+```
 

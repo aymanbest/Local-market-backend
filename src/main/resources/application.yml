@@ -8,3 +8,5 @@ app:
     lastname: Administrator
     email: admin@localmarket.com
     password: ${ADMIN_PASSWORD:admin123}  # Use env variable or default
+  upload:
+    dir: uploads/products
