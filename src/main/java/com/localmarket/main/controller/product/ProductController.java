@@ -223,7 +223,6 @@ public class ProductController {
         }
     }
 
-    // from here all they show Access denied to this resource
     @Operation(summary = "Get pending products", description = "Get all pending products (Admin only)")
     @SecurityRequirement(name = "bearer-jwt")
     @ApiResponses(value = {
