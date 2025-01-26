@@ -26,6 +26,8 @@ import com.localmarket.main.dto.product.ProducerProductsResponse;
 import com.localmarket.main.dto.user.FilterUsersResponse;
 import com.localmarket.main.service.storage.FileStorageService;
 import org.springframework.web.multipart.MultipartFile;
+import com.localmarket.main.entity.product.ProductStatus;
+import com.localmarket.main.dto.product.MyProductResponse;
 
 
 @Service
@@ -68,6 +70,8 @@ public class ProductService {
                 product.setCategories(categories);
             }
 
+            product.setStatus(ProductStatus.PENDING);
+
             return convertToDTO(productRepository.save(product));
         } catch (DataIntegrityViolationException e) {
             throw new ApiException(ErrorType.DUPLICATE_RESOURCE, "Product with similar details already exists");
@@ -75,6 +79,7 @@ public class ProductService {
     }
 
     @ProducerOnly
+    @Transactional
     public ProductResponse updateProduct(Long id, ProductRequest request, MultipartFile image, Long producerId) {
         validateProductPrice(request.getPrice());
         Product product = productRepository.findById(id)
@@ -100,6 +105,8 @@ public class ProductService {
                 .stream().collect(Collectors.toSet());
             product.setCategories(categories);
         }
+
+        product.setStatus(ProductStatus.PENDING);
 
         return convertToDTO(productRepository.save(product));
     }
@@ -201,5 +208,66 @@ public class ProductService {
             throw new ApiException(ErrorType.INVALID_PRODUCT_PRICE, 
                 "Product price cannot have more than 2 decimal places");
         }
+    }
+
+    public List<ProducerProductsResponse> getProductsByStatus(ProductStatus status) {
+        List<Product> products = productRepository.findByStatus(status);
+        return groupProductsByProducer(products);
+    }
+
+    public List<ProductResponse> getProducerProductsByStatus(Long producerId, ProductStatus status) {
+        return productRepository.findByProducerUserIdAndStatus(producerId, status)
+            .stream()
+            .map(this::convertToDTO)
+            .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public ProductResponse updateProductStatus(Long productId, ProductStatus status, String declineReason) {
+        Product product = productRepository.findById(productId)
+            .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
+            
+        if (status == ProductStatus.DECLINED && (declineReason == null || declineReason.trim().isEmpty())) {
+            throw new ApiException(ErrorType.INVALID_REQUEST, "Decline reason is required");
+        }
+        
+        product.setStatus(status);
+        product.setDeclineReason(declineReason);
+        
+        return convertToDTO(productRepository.save(product));
+    }
+
+    private MyProductResponse convertToMyProductDTO(Product product) {
+        return new MyProductResponse(
+            product.getProductId(),
+            product.getName(),
+            product.getDescription(),
+            product.getPrice(),
+            product.getQuantity(),
+            product.getImageUrl(),
+            product.getCreatedAt(),
+            product.getUpdatedAt(),
+            product.getCategories(),
+            product.getStatus(),
+            product.getDeclineReason()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyProductResponse> getProducerProducts(Long producerId) {
+        return productRepository.findByProducerUserId(producerId)
+            .stream()
+            .map(this::convertToMyProductDTO)
+            .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyProductResponse> getProducerPendingAndDeclinedProducts(Long producerId) {
+        return productRepository.findByProducerUserIdAndStatusIn(
+                producerId, 
+                List.of(ProductStatus.PENDING, ProductStatus.DECLINED))
+            .stream()
+            .map(this::convertToMyProductDTO)
+            .collect(Collectors.toList());
     }
 } 

@@ -119,10 +119,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return true;
         }
 
-        // Public GET endpoints
+        // Public GET endpoints for products
+        if ("GET".equals(method) && path.startsWith("/api/products")) {
+            // Exclude protected product endpoints
+            return !path.contains("/my-products") && 
+                   !path.contains("/my-pending") && 
+                   !path.contains("/pending");
+        }
+
+        // Other public GET endpoints
         if ("GET".equals(method)) {
-            return path.startsWith("/api/products") ||
-                    path.startsWith("/api/categories") ||
+            return path.startsWith("/api/categories") ||
                     (path.startsWith("/api/orders/") && guestToken != null);
         }
 
@@ -148,10 +155,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return true;
         }
 
-        // Public GET endpoints
+        // Public GET endpoints for products
+        if ("GET".equals(method) && path.startsWith("/api/products")) {
+            // Exclude protected product endpoints
+            return !path.contains("/my-products") && 
+                   !path.contains("/my-pending") && 
+                   !path.contains("/pending");
+        }
+
+        // Other public GET endpoints
         if ("GET".equals(method)) {
-            return path.startsWith("/api/products") ||
-                    path.startsWith("/api/categories") ||
+            return path.startsWith("/api/categories") ||
                     (path.startsWith("/api/orders/") && path.contains("?guestToken="));
         }
 

@@ -33,6 +33,10 @@ import java.math.BigDecimal;
 import java.util.Set;
 import java.util.Arrays;
 import java.util.stream.Collectors;
+import com.localmarket.main.entity.product.ProductStatus;
+import com.localmarket.main.security.AdminOnly;
+import com.localmarket.main.dto.product.ProductDeclineRequest;
+import com.localmarket.main.dto.product.MyProductResponse;
 
 
 @RestController
@@ -217,5 +221,74 @@ public class ProductController {
         } else {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    // from here all they show Access denied to this resource
+    @Operation(summary = "Get pending products", description = "Get all pending products (Admin only)")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Products found"),
+        @ApiResponse(responseCode = "403", description = "Not authorized as admin")
+    })
+    @GetMapping("/pending")
+    @AdminOnly
+    public ResponseEntity<List<ProducerProductsResponse>> getPendingProducts() {
+        return ResponseEntity.ok(productService.getProductsByStatus(ProductStatus.PENDING));
+    }
+
+    @Operation(summary = "Approve product", description = "Approve a pending product (Admin only)")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Product approved"),
+        @ApiResponse(responseCode = "403", description = "Not authorized as admin"),
+        @ApiResponse(responseCode = "404", description = "Product not found")
+    })
+    @PostMapping("/{id}/approve")
+    @AdminOnly
+    public ResponseEntity<ProductResponse> approveProduct(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.updateProductStatus(id, ProductStatus.APPROVED, null));
+    }
+
+    @Operation(summary = "Decline product", description = "Decline a pending product (Admin only)")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Product declined"),
+        @ApiResponse(responseCode = "403", description = "Not authorized as admin"),
+        @ApiResponse(responseCode = "404", description = "Product not found")
+    })
+    @PostMapping("/{id}/decline")
+    @AdminOnly
+    public ResponseEntity<ProductResponse> declineProduct(
+            @PathVariable Long id,
+            @RequestBody ProductDeclineRequest request) {
+        return ResponseEntity.ok(productService.updateProductStatus(id, ProductStatus.DECLINED, request.getReason()));
+    }
+
+    @Operation(summary = "Get my pending and declined products", description = "Get producer's pending and declined products")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Products found"),
+        @ApiResponse(responseCode = "403", description = "Not authorized as producer")
+    })
+    @GetMapping("/my-pending")
+    @ProducerOnly
+    public ResponseEntity<List<MyProductResponse>> getMyPendingProducts(
+            @RequestHeader("Authorization") String token) {
+        Long producerId = jwtService.extractUserId(token.substring(7));
+        return ResponseEntity.ok(productService.getProducerPendingAndDeclinedProducts(producerId));
+    }
+
+    @Operation(summary = "Get my products", description = "Get all products for the authenticated producer")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Products found"),
+        @ApiResponse(responseCode = "403", description = "Not authorized as producer")
+    })
+    @GetMapping("/my-products")
+    @ProducerOnly
+    public ResponseEntity<List<MyProductResponse>> getMyProducts(
+            @RequestHeader("Authorization") String token) {
+        Long producerId = jwtService.extractUserId(token.substring(7));
+        return ResponseEntity.ok(productService.getProducerProducts(producerId));
     }
 } 

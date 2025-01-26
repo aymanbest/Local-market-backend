@@ -73,6 +73,11 @@ public class Product {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updatedAt;
     
+    @Enumerated(EnumType.STRING)
+    private ProductStatus status = ProductStatus.PENDING;
+    
+    private String declineReason;
+    
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

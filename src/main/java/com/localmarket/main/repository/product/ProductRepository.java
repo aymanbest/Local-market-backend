@@ -1,6 +1,7 @@
 package com.localmarket.main.repository.product;
 
 import com.localmarket.main.entity.product.Product;
+import com.localmarket.main.entity.product.ProductStatus;
 import com.localmarket.main.entity.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -41,4 +42,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             WHERE p.productId = :id
             """)
     Optional<Product> findByIdWithCategories(@Param("id") Long id);
+
+    List<Product> findByStatus(ProductStatus status);
+    List<Product> findByProducerUserIdAndStatus(Long producerId, ProductStatus status);
+    List<Product> findByProducerUserId(Long producerId);
+    List<Product> findByProducerUserIdAndStatusIn(Long producerId, List<ProductStatus> statuses);
 }

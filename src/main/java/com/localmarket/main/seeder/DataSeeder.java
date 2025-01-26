@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 import java.util.Map;
 import java.math.RoundingMode;
 import java.util.HashMap;
-
+import com.localmarket.main.entity.product.ProductStatus;
 @Component
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
@@ -126,23 +126,51 @@ public class DataSeeder implements CommandLineRunner {
     private List<Product> seedProducts(List<User> producers, List<Category> categories) {
         List<Product> products = new ArrayList<>();
         String[] productNames = { "Fresh Tomatoes", "Organic Apples", "Farm Eggs", "Raw Honey", "Whole Milk" };
+        String[] declineReasons = {
+            "Price too high for market standards",
+            "Product description needs more detail",
+            "Image quality insufficient",
+            "Missing certification documentation"
+        };
 
         for (User producer : producers) {
-            for (int i = 0; i < 3; i++) {
-                Product product = new Product();
-                product.setName(productNames[random.nextInt(productNames.length)] + " by " + producer.getUsername());
-                product.setDescription("Fresh local product");
-                product.setPrice(BigDecimal.valueOf(10 + random.nextInt(90)));
-                product.setQuantity(100 + random.nextInt(900));
-                product.setProducer(producer);
+            // Create 3 products for each producer with different statuses
+            
+            // APPROVED product
+            Product approvedProduct = new Product();
+            approvedProduct.setName(productNames[random.nextInt(productNames.length)] + " by " + producer.getUsername());
+            approvedProduct.setDescription("Fresh local product - Approved");
+            approvedProduct.setPrice(BigDecimal.valueOf(10 + random.nextInt(90)));
+            approvedProduct.setQuantity(100 + random.nextInt(900));
+            approvedProduct.setProducer(producer);
+            approvedProduct.setStatus(ProductStatus.APPROVED);
+            approvedProduct.setCategories(Set.of(categories.get(random.nextInt(categories.size()))));
+            products.add(productRepository.save(approvedProduct));
 
-                Set<Category> productCategories = new HashSet<>();
-                productCategories.add(categories.get(random.nextInt(categories.size())));
-                product.setCategories(productCategories);
+            // PENDING product
+            Product pendingProduct = new Product();
+            pendingProduct.setName(productNames[random.nextInt(productNames.length)] + " by " + producer.getUsername());
+            pendingProduct.setDescription("Fresh local product - Pending");
+            pendingProduct.setPrice(BigDecimal.valueOf(10 + random.nextInt(90)));
+            pendingProduct.setQuantity(100 + random.nextInt(900));
+            pendingProduct.setProducer(producer);
+            pendingProduct.setStatus(ProductStatus.PENDING);
+            pendingProduct.setCategories(Set.of(categories.get(random.nextInt(categories.size()))));
+            products.add(productRepository.save(pendingProduct));
 
-                products.add(productRepository.save(product));
-            }
+            // DECLINED product
+            Product declinedProduct = new Product();
+            declinedProduct.setName(productNames[random.nextInt(productNames.length)] + " by " + producer.getUsername());
+            declinedProduct.setDescription("Fresh local product - Declined");
+            declinedProduct.setPrice(BigDecimal.valueOf(10 + random.nextInt(90)));
+            declinedProduct.setQuantity(100 + random.nextInt(900));
+            declinedProduct.setProducer(producer);
+            declinedProduct.setStatus(ProductStatus.DECLINED);
+            declinedProduct.setDeclineReason(declineReasons[random.nextInt(declineReasons.length)]);
+            declinedProduct.setCategories(Set.of(categories.get(random.nextInt(categories.size()))));
+            products.add(productRepository.save(declinedProduct));
         }
+        
         return products;
     }
 
