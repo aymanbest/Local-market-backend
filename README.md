@@ -1,5 +1,7 @@
 # Local Market API Documentation (NEEDS UPDATING)
 
+Check out the Swagger UI at http://localhost:8080/swagger-ui/index.html
+
 ## Authentication Endpoints
 `/api/auth`
 

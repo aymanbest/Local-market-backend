@@ -36,13 +36,18 @@ public class SecurityConfig {
             .securityContext(context -> context
                 .requireExplicitSave(false))
             .authorizeHttpRequests(auth -> auth
+                // Swagger UI endpoints
+                .requestMatchers("/v3/api-docs/**", 
+                               "/v3/api-docs.yaml",
+                               "/swagger-ui/**",
+                               "/swagger-ui.html",
+                               "/webjars/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/orders/checkout").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/orders/*/pay").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/orders/**").permitAll()
                 .requestMatchers("/api/categories/**").permitAll()
                 .requestMatchers("/api/products/**").permitAll()
-                // maybe we should add hasRole('ADMIN')
                 .requestMatchers(HttpMethod.GET, "/api/users").authenticated() //It Can get users by role name
                 .requestMatchers(HttpMethod.GET, "/api/users/{id}").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/users").authenticated()

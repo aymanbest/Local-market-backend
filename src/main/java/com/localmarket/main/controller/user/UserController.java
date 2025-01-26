@@ -10,22 +10,33 @@ import com.localmarket.main.entity.user.User;
 import com.localmarket.main.security.AdminOnly;
 import com.localmarket.main.service.user.UserService;
 import com.localmarket.main.dto.auth.RegisterRequest;
-
 import lombok.RequiredArgsConstructor;
-
 import java.util.List;
-
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import com.localmarket.main.dto.error.ErrorResponse;
 
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@Tag(name = "Users", description = "User management APIs")
 public class UserController {
 
     @Autowired
     private UserService userService;
 
     
-    // Get Users with optional role filter
+    @Operation(summary = "Get users", description = "Get all users with optional role filter (Admin only)")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Users retrieved successfully", content = @Content(schema = @Schema(implementation = FilterUsersResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Not authorized as admin", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @GetMapping
     @AdminOnly
     public List<FilterUsersResponse> getUsers(
@@ -34,7 +45,13 @@ public class UserController {
         return userService.getUsers(role);
     }
 
-    // Get User by ID
+    @Operation(summary = "Get user by ID", description = "Get specific user details (Admin only)")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "User found", content = @Content(schema = @Schema(implementation = User.class))),
+        @ApiResponse(responseCode = "404", description = "User not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Not authorized as admin", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @GetMapping("/{id}")
     @AdminOnly
     public ResponseEntity<User> getUserById(
@@ -43,7 +60,13 @@ public class UserController {
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
-    // Update User
+    @Operation(summary = "Update user", description = "Update user details (Admin only)")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "User updated successfully", content = @Content(schema = @Schema(implementation = User.class))),
+        @ApiResponse(responseCode = "404", description = "User not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Not authorized as admin", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PutMapping("/{id}")
     @AdminOnly
     public ResponseEntity<User> updateUser(
@@ -54,6 +77,13 @@ public class UserController {
     }
 
     // Delete User
+    @Operation(summary = "Delete user", description = "Delete user (Admin only)")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "User deleted successfully"),
+        @ApiResponse(responseCode = "404", description = "User not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Not authorized as admin", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @DeleteMapping("/{id}")
     @AdminOnly
     public ResponseEntity<Void> deleteUser(

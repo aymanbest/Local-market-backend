@@ -20,16 +20,25 @@ import java.io.IOException;
 import java.nio.file.Path;
 import org.springframework.beans.factory.annotation.Value;
 import com.localmarket.main.service.storage.FileStorageService;
-
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import com.localmarket.main.dto.error.ErrorResponse;
 import java.util.List;
 import java.math.BigDecimal;
 import java.util.Set;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
+
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
+@Tag(name = "Products", description = "Product management APIs")
 public class ProductController {
     private final ProductService productService;
     private final JwtService jwtService;
@@ -38,6 +47,13 @@ public class ProductController {
     @Value("${app.upload.dir}")
     private String uploadDir;
 
+    @Operation(summary = "Create new product", description = "Create a new product (Producer only)")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Product created successfully", content = @Content(schema = @Schema(implementation = ProductResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid input", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Not authorized as producer", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ProducerOnly
     public ResponseEntity<ProductResponse> createProduct(
@@ -84,6 +100,11 @@ public class ProductController {
         return ResponseEntity.ok(productService.createProduct(request, image, producerId));
     }
 
+    @Operation(summary = "Get product by ID", description = "Retrieve product details")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Product found", content = @Content(schema = @Schema(implementation = ProductResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Product not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> getProduct(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getProductByIdWithCategories(id)
@@ -91,6 +112,13 @@ public class ProductController {
                 "Product with id " + id + " not found")));
     }
 
+    @Operation(summary = "Update product", description = "Update existing product (Producer only)")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Product updated successfully", content = @Content(schema = @Schema(implementation = ProductResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Not authorized to update this product", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Product not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ProducerOnly
     public ResponseEntity<ProductResponse> updateProduct(
@@ -138,6 +166,13 @@ public class ProductController {
         return ResponseEntity.ok(productService.updateProduct(id, request, image, producerId));
     }
 
+    @Operation(summary = "Delete product", description = "Delete existing product (Producer only)")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Product deleted successfully"),
+        @ApiResponse(responseCode = "403", description = "Not authorized to delete this product", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Product not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @DeleteMapping("/{id}")
     @ProducerOnly
     public ResponseEntity<Void> deleteProduct(
@@ -148,16 +183,28 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Get all products", description = "Retrieve all products")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Products found", content = @Content(schema = @Schema(implementation = ProducerProductsResponse.class)))
+    })
     @GetMapping
     public ResponseEntity<List<ProducerProductsResponse>> getAllProducts() {
         return ResponseEntity.ok(productService.getAllProductsGroupedByProducer());
     }
 
+    @Operation(summary = "Get products by category", description = "Retrieve products by category")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Products found", content = @Content(schema = @Schema(implementation = ProducerProductsResponse.class)))
+    })
     @GetMapping("/category/{categoryId}")
     public ResponseEntity<List<ProducerProductsResponse>> getProductsByCategory(@PathVariable Long categoryId) {
         return ResponseEntity.ok(productService.getProductsByCategory(categoryId));
     }
 
+    @Operation(summary = "Get product image", description = "Retrieve product image")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Image found", content = @Content(schema = @Schema(implementation = Resource.class)))
+    })
     @GetMapping("/images/{filename}")
     public ResponseEntity<Resource> getImage(@PathVariable String filename) throws IOException {
         Path imagePath = fileStorageService.getUploadPath().resolve(filename);

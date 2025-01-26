@@ -39,7 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
-        
+
         // Skip authentication for public endpoints
         if (isPublicEndpoint(request)) {
             filterChain.doFilter(request, response);
@@ -57,7 +57,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         final String jwt = authHeader.substring(7);
-        
+
         try {
             // Verify token is still valid in TokenRepository
             if (!tokenRepository.isTokenValid(jwt)) {
@@ -72,8 +72,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             // Double check token version matches current user version
             User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-                
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
             if (!tokenVersion.equals(user.getTokenVersion())) {
                 handleUnauthorizedResponse(response, request, "Token has been invalidated");
                 return;
@@ -81,21 +81,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = new org.springframework.security.core.userdetails.User(
-                    userEmail,
-                    "", // No need for password as we're using token-based auth
-                    Collections.singletonList(new SimpleGrantedAuthority(role))
-                );
-                
+                        userEmail,
+                        "", // No need for password as we're using token-based auth
+                        Collections.singletonList(new SimpleGrantedAuthority(role)));
+
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                    userDetails,
-                    null,
-                    userDetails.getAuthorities()
-                );
-                
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities());
+
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
-            
+
             filterChain.doFilter(request, response);
         } catch (ApiException e) {
             handleUnauthorizedResponse(response, request, e.getMessage());
@@ -107,64 +105,79 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String method = request.getMethod();
         String guestToken = request.getParameter("guestToken");
-        
+
+        // Swagger UI endpoints
+        if (path.startsWith("/swagger-ui") ||
+                path.startsWith("/v3/api-docs") ||
+                path.equals("/swagger-ui.html") ||
+                path.startsWith("/webjars/")) {
+            return true;
+        }
+
         // Auth endpoints
         if (path.startsWith("/api/auth/")) {
             return true;
         }
-        
+
         // Public GET endpoints
         if ("GET".equals(method)) {
-            return path.startsWith("/api/products") || 
-                   path.startsWith("/api/categories") ||
-                   (path.startsWith("/api/orders/") && guestToken != null);
+            return path.startsWith("/api/products") ||
+                    path.startsWith("/api/categories") ||
+                    (path.startsWith("/api/orders/") && guestToken != null);
         }
-        
+
         // Allow guest orders
         if ("POST".equals(method)) {
             return path.equals("/api/orders/checkout") ||
-                   path.matches("/api/orders/\\d+/pay");
+                    path.matches("/api/orders/\\d+/pay");
         }
-        
+
         return false;
     }
 
     private boolean isPublicPath(String path, String method) {
+        // Swagger UI endpoints
+        if (path.startsWith("/swagger-ui") ||
+                path.startsWith("/v3/api-docs") ||
+                path.equals("/swagger-ui.html")) {
+            return true;
+        }
+
         // Auth endpoints
         if (path.startsWith("/api/auth/")) {
             return true;
         }
-        
+
         // Public GET endpoints
         if ("GET".equals(method)) {
-            return path.startsWith("/api/products") || 
-                   path.startsWith("/api/categories") ||
-                   (path.startsWith("/api/orders/") && path.contains("?guestToken="));
+            return path.startsWith("/api/products") ||
+                    path.startsWith("/api/categories") ||
+                    (path.startsWith("/api/orders/") && path.contains("?guestToken="));
         }
-        
+
         // Allow guest orders
         if ("POST".equals(method)) {
             return path.equals("/api/orders/checkout") ||
-                   path.matches("/api/orders/\\d+/pay");
+                    path.matches("/api/orders/\\d+/pay");
         }
-        
+
         return false;
     }
 
     private void handleUnauthorizedResponse(
-            HttpServletResponse response, 
-            HttpServletRequest request, 
+            HttpServletResponse response,
+            HttpServletRequest request,
             String message) throws IOException {
         response.setContentType("application/json");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        
+
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpServletResponse.SC_UNAUTHORIZED)
                 .message(message)
                 .path(request.getRequestURI())
                 .timestamp(LocalDateTime.now())
                 .build();
-                
+
         response.getWriter().write(objectMapper.writeValueAsString(error));
     }
 }
