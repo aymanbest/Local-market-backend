@@ -24,6 +24,10 @@ import com.localmarket.main.dto.analytics.MonthlyRevenue;
 import com.localmarket.main.dto.analytics.ProducerPerformance;
 import com.localmarket.main.dto.analytics.TransactionDetails;
 import com.localmarket.main.entity.category.Category;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.localmarket.main.service.export.CSVExportService;
+import com.localmarket.main.service.export.PDFExportService;
+import com.localmarket.main.dto.analytics.CombinedAnalyticsResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +36,12 @@ public class AnalyticsService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+
+    @Autowired
+    private CSVExportService csvExportService;
+
+    @Autowired
+    private PDFExportService pdfExportService;
 
     public UserAnalyticsResponse getUserAnalytics(LocalDate startDate, LocalDate endDate) {
         LocalDateTime start = startDate != null ? startDate.atStartOfDay() 
@@ -197,4 +207,46 @@ public class AnalyticsService {
             .collect(Collectors.toList());
     }
 
+    public byte[] exportAnalytics(LocalDate startDate, LocalDate endDate, String format) {
+        CombinedAnalyticsResponse analytics = getCombinedAnalytics(startDate, endDate);
+        
+        if (format.equalsIgnoreCase("pdf")) {
+            return pdfExportService.generatePDF(analytics);
+        }
+        return csvExportService.generateCSV(analytics);
+    }
+
+    private CombinedAnalyticsResponse getCombinedAnalytics(LocalDate startDate, LocalDate endDate) {
+        UserAnalyticsResponse userAnalytics = getUserAnalytics(startDate, endDate);
+        TransactionAnalyticsResponse transactionAnalytics = getTransactionAnalytics(startDate, endDate);
+        BusinessMetricsResponse businessMetrics = getBusinessMetrics(startDate, endDate);
+
+        return CombinedAnalyticsResponse.builder()
+            // User Analytics
+            .totalUsers(userAnalytics.getTotalUsers())
+            .activeProducers(userAnalytics.getActiveProducers())
+            .newUsers(userAnalytics.getNewUsers())
+            .activeProducersPercentage(userAnalytics.getActiveProducersPercentage())
+            .newUsersPercentage(userAnalytics.getNewUsersPercentage())
+            .periodStart(userAnalytics.getPeriodStart())
+            .periodEnd(userAnalytics.getPeriodEnd())
+            // Transaction Analytics
+            .totalTransactionVolume(transactionAnalytics.getTotalTransactionVolume())
+            .completedTransactions(transactionAnalytics.getCompletedTransactions())
+            .pendingTransactions(transactionAnalytics.getPendingTransactions())
+            .totalTransactions(transactionAnalytics.getCompletedTransactions() + 
+                             transactionAnalytics.getPendingTransactions())
+            // Business Metrics
+            .totalRevenue(businessMetrics.getTotalRevenue())
+            .revenueGrowthRate(businessMetrics.getRevenueGrowthRate())
+            .activeUsers(businessMetrics.getActiveUsers())
+            .activeUsersGrowthRate(businessMetrics.getActiveUsersGrowthRate())
+            .totalSales(businessMetrics.getTotalSales())
+            .salesGrowthRate(businessMetrics.getSalesGrowthRate())
+            .overallGrowthRate(businessMetrics.getOverallGrowthRate())
+            .salesByCategory(businessMetrics.getSalesByCategory())
+            .revenueByMonth(businessMetrics.getRevenueByMonth())
+            .topProducers(businessMetrics.getTopProducers())
+            .build();
+    }
 } 

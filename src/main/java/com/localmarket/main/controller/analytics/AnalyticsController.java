@@ -13,6 +13,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.localmarket.main.security.AdminOnly;
 import java.time.LocalDate;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.core.io.Resource;
 
 @RestController
 @RequestMapping("/api/analytics")
@@ -49,5 +53,34 @@ public class AnalyticsController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return ResponseEntity.ok(analyticsService.getBusinessMetrics(startDate, endDate));
+    }
+
+    @Operation(summary = "Export analytics", description = "Export combined analytics data as CSV or PDF")
+    @SecurityRequirement(name = "bearer-jwt")
+    @GetMapping("/export")
+    @AdminOnly
+    public ResponseEntity<Resource> exportAnalytics(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "csv") String format) {
+        
+        byte[] data = analyticsService.exportAnalytics(startDate, endDate, format);
+        String filename = "analytics_report_" + LocalDate.now();
+        String contentType;
+        
+        if (format.equalsIgnoreCase("pdf")) {
+            filename += ".pdf";
+            contentType = MediaType.APPLICATION_PDF_VALUE;
+        } else {
+            filename += ".csv";
+            contentType = "text/csv";
+        }
+
+        ByteArrayResource resource = new ByteArrayResource(data);
+        
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+            .contentType(MediaType.parseMediaType(contentType))
+            .body(resource);
     }
 } 
