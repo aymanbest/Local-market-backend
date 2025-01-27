@@ -20,6 +20,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.localmarket.main.dto.error.ErrorResponse;
+import com.localmarket.main.dto.user.PasswordChangeRequest;
+import com.localmarket.main.service.auth.JwtService;
 
 @RestController
 @RequestMapping("/api/users")
@@ -29,6 +31,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private JwtService jwtService;
 
     
     @Operation(summary = "Get users", description = "Get all users with optional role filter (Admin only)")
@@ -91,6 +96,24 @@ public class UserController {
             @RequestHeader("Authorization") String token) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Change password", description = "Change user's password (requires old password)")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Password changed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid old password", 
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Not authorized", 
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(
+            @RequestBody PasswordChangeRequest request,
+            @RequestHeader("Authorization") String token) {
+        Long userId = jwtService.extractUserId(token.substring(7));
+        userService.changePassword(userId, request.getOldPassword(), request.getNewPassword());
+        return ResponseEntity.ok().build();
     }
 }
 

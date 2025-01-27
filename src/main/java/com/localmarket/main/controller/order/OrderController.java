@@ -124,14 +124,15 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrder(orderId, userEmail, guestToken));
     }
 
-    @Operation(summary = "Get my orders", description = "Retrieve all orders for authenticated user")
-    @GetMapping("/my-orders")
-    public ResponseEntity<List<Order>> getMyOrders(
-            @RequestHeader("Authorization") String token) {
-        String jwt = token.substring(7);
-        Long userId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(orderService.getUserOrders(userId));
-    }
+    // duplicated
+    // @Operation(summary = "Get my orders", description = "Retrieve all orders for authenticated user")
+    // @GetMapping("/my-orders")
+    // public ResponseEntity<List<Order>> getMyOrders(
+    //         @RequestHeader("Authorization") String token) {
+    //     String jwt = token.substring(7);
+    //     Long userId = jwtService.extractUserId(jwt);
+    //     return ResponseEntity.ok(orderService.getUserOrders(userId));
+    // }
 
     @Operation(summary = "Get my orders by status", description = "Retrieve all orders for authenticated user by status")
     @GetMapping("/my-orders/status/{status}")
@@ -184,5 +185,34 @@ public class OrderController {
             @RequestHeader("Authorization") String token) {
         Long producerId = jwtService.extractUserId(token.substring(7));
         return ResponseEntity.ok(orderService.updateOrderStatus(orderId, status, producerId));
+    }
+
+    @Operation(summary = "Get producer orders", description = "Get all orders containing producer's products")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Orders found", content = @Content(schema = @Schema(implementation = Order.class))),
+        @ApiResponse(responseCode = "403", description = "Not authorized as producer", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/producer-orders")
+    @ProducerOnly
+    public ResponseEntity<List<Order>> getProducerOrders(
+            @RequestHeader("Authorization") String token) {
+        Long producerId = jwtService.extractUserId(token.substring(7));
+        return ResponseEntity.ok(orderService.getProducerOrders(producerId));
+    }
+
+    @Operation(summary = "Get producer orders by status", description = "Get all orders containing producer's products filtered by status")
+    @SecurityRequirement(name = "bearer-jwt")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Orders found", content = @Content(schema = @Schema(implementation = Order.class))),
+        @ApiResponse(responseCode = "403", description = "Not authorized as producer", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/producer-orders/status/{status}")
+    @ProducerOnly
+    public ResponseEntity<List<Order>> getProducerOrdersByStatus(
+            @RequestHeader("Authorization") String token,
+            @PathVariable OrderStatus status) {
+        Long producerId = jwtService.extractUserId(token.substring(7));
+        return ResponseEntity.ok(orderService.getProducerOrdersByStatus(producerId, status));
     }
 } 

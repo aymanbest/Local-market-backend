@@ -355,4 +355,14 @@ public class OrderService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public List<Order> getProducerOrders(Long producerId) {
+        return orderRepository.findByItemsProductProducerUserId(producerId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Order> getProducerOrdersByStatus(Long producerId, OrderStatus status) {
+        return orderRepository.findByItemsProductProducerUserIdAndStatus(producerId, status);
+    }
+
 } 

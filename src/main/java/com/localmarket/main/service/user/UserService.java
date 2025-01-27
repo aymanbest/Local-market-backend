@@ -14,14 +14,16 @@ import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.dto.auth.RegisterRequest;
 import com.localmarket.main.dto.user.FilterUsersResponse;
+import lombok.RequiredArgsConstructor;
 
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class UserService {
 
-    private UserRepository userRepository;
-    private PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     
     // all Users
@@ -106,6 +108,28 @@ public class UserService {
                     user.getFirstname(), 
                     user.getLastname()))
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User not found"));
+
+        // Verify old password
+        if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
+            throw new ApiException(ErrorType.INVALID_CREDENTIALS, "Current password is incorrect");
+        }
+
+        // Validate new password
+        if (newPassword == null || newPassword.trim().length() < 6) {
+            throw new ApiException(ErrorType.INVALID_PASSWORD, 
+                "New password must be at least 6 characters long");
+        }
+
+        // Update password and increment token version to invalidate existing tokens
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setTokenVersion((user.getTokenVersion() + 1) % 10);
+        userRepository.save(user);
     }
 }
 

@@ -72,4 +72,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Tuple> findProducerPerformance(LocalDateTime start, LocalDateTime end);
 
     List<Order> findByOrderDateBetween(LocalDateTime start, LocalDateTime end);
+
+    List<Order> findByItemsProductProducerUserId(Long producerId);
+    List<Order> findByItemsProductProducerUserIdAndStatus(Long producerId, OrderStatus status);
 }

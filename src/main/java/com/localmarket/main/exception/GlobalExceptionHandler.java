@@ -86,12 +86,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUnexpectedException(
             Exception ex, 
             HttpServletRequest request) {
-        ApiException apiEx = new ApiException(ErrorType.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
+        // ApiException apiEx = new ApiException(ErrorType.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
         // FOR MORE DETAILS ON THE ERROR
-        // ex.printStackTrace();
+        ex.printStackTrace();
         
-        // ApiException apiEx = new ApiException(ErrorType.INTERNAL_SERVER_ERROR, 
-        //     "An unexpected error occurred: " + ex.getMessage());
+        ApiException apiEx = new ApiException(ErrorType.INTERNAL_SERVER_ERROR, 
+            "An unexpected error occurred: " + ex.getMessage());
         return handleApiException(apiEx, request);
     }
 } 

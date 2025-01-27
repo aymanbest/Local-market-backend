@@ -175,6 +175,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     path.matches("/api/orders/\\d+/pay");
         }
 
+        // New condition for producer orders
+        if ("GET".equals(method) && path.startsWith("/api/orders/")) {
+            return !path.contains("/producer-orders") && 
+                   (path.contains("?guestToken=") || path.contains("/status/"));
+        }
+
         return false;
     }
 
