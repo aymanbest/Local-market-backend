@@ -10,3 +10,20 @@ app:
     password: ${ADMIN_PASSWORD:admin123}  # Use env variable or default
   upload:
     dir: uploads/products
+    
+spring:
+  mail:
+    host: sandbox.smtp.mailtrap.io
+    port : 2525
+    # ssl : false
+    tls : true
+    username: c8a069051b5d2d
+    password: 814a5d6d6c9a7c
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          timeout: 5000
+  
