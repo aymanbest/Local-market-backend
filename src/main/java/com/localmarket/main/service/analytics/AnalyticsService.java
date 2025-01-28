@@ -84,7 +84,7 @@ public class AnalyticsService {
             .count();
             
         long pendingCount = orders.stream()
-            .filter(o -> o.getStatus() == OrderStatus.PENDING)
+            .filter(o -> o.getStatus() == OrderStatus.PENDING_PAYMENT)
             .count();
 
         List<TransactionDetails> transactions = orders.stream()

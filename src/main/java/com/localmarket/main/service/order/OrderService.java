@@ -7,6 +7,8 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.localmarket.main.repository.order.OrderRepository;
 import com.localmarket.main.repository.product.ProductRepository;
@@ -27,11 +29,13 @@ import com.localmarket.main.dto.auth.RegisterRequest;
 import com.localmarket.main.dto.payment.PaymentResponse;
 import com.localmarket.main.service.auth.AuthService;
 import com.localmarket.main.service.auth.TokenService;
+import com.localmarket.main.service.notification.customer.CustomerNotificationService;
+import com.localmarket.main.service.notification.producer.ProducerNotificationService;
 import com.localmarket.main.service.payment.PaymentService;
 import com.localmarket.main.dto.order.OrderResponse;
-import com.localmarket.main.entity.payment.PaymentMethod;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
+import com.localmarket.main.service.product.ProductService;
 
 
 @Service
@@ -45,13 +49,16 @@ public class OrderService {
     private final PaymentService paymentService;
     private final PaymentRepository paymentRepository;
     private final TokenService tokenService;
+    private final ProducerNotificationService producerNotificationService;
+    private final ProductService productService;
+    private final CustomerNotificationService customerNotificationService;
 
 
     public List<Order> getUserOrders(Long userId) {
         return orderRepository.findByCustomerUserId(userId);
     }
 
-    public Order getOrder(Long orderId, String userEmail, String guestToken) {
+    public Order getOrder(Long orderId, String userEmail, String accessToken) {
         Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new ApiException(ErrorType.ORDER_NOT_FOUND, 
                 "Order with id " + orderId + " not found"));
@@ -66,8 +73,8 @@ public class OrderService {
         }
         
         // Check guest token access
-        if (guestToken != null) {
-            if (validateGuestAccess(order, guestToken)) {
+        if (accessToken != null) {
+            if (validateGuestAccess(order, accessToken)) {
                 hasAccess = true;
             }
         }
@@ -100,114 +107,132 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderResponse createPendingOrder(OrderRequest request, String userEmail) {
+    public List<OrderResponse> createPendingOrder(OrderRequest request, String userEmail) {
         validateOrderStock(request.getItems());
-        Order order = new Order();
-        String accessToken = null;
         
-        // Always generate guest token regardless of user status
-        String guestToken = tokenService.generateGuestToken(request.getGuestEmail());
-        order.setGuestToken(guestToken);
+        // Group items by producer
+        Map<Long, List<OrderItemRequest>> itemsByProducer = request.getItems().stream()
+            .collect(Collectors.groupingBy(item -> {
+                Product product = productRepository.findById(item.getProductId())
+                    .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
+                return product.getProducer().getUserId();
+            }));
+        
+        List<OrderResponse> orders = new ArrayList<>();
+        
+        // Create separate order for each producer
+        for (Map.Entry<Long, List<OrderItemRequest>> entry : itemsByProducer.entrySet()) {
+            Order order = new Order();
+            String accessToken = null;
+            
+            // Set customer info
+            if (userEmail != null) {
+                User customer = userRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "User not found"));
+                setupCustomerOrder(order, customer);
+                accessToken = order.getAccessToken();
+            } else if (request.getAccountCreation() != null && request.getAccountCreation().isCreateAccount()) {
+                RegisterRequest registerRequest = createRegisterRequest(request);
+                AuthResponse authResponse = authService.register(registerRequest, null);
+                User newCustomer = userRepository.findByEmail(request.getGuestEmail())
+                    .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User creation failed"));
+                setupCustomerOrder(order, newCustomer);
+                accessToken = order.getAccessToken();
+            } else {
+                setupGuestOrder(order, request);
+                accessToken = order.getAccessToken();
+            }
+            
+            // Set common order details
+            setupOrderDetails(order, request);
+            
+            // Create order items for this producer only
+            List<OrderItem> orderItems = createOrderItems(order, entry.getValue());
+            order.setItems(orderItems);
+            
+            // Calculate total for this producer's items
+            BigDecimal totalPrice = calculateTotalPrice(entry.getValue());
+            order.setTotalPrice(totalPrice);
+            
+            // Save order and reserve stock
+            order = orderRepository.save(order);
+            try {
+                productService.reserveStock(order);
+            } catch (ApiException e) {
+                throw new ApiException(ErrorType.INSUFFICIENT_STOCK, e.getMessage());
+            }
+            
+            // Notify producer
+            producerNotificationService.notifyNewOrder(entry.getKey(), order);
+            
+            orders.add(OrderResponse.builder()
+                .order(order)
+                .orderId(order.getOrderId())
+                .accessToken(accessToken)
+                .build());
+        }
+        
+        return orders;
+    }
+
+    private RegisterRequest createRegisterRequest(OrderRequest request) {
+        RegisterRequest registerRequest = new RegisterRequest();
+        registerRequest.setEmail(request.getGuestEmail());
+        registerRequest.setUsername(request.getAccountCreation().getUsername());
+        registerRequest.setPassword(request.getAccountCreation().getPassword());
+        registerRequest.setFirstname(request.getAccountCreation().getFirstname());
+        registerRequest.setLastname(request.getAccountCreation().getLastname());
+        return registerRequest;
+    }
+
+    private void setupGuestOrder(Order order, OrderRequest request) {
+        if (request.getGuestEmail() == null || request.getGuestEmail().trim().isEmpty()) {
+            throw new ApiException(ErrorType.VALIDATION_FAILED, "Guest email is required for guest orders");
+        }
+        String accessToken = tokenService.getOrCreateAccessToken(request.getGuestEmail());
+        order.setAccessToken(accessToken);
+        order.setGuestEmail(request.getGuestEmail());
         order.setExpiresAt(LocalDateTime.now().plusHours(24));
-        
-        if (userEmail == null) {
-            order.setGuestEmail(request.getGuestEmail());
-            accessToken = guestToken;
-        } else {
-            User customer = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "User not found"));
-            order.setCustomer(customer);
-        }
-        
-        // Handle account creation if requested
-        if (request.getAccountCreation() != null && request.getAccountCreation().isCreateAccount()) {
-            RegisterRequest registerRequest = new RegisterRequest();
-            registerRequest.setEmail(request.getGuestEmail());
-            registerRequest.setUsername(request.getAccountCreation().getUsername());
-            registerRequest.setPassword(request.getAccountCreation().getPassword());
-            registerRequest.setFirstname(request.getAccountCreation().getFirstname());
-            registerRequest.setLastname(request.getAccountCreation().getLastname());
-            AuthResponse authResponse = authService.register(registerRequest, null);
-            User newCustomer = userRepository.findByEmail(request.getGuestEmail())
-                .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User creation failed"));
-                
-            order.setCustomer(newCustomer);
-            accessToken = authResponse.getToken();
-        }
-        
+    }
+
+    private void setupCustomerOrder(Order order, User customer) {
+        String accessToken = tokenService.getOrCreateAccessToken(customer.getEmail());
+        order.setAccessToken(accessToken);
+        order.setCustomer(customer);
+        order.setExpiresAt(LocalDateTime.now().plusHours(24));
+    }
+
+    private void setupOrderDetails(Order order, OrderRequest request) {
         order.setShippingAddress(request.getShippingAddress());
         order.setPhoneNumber(request.getPhoneNumber());
         order.setPaymentMethod(request.getPaymentMethod());
-        order.setStatus(OrderStatus.PENDING);
-        
-        BigDecimal totalPrice = calculateTotalPrice(request.getItems());
-        order.setTotalPrice(totalPrice);
-        order.setItems(createOrderItems(order, request.getItems()));
-        
-        Order savedOrder = orderRepository.save(order);
-        
-        return OrderResponse.builder()
-            .orderId(savedOrder.getOrderId())
-            .order(savedOrder)
-            .accessToken(accessToken)
-            .build();
+        order.setStatus(OrderStatus.PENDING_PAYMENT);
     }
 
     @Transactional
     public Order processOrderPayment(Long orderId, PaymentInfo paymentInfo, String userEmail) {
         Order order = orderRepository.findById(orderId)
-            .orElseThrow(() -> new ApiException(ErrorType.ORDER_NOT_FOUND, "Order not found: " + orderId));
+            .orElseThrow(() -> new ApiException(ErrorType.ORDER_NOT_FOUND, "Order not found"));
             
-        // Verify order ownership
-        if (!canAccessOrder(order, userEmail)) {
-            throw new ApiException(ErrorType.ACCESS_DENIED, "Access denied");
-        }
-
-        // Verify payment method matches the one specified during checkout
-        if (paymentInfo.getPaymentMethod() != order.getPaymentMethod()) {
-            throw new ApiException(ErrorType.VALIDATION_FAILED, 
-                "Payment method does not match the one specified during checkout");
-        }
-
-        // Validate payment details
-        validatePaymentInfo(paymentInfo);
-        
-        // Process payment
-        PaymentResponse paymentResponse = paymentService.processPayment(paymentInfo, order.getTotalPrice());
-        
-        // Update order with payment info
-        Payment payment = paymentRepository.findById(paymentResponse.getPaymentId())
-            .orElseThrow(() -> new ApiException(ErrorType.PAYMENT_NOT_FOUND, "Payment not found"));
-        payment.setOrderId(order.getOrderId());
-        order.setPayment(payment);
-        order.setStatus(OrderStatus.ACCEPTED);
-        
-        return orderRepository.save(order);
-    }
-
-    private void validatePaymentInfo(PaymentInfo paymentInfo) {
-        if (paymentInfo.getPaymentMethod() == PaymentMethod.CARD) {
-            if (paymentInfo.getCardNumber() == null || paymentInfo.getCardHolderName() == null || 
-                paymentInfo.getExpiryDate() == null || paymentInfo.getCvv() == null) {
-                throw new ApiException(ErrorType.VALIDATION_FAILED, "Invalid card payment details");
-            }
-        } else if (paymentInfo.getPaymentMethod() == PaymentMethod.BITCOIN) {
-            if (paymentInfo.getTransactionHash() == null) {
-                throw new ApiException(ErrorType.VALIDATION_FAILED, "Transaction hash is required for Bitcoin payments");
-            }
+        try {
+            PaymentResponse paymentResponse = paymentService.processPayment(paymentInfo, order.getTotalPrice());
+            
+            // Update order status and confirm stock reduction
+            order.setStatus(OrderStatus.PAYMENT_COMPLETED);
+            productService.confirmStockReduction(order);
+            
+            // Update order with payment info
+            updateOrderPayment(order, paymentResponse);
+            
+            return orderRepository.save(order);
+        } catch (Exception e) {
+            order.setStatus(OrderStatus.PAYMENT_FAILED);
+            productService.releaseStock(order);
+            orderRepository.save(order);
+            throw e;
         }
     }
 
-    private boolean canAccessOrder(Order order, String userEmail) {
-        if (userEmail != null) {
-            // Registered user access
-            return order.getCustomer() != null && 
-                   order.getCustomer().getEmail().equals(userEmail);
-        } else {
-            // Guest access - allow if the order has a guest email
-            return order.getGuestEmail() != null;
-        }
-    }
 
     private List<OrderItem> createOrderItems(Order order, List<OrderItemRequest> itemRequests) {
         List<OrderItem> orderItems = new ArrayList<>();
@@ -225,8 +250,8 @@ public class OrderService {
         return orderItems;
     }
 
-    private boolean validateGuestAccess(Order order, String guestToken) {
-        if (order.getGuestToken() == null || !order.getGuestToken().equals(guestToken)) {
+    private boolean validateGuestAccess(Order order, String accessToken) {
+        if (order.getAccessToken() == null || !order.getAccessToken().equals(accessToken)) {
             return false;
         }
         
@@ -268,31 +293,55 @@ public class OrderService {
         validateStatusTransition(order.getStatus(), newStatus);
         
         order.setStatus(newStatus);
+        
+        // If status is SHIPPED, send delivery notification
+        if (newStatus == OrderStatus.SHIPPED) {
+            customerNotificationService.notifyDeliveryUpdate(order, 
+                "Your order has been shipped and is on its way!");
+        } else if (newStatus == OrderStatus.DELIVERED) {
+            customerNotificationService.notifyDeliveryUpdate(order, 
+                "Your order has been delivered successfully!");
+        } else {
+            customerNotificationService.notifyOrderStatusUpdate(order);
+        }
+        
         return orderRepository.save(order);
     }
 
     private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
         // Define valid status transitions
-        if (currentStatus == OrderStatus.PENDING) {
-            if (newStatus != OrderStatus.ACCEPTED && newStatus != OrderStatus.DECLINED) {
+        if (currentStatus == OrderStatus.PENDING_PAYMENT) {
+            if (newStatus != OrderStatus.PAYMENT_COMPLETED && newStatus != OrderStatus.PAYMENT_FAILED) {
                 throw new ApiException(ErrorType.INVALID_STATUS_TRANSITION, 
-                    "Pending orders can only be accepted or declined");
+                    "Pending payment orders can only be completed or failed");
             }
-        } else if (currentStatus == OrderStatus.ACCEPTED) {
+        } else if (currentStatus == OrderStatus.PAYMENT_COMPLETED) {
+            if (newStatus != OrderStatus.PROCESSING && newStatus != OrderStatus.CANCELLED) {
+                throw new ApiException(ErrorType.INVALID_STATUS_TRANSITION, 
+                    "Completed orders can only be processed or cancelled");
+            }
+        } else if (currentStatus == OrderStatus.PAYMENT_FAILED) {
+            throw new ApiException(ErrorType.INVALID_STATUS_TRANSITION, 
+                "Cannot change status of orders that have failed payment");
+        } else if (currentStatus == OrderStatus.PROCESSING) {
+            if (newStatus != OrderStatus.SHIPPED && newStatus != OrderStatus.CANCELLED) {
+                throw new ApiException(ErrorType.INVALID_STATUS_TRANSITION, 
+                    "Processing orders can only be shipped or cancelled");
+            }
+        } else if (currentStatus == OrderStatus.SHIPPED) {
             if (newStatus != OrderStatus.DELIVERED && newStatus != OrderStatus.CANCELLED) {
                 throw new ApiException(ErrorType.INVALID_STATUS_TRANSITION, 
-                    "Accepted orders can only be delivered or cancelled");
+                    "Shipped orders can only be delivered or cancelled");
             }
         } else if (currentStatus == OrderStatus.DELIVERED) {
             if (newStatus != OrderStatus.RETURNED) {
                 throw new ApiException(ErrorType.INVALID_STATUS_TRANSITION, 
                     "Delivered orders can only be marked as returned");
             }
-        } else if (currentStatus == OrderStatus.DECLINED || 
-                   currentStatus == OrderStatus.CANCELLED || 
+        } else if (currentStatus == OrderStatus.CANCELLED || 
                    currentStatus == OrderStatus.RETURNED) {
             throw new ApiException(ErrorType.INVALID_STATUS_TRANSITION, 
-                "Cannot change status of orders that are declined, cancelled, or returned");
+                "Cannot change status of orders that are cancelled or returned");
         }
     }
 
@@ -304,6 +353,21 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<Order> getProducerOrdersByStatus(Long producerId, OrderStatus status) {
         return orderRepository.findByItemsProductProducerUserIdAndStatus(producerId, status);
+    }
+
+    private void updateOrderPayment(Order order, PaymentResponse paymentResponse) {
+        Payment payment = paymentRepository.findById(paymentResponse.getPaymentId())
+            .orElseThrow(() -> new ApiException(ErrorType.PAYMENT_NOT_FOUND, "Payment not found"));
+        payment.setOrderId(order.getOrderId());
+        order.setPayment(payment);
+    }
+
+    public List<Order> getGuestOrders(String accessToken) {
+        String email = tokenService.validateAccessToken(accessToken);
+        if (email == null) {
+            throw new ApiException(ErrorType.INVALID_TOKEN, "Invalid or expired access token");
+        }
+        return orderRepository.findByAccessToken(accessToken);
     }
 
 } 

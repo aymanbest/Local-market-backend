@@ -2,6 +2,7 @@ package com.localmarket.main.entity.order;
 
 import com.localmarket.main.entity.product.Product;
 import lombok.Data;
+import lombok.ToString;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import com.fasterxml.jackson.annotation.JsonBackReference;
@@ -14,6 +15,7 @@ public class OrderItem {
     private Long orderItemId;
     
     @JsonBackReference
+    @ToString.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "orderId")
     private Order order;

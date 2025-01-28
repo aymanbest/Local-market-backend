@@ -75,4 +75,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     List<Order> findByItemsProductProducerUserId(Long producerId);
     List<Order> findByItemsProductProducerUserIdAndStatus(Long producerId, OrderStatus status);
+
+    List<Order> findByGuestEmail(String guestEmail);
+
+    List<Order> findByAccessToken(String accessToken);
 }

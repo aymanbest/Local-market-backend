@@ -12,13 +12,13 @@ import org.springframework.web.bind.annotation.*;
 import com.localmarket.main.entity.order.OrderStatus;
 import java.util.List;
 import com.localmarket.main.dto.order.OrderResponse;
-import com.localmarket.main.dto.user.UserInfo;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -43,8 +43,8 @@ public class OrderController {
     })
     @PostMapping("/checkout")
     @PreAuthorize("permitAll()")
-    public ResponseEntity<OrderResponse> createPendingOrder(
-            @RequestBody OrderRequest request,
+    public ResponseEntity<List<OrderResponse>> createOrder(
+            @Valid @RequestBody OrderRequest request,
             @RequestHeader(value = "Authorization", required = false) String token) {
         String userEmail = null;
         if (token != null && token.startsWith("Bearer ")) {
@@ -74,45 +74,20 @@ public class OrderController {
 
     @Operation(summary = "Get user orders", description = "Retrieve all orders for authenticated user")
     @SecurityRequirement(name = "bearer-jwt")
+    @PreAuthorize("permitAll()")
     @GetMapping
-    public ResponseEntity<List<Order>> getUserOrders(
-            @RequestHeader("Authorization") String token) {
-        String jwt = token.substring(7);
-        Long userId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(orderService.getUserOrders(userId));
-    }
-
-    @Operation(summary = "Get order by ID", description = "Get specific order details")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Order found", content = @Content(schema = @Schema(implementation = OrderResponse.class))),
-        @ApiResponse(responseCode = "404", description = "Order not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "403", description = "Access denied", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
-    @GetMapping("/{orderId}")
-    // @PreAuthorize("permitAll()")
-    public ResponseEntity<Order> getOrder(
-            @PathVariable Long orderId,
+    public ResponseEntity<List<Order>> getOrders(
             @RequestHeader(value = "Authorization", required = false) String token,
-            @RequestParam(value = "guestToken", required = false) String guestToken) {
-        if (token == null && guestToken == null) {
-            throw new ApiException(ErrorType.ACCESS_DENIED, "Authentication required");
-        }
-        String userEmail = null;
+            @RequestParam(value = "accessToken", required = false) String accessToken) {
         if (token != null && token.startsWith("Bearer ")) {
-            userEmail = jwtService.extractUsername(token.substring(7));
+            Long userId = jwtService.extractUserId(token.substring(7));
+            return ResponseEntity.ok(orderService.getUserOrders(userId));
+        } else if (accessToken != null) {
+            return ResponseEntity.ok(orderService.getGuestOrders(accessToken));
         }
-        return ResponseEntity.ok(orderService.getOrder(orderId, userEmail, guestToken));
+        throw new ApiException(ErrorType.ACCESS_DENIED, "Authentication required");
     }
 
-    // duplicated
-    // @Operation(summary = "Get my orders", description = "Retrieve all orders for authenticated user")
-    // @GetMapping("/my-orders")
-    // public ResponseEntity<List<Order>> getMyOrders(
-    //         @RequestHeader("Authorization") String token) {
-    //     String jwt = token.substring(7);
-    //     Long userId = jwtService.extractUserId(jwt);
-    //     return ResponseEntity.ok(orderService.getUserOrders(userId));
-    // }
 
     @Operation(summary = "Get my orders by status", description = "Retrieve all orders for authenticated user by status")
     @GetMapping("/my-orders/status/{status}")
