@@ -380,6 +380,7 @@ class MainApplicationTests {
 		request.setItems(Collections.singletonList(itemRequest));
 		request.setShippingAddress("123 Customer St");
 		request.setPhoneNumber("+12345678901");
+		request.setPaymentMethod(PaymentMethod.CARD);
 		return request;
 	}
 
@@ -388,6 +389,7 @@ class MainApplicationTests {
 		request.setGuestEmail("guest@test.com");
 		request.setShippingAddress("456 Guest St");
 		request.setPhoneNumber("+12345678901");
+		request.setPaymentMethod(PaymentMethod.CARD);
 		return request;
 	}
 
@@ -396,6 +398,7 @@ class MainApplicationTests {
 		request.setGuestEmail("newcustomer@test.com");
 		request.setShippingAddress("789 New Customer St");
 		request.setPhoneNumber("+12345678901");
+		request.setPaymentMethod(PaymentMethod.CARD);
 
 		AccountCreationRequest accountCreation = new AccountCreationRequest();
 		accountCreation.setCreateAccount(true);
@@ -411,7 +414,6 @@ class MainApplicationTests {
 	private PaymentInfo createCardPayment(String transactionDetails) {
 		PaymentInfo payment = new PaymentInfo();
 		payment.setPaymentMethod(PaymentMethod.CARD);
-		payment.setTransactionDetails(transactionDetails);
 		payment.setCardNumber("4111111111111111");
 		payment.setCardHolderName("Test User");
 		payment.setExpiryDate("12/25");
@@ -423,7 +425,6 @@ class MainApplicationTests {
 	private PaymentInfo createBitcoinPayment(String transactionDetails) {
 		PaymentInfo payment = new PaymentInfo();
 		payment.setPaymentMethod(PaymentMethod.BITCOIN);
-		payment.setTransactionDetails(transactionDetails);
 		payment.setTransactionHash("0x123abc...");
 		payment.setCurrency("BTC");
 		return payment;

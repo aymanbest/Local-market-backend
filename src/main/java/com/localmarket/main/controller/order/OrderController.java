@@ -34,27 +34,7 @@ public class OrderController {
     private final OrderService orderService;
     private final JwtService jwtService;
 
-    @Operation(summary = "Create a new order", description = "Creates an order for authenticated or guest users")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Order created successfully", content = @Content(schema = @Schema(implementation = OrderResponse.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid input", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
-    @PostMapping
-    @PreAuthorize("permitAll()")
-    public ResponseEntity<Order> createOrder(
-            @RequestBody OrderRequest request,
-            @RequestHeader(value = "Authorization", required = false) String token) {
-        UserInfo userInfo = null;
-        if (token != null && token.startsWith("Bearer ")) {
-            String jwt = token.substring(7);
-            userInfo = new UserInfo(
-                jwtService.extractUsername(jwt),
-                jwtService.extractUserId(jwt),
-                jwtService.extractRole(jwt)
-            );
-        }
-        return ResponseEntity.ok(orderService.createOrder(request, userInfo));
-    }
+    
 
     @Operation(summary = "Create pending order", description = "Creates a pending order awaiting payment")
     @ApiResponses(value = {

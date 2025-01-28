@@ -30,7 +30,6 @@ import com.localmarket.main.service.auth.TokenService;
 import com.localmarket.main.service.payment.PaymentService;
 import com.localmarket.main.dto.order.OrderResponse;
 import com.localmarket.main.entity.payment.PaymentMethod;
-import com.localmarket.main.dto.user.UserInfo;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 
@@ -47,69 +46,6 @@ public class OrderService {
     private final PaymentRepository paymentRepository;
     private final TokenService tokenService;
 
-    public Order createOrder(OrderRequest request, UserInfo userInfo) {
-        validateOrderStock(request.getItems());
-        Order order = new Order();
-        
-        if (userInfo != null) {
-            User customer = userRepository.getReferenceById(userInfo.getUserId());
-            order.setCustomer(customer);
-        } else {
-            order.setGuestEmail(request.getGuestEmail());
-        }
-        
-        // Calculate total price and process payment first
-        BigDecimal totalPrice = calculateTotalPrice(request.getItems());
-        PaymentResponse paymentResponse = paymentService.processPayment(request.getPaymentInfo(), totalPrice);
-        Payment payment = paymentRepository.findById(paymentResponse.getPaymentId())
-            .orElseThrow(() -> new ApiException(ErrorType.PAYMENT_NOT_FOUND, "Payment not found"));
-
-        order.setShippingAddress(request.getShippingAddress());
-        order.setPhoneNumber(request.getPhoneNumber());
-        
-        List<OrderItem> orderItems = new ArrayList<>();
-        
-        for (OrderItemRequest itemRequest : request.getItems()) {
-            Product product = productRepository.findById(itemRequest.getProductId())
-                .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
-                
-            // Check if producer is trying to order their own product
-            if (userInfo != null && product.getProducer().getEmail().equals(userInfo.getEmail())) {
-                throw new ApiException(ErrorType.ACCESS_DENIED, "Producers cannot order their own products");
-            }
-            
-            // Check stock availability
-            if (product.getQuantity() < itemRequest.getQuantity()) {
-                throw new ApiException(ErrorType.INSUFFICIENT_STOCK, "Insufficient stock for product: " + product.getName());
-            }
-            
-            OrderItem orderItem = new OrderItem();
-            orderItem.setOrder(order);
-            orderItem.setProduct(product);
-            orderItem.setQuantity(itemRequest.getQuantity());
-            orderItem.setPrice(product.getPrice());
-            
-            // Update product quantity
-            product.setQuantity(product.getQuantity() - itemRequest.getQuantity());
-            productRepository.save(product);
-            
-            orderItems.add(orderItem);
-        }
-        
-        order.setTotalPrice(totalPrice);
-        order.setItems(orderItems);
-        
-        // First save the order without payment
-        Order savedOrder = orderRepository.save(order);
-
-        // Update payment with orderId and save again
-        payment.setOrderId(savedOrder.getOrderId());
-        payment = paymentRepository.save(payment);
-
-        // Update order with payment and save final version
-        savedOrder.setPayment(payment);
-        return orderRepository.save(savedOrder);
-    }
 
     public List<Order> getUserOrders(Long userId) {
         return orderRepository.findByCustomerUserId(userId);
@@ -196,13 +132,12 @@ public class OrderService {
                 .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User creation failed"));
                 
             order.setCustomer(newCustomer);
-            // Don't clear guest email and token
             accessToken = authResponse.getToken();
         }
         
-        // Rest of the order creation logic remains the same
         order.setShippingAddress(request.getShippingAddress());
         order.setPhoneNumber(request.getPhoneNumber());
+        order.setPaymentMethod(request.getPaymentMethod());
         order.setStatus(OrderStatus.PENDING);
         
         BigDecimal totalPrice = calculateTotalPrice(request.getItems());
@@ -228,7 +163,13 @@ public class OrderService {
             throw new ApiException(ErrorType.ACCESS_DENIED, "Access denied");
         }
 
-        // Validate payment info based on method
+        // Verify payment method matches the one specified during checkout
+        if (paymentInfo.getPaymentMethod() != order.getPaymentMethod()) {
+            throw new ApiException(ErrorType.VALIDATION_FAILED, 
+                "Payment method does not match the one specified during checkout");
+        }
+
+        // Validate payment details
         validatePaymentInfo(paymentInfo);
         
         // Process payment

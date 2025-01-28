@@ -45,7 +45,7 @@ public class EmailService {
         MimeMessageHelper helper = new MimeMessageHelper(message, true);
     
         helper.setTo(to);
-        helper.setFrom("localMarket@support.com");
+        helper.setFrom("localMarket@trial-x2p03477y0k4zdrn.mlsender.net");
         helper.setSubject(subject);
         helper.setText(htmlContent, true); 
         

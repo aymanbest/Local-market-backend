@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
+import com.localmarket.main.entity.payment.PaymentMethod;
 
 @Service
 @RequiredArgsConstructor
@@ -18,24 +19,30 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
 
     public PaymentResponse processPayment(PaymentInfo paymentInfo, BigDecimal amount) {
-        // Simulate payment processing
-        boolean isSuccessful = true; // 90% success rate
+        // Validate payment info based on method
+        validatePaymentInfo(paymentInfo);
         
-        if (!isSuccessful) {
-            throw new ApiException(ErrorType.PAYMENT_FAILED, 
-                "Payment processing failed. Please try again.");
-        }
-
         // Create payment record
         Payment payment = new Payment();
         payment.setPaymentMethod(paymentInfo.getPaymentMethod());
-        payment.setTransactionId(UUID.randomUUID().toString());
+        payment.setTransactionId("TRANS_" + UUID.randomUUID().toString());
         payment.setPaymentStatus(PaymentStatus.COMPLETED);
-        payment.setAmount(amount);
-        
+        payment.setAmount(amount); // Amount comes from order
         Payment savedPayment = paymentRepository.save(payment);
         
         return new PaymentResponse(savedPayment.getPaymentId(), savedPayment.getTransactionId());
     }
 
+    private void validatePaymentInfo(PaymentInfo paymentInfo) {
+        if (paymentInfo.getPaymentMethod() == PaymentMethod.CARD) {
+            if (paymentInfo.getCardNumber() == null || paymentInfo.getCardHolderName() == null || 
+                paymentInfo.getExpiryDate() == null || paymentInfo.getCvv() == null) {
+                throw new ApiException(ErrorType.VALIDATION_FAILED, "Invalid card payment details");
+            }
+        } else if (paymentInfo.getPaymentMethod() == PaymentMethod.BITCOIN) {
+            if (paymentInfo.getTransactionHash() == null) {
+                throw new ApiException(ErrorType.VALIDATION_FAILED, "Transaction hash is required for Bitcoin payments");
+            }
+        }
+    }
 } 

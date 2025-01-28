@@ -20,6 +20,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.Valid;
+import com.localmarket.main.entity.payment.PaymentMethod;
 
 @Entity
 @Data
@@ -71,6 +72,9 @@ public class Order {
     
     @Column(name = "expiresAt")
     private LocalDateTime expiresAt;
+    
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod paymentMethod;
     
     @PrePersist
     protected void onCreate() {

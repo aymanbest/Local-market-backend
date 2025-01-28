@@ -66,6 +66,7 @@ CREATE TABLE `Order` (
     expiresAt DATETIME,
     shippingAddress TEXT NOT NULL,
     phoneNumber VARCHAR(20) NOT NULL,
+    paymentMethod ENUM('CARD', 'BITCOIN') NOT NULL,
     orderDate DATETIME DEFAULT CURRENT_TIMESTAMP,
     status ENUM('PENDING', 'ACCEPTED', 'DECLINED', 'DELIVERED', 'CANCELLED', 'RETURNED') DEFAULT 'PENDING',
     totalPrice DECIMAL(10, 2) NOT NULL,

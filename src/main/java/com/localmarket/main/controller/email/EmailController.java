@@ -23,6 +23,7 @@ public class EmailController {
     @Autowired
     private JwtService jwtService; 
 
+    
     @GetMapping("/api/send-email")
     public ResponseEntity<String> sendEmail(
             @RequestHeader("Authorization") String token, 
