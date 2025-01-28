@@ -26,7 +26,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
     private final JwtService jwtService;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-    
+
     private static final ConcurrentHashMap<String, WebSocketSession> userSessions = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Set<String>> roleSessions = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<WebSocketSession, String> sessionTokens = new ConcurrentHashMap<>();

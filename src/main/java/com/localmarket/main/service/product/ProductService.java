@@ -245,7 +245,18 @@ public class ProductService {
         
         product.setStatus(status);
         product.setDeclineReason(declineReason);
-        
+
+        switch (status) {
+            case APPROVED:
+                producerNotificationService.notifyProductApproval(product.getProducer().getUserId(), product, true, null);
+                break;
+            case DECLINED:
+                producerNotificationService.notifyProductApproval(product.getProducer().getUserId(), product, false, declineReason);
+                break;
+            default:
+                break;
+        }
+
         return convertToDTO(productRepository.save(product));
     }
 

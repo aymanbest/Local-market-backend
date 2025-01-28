@@ -57,7 +57,7 @@ public class ProducerAnalyticsController {
     @GetMapping("/total-pending-orders")
     @Operation(summary = "Get total pending orders", description = "Returns the total number of pending orders.")
     public int getTotalPendingOrders() {
-        return producerAnalyticsService.getTotalOrdersByStatus(OrderStatus.PENDING);
+        return producerAnalyticsService.getTotalOrdersByStatus(OrderStatus.PENDING_PAYMENT);
     }
 
     @ProducerOnly
