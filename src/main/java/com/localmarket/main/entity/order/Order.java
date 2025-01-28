@@ -1,6 +1,7 @@
 package com.localmarket.main.entity.order;
 
 import lombok.Data;
+import lombok.ToString;
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
@@ -11,7 +12,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -50,7 +50,7 @@ public class Order {
     private LocalDateTime orderDate;
     
     @Enumerated(EnumType.STRING)
-    private OrderStatus status = OrderStatus.PENDING;
+    private OrderStatus status = OrderStatus.PENDING_PAYMENT;
     
     @NotNull(message = "Total price is required")
     @DecimalMin(value = "0.01", message = "Total price must be greater than 0")
@@ -59,6 +59,7 @@ public class Order {
     
     @Valid
     @NotEmpty(message = "Order must contain at least one item")
+    @ToString.Exclude
     @JsonManagedReference
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
@@ -66,15 +67,15 @@ public class Order {
     @OneToOne
     @JoinColumn(name = "paymentId")
     private Payment payment;
-    
-    @Column(name = "guest_token")
-    private String guestToken;
-    
+ 
     @Column(name = "expiresAt")
     private LocalDateTime expiresAt;
     
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
+    
+    @Column(name = "accessToken")
+    private String accessToken;
     
     @PrePersist
     protected void onCreate() {

@@ -108,5 +108,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         // Monthly orders (count per month for current year)
         @Query("SELECT MONTH(o.orderDate) AS month, COUNT(o) AS totalOrders FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate GROUP BY MONTH(o.orderDate) ORDER BY month")
         List<Object[]> calculateMonthlyOrders(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
-    }
     
+    
+    List<Order> findByGuestEmail(String guestEmail);
+
+    List<Order> findByAccessToken(String accessToken);
+}

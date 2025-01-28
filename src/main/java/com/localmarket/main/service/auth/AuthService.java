@@ -85,11 +85,13 @@ public class AuthService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new BadCredentialsException("Invalid email or password");
         }
-        
+
+        user.setTokenVersion((user.getTokenVersion() + 1) % 10);
         String token = jwtService.generateToken(user);
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
         tokenRepository.storeToken(token, user.getUserId());
+
         
         return AuthResponse.builder()
                 .token(token)

@@ -24,10 +24,18 @@ import java.math.BigDecimal;
 import java.util.Map;
 import com.localmarket.main.dto.product.ProducerProductsResponse;
 import com.localmarket.main.dto.user.FilterUsersResponse;
+import com.localmarket.main.service.notification.producer.ProducerNotificationService;
 import com.localmarket.main.service.storage.FileStorageService;
 import org.springframework.web.multipart.MultipartFile;
 import com.localmarket.main.entity.product.ProductStatus;
 import com.localmarket.main.dto.product.MyProductResponse;
+import com.localmarket.main.entity.product.StockReservation;
+import com.localmarket.main.repository.product.StockReservationRepository;
+import org.springframework.scheduling.annotation.Scheduled;
+import java.time.LocalDateTime;
+import com.localmarket.main.entity.order.Order;
+import com.localmarket.main.entity.order.OrderItem;
+import com.localmarket.main.dto.notification.NotificationResponse;
 
 
 @Service
@@ -37,6 +45,10 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final ProducerNotificationService producerNotificationService;
+    private final StockReservationRepository stockReservationRepository;
+    private static final int LOW_STOCK_THRESHOLD = 10;
+    private static final int CRITICAL_STOCK_THRESHOLD = 5;
 
     @ProducerOnly
     public ProductResponse createProduct(ProductRequest request, MultipartFile image, Long producerId) {
@@ -269,5 +281,172 @@ public class ProductService {
             .stream()
             .map(this::convertToMyProductDTO)
             .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void updateProductQuantity(Long productId, int newQuantity) {
+        Product product = productRepository.findById(productId)
+            .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
+            
+        product.setQuantity(newQuantity);
+        
+        if (newQuantity <= LOW_STOCK_THRESHOLD) {
+            producerNotificationService.notifyLowStock(
+                product.getProducer().getUserId(), 
+                product
+            );
+        }
+        
+        productRepository.save(product);
+    }
+
+    @Scheduled(fixedRate = 60000) // Run every minute
+    @Transactional
+    public void monitorStockLevels() {
+        List<Product> products = productRepository.findAll();
+        
+        for (Product product : products) {
+            int availableStock = getAvailableStock(product);
+            int reservedStock = getReservedStock(product);
+            int totalStock = availableStock + reservedStock;
+            
+            // Critical stock notification
+            if (availableStock <= CRITICAL_STOCK_THRESHOLD) {
+                NotificationResponse notification = NotificationResponse.builder()
+                    .type("CRITICAL_STOCK_ALERT")
+                    .message("CRITICAL ALERT: " + product.getName() + " stock is critically low!")
+                    .data(Map.of(
+                        "productId", product.getProductId(),
+                        "productName", product.getName(),
+                        "availableStock", availableStock,
+                        "reservedStock", reservedStock,
+                        "totalStock", totalStock
+                    ))
+                    .timestamp(LocalDateTime.now())
+                    .build();
+                
+                producerNotificationService.sendToUser(
+                    product.getProducer().getUserId(),
+                    notification
+                );
+            }
+            // Low stock notification
+            else if (availableStock <= LOW_STOCK_THRESHOLD) {
+                NotificationResponse notification = NotificationResponse.builder()
+                    .type("LOW_STOCK_ALERT")
+                    .message("Alert: " + product.getName() + " stock is running low")
+                    .data(Map.of(
+                        "productId", product.getProductId(),
+                        "productName", product.getName(),
+                        "availableStock", availableStock,
+                        "reservedStock", reservedStock,
+                        "totalStock", totalStock
+                    ))
+                    .timestamp(LocalDateTime.now())
+                    .build();
+                
+                producerNotificationService.sendToUser(
+                    product.getProducer().getUserId(),
+                    notification
+                );
+            }
+            
+            // Stock movement notification (when reserved stock changes)
+            if (reservedStock > 0) {
+                NotificationResponse notification = NotificationResponse.builder()
+                    .type("STOCK_MOVEMENT")
+                    .message("Stock movement detected for " + product.getName())
+                    .data(Map.of(
+                        "productId", product.getProductId(),
+                        "productName", product.getName(),
+                        "availableStock", availableStock,
+                        "reservedStock", reservedStock,
+                        "totalStock", totalStock
+                    ))
+                    .timestamp(LocalDateTime.now())
+                    .build();
+                
+                producerNotificationService.sendToUser(
+                    product.getProducer().getUserId(),
+                    notification
+                );
+            }
+        }
+    }
+
+    private int getReservedStock(Product product) {
+        LocalDateTime now = LocalDateTime.now();
+        return stockReservationRepository
+            .findByProductAndExpiresAtGreaterThan(product, now)
+            .stream()
+            .mapToInt(StockReservation::getQuantity)
+            .sum();
+    }
+
+    @Transactional
+    public void confirmStockReduction(Order order) {
+        for (OrderItem item : order.getItems()) {
+            Product product = item.getProduct();
+            int newQuantity = product.getQuantity() - item.getQuantity();
+            product.setQuantity(newQuantity);
+            
+            NotificationResponse notification = NotificationResponse.builder()
+                .type("STOCK_UPDATED")
+                .message("Stock reduced for " + product.getName())
+                .data(Map.of(
+                    "productId", product.getProductId(),
+                    "productName", product.getName(),
+                    "previousQuantity", product.getQuantity(),
+                    "newQuantity", newQuantity,
+                    "reduction", item.getQuantity(),
+                    "orderId", order.getOrderId()
+                ))
+                .timestamp(LocalDateTime.now())
+                .build();
+            
+            producerNotificationService.sendToUser(
+                product.getProducer().getUserId(),
+                notification
+            );
+            
+            productRepository.save(product);
+        }
+        stockReservationRepository.deleteByOrder(order);
+    }
+
+    @Transactional
+    public void reserveStock(Order order) {
+        for (OrderItem item : order.getItems()) {
+            Product product = item.getProduct();
+            int availableStock = getAvailableStock(product);
+            
+            if (availableStock < item.getQuantity()) {
+                throw new ApiException(ErrorType.INSUFFICIENT_STOCK, 
+                    "Insufficient stock for product: " + product.getName());
+            }
+            
+            StockReservation reservation = new StockReservation();
+            reservation.setProduct(product);
+            reservation.setOrder(order);
+            reservation.setQuantity(item.getQuantity());
+            stockReservationRepository.save(reservation);
+        }
+    }
+
+    @Transactional
+    public void releaseStock(Order order) {
+        stockReservationRepository.deleteByOrder(order);
+    }
+
+    public int getAvailableStock(Product product) {
+        LocalDateTime now = LocalDateTime.now();
+        List<StockReservation> activeReservations = 
+            stockReservationRepository.findByProductAndExpiresAtGreaterThan(product, now);
+            
+        int reservedQuantity = activeReservations.stream()
+            .mapToInt(StockReservation::getQuantity)
+            .sum();
+            
+        return product.getQuantity() - reservedQuantity;
     }
 } 

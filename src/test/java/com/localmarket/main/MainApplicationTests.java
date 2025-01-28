@@ -315,12 +315,12 @@ class MainApplicationTests {
 				guestOrderResult.getResponse().getContentAsString(),
 				OrderResponse.class);
 		Long guestOrderId = guestResponse.getOrderId();
-		String guestToken = guestResponse.getAccessToken();
-		logger.info(STEP_SUCCESS + " Guest order created with token: " + guestToken);
+		String accessToken = guestResponse.getAccessToken();
+		logger.info(STEP_SUCCESS + " Guest order created with token: " + accessToken);
 
 		// Try to access order with valid token
 		mockMvc.perform(get("/api/orders/" + guestOrderId)
-				.param("guestToken", guestToken)
+				.param("accessToken", accessToken)
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk());
 		logger.info(STEP_SUCCESS + " Guest can access order with token");
@@ -335,7 +335,7 @@ class MainApplicationTests {
 		// Try to access with expired token
 		try {
 			mockMvc.perform(get("/api/orders/" + guestOrderId)
-					.param("guestToken", guestToken)
+					.param("accessToken", accessToken)
 					.contentType(MediaType.APPLICATION_JSON))
 					.andExpect(status().isUnauthorized());
 			logger.info(STEP_SUCCESS + " Guest cannot access order after token expiration");

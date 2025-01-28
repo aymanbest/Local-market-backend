@@ -46,13 +46,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        String accessToken = request.getParameter("accessToken");
         final String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            if (!isPublicPath(request.getRequestURI(), request.getMethod())) {
-                handleUnauthorizedResponse(response, request, "Missing or invalid authorization header");
-                return;
-            }
+
+        // Allow requests with accessToken without requiring Authorization header
+        if (accessToken != null) {
             filterChain.doFilter(request, response);
+            return;
+        }
+
+        // For all other protected endpoints, require Authorization header
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            handleUnauthorizedResponse(response, request, "Missing or invalid authorization header");
             return;
         }
 
@@ -104,13 +109,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private boolean isPublicEndpoint(HttpServletRequest request) {
         String path = request.getRequestURI();
         String method = request.getMethod();
-        String guestToken = request.getParameter("guestToken");
+        String accessToken = request.getParameter("accessToken");
+
+        // Add specific check for orders endpoint with accessToken
+        if ("GET".equals(method) && path.equals("/api/orders") && accessToken != null) {
+            return true;
+        }
 
         // Swagger UI endpoints
         if (path.startsWith("/swagger-ui") ||
                 path.startsWith("/v3/api-docs") ||
                 path.equals("/swagger-ui.html") ||
                 path.startsWith("/webjars/")) {
+            return true;
+        }
+
+        // WebSocket endpoints
+        if (path.startsWith("/ws") || path.startsWith("/websocket/")) {
             return true;
         }
 
@@ -130,7 +145,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Other public GET endpoints
         if ("GET".equals(method)) {
             return path.startsWith("/api/categories") ||
-                    (path.startsWith("/api/orders/") && guestToken != null);
+                    (path.startsWith("/api/orders/") && accessToken != null);
         }
 
         // Allow guest orders
@@ -166,7 +181,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Other public GET endpoints
         if ("GET".equals(method)) {
             return path.startsWith("/api/categories") ||
-                    (path.startsWith("/api/orders/") && path.contains("?guestToken="));
+                    (path.startsWith("/api/orders/") && path.contains("?accessToken="));
         }
 
         // Allow guest orders
@@ -178,7 +193,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // New condition for producer orders
         if ("GET".equals(method) && path.startsWith("/api/orders/")) {
             return !path.contains("/producer-orders") && 
-                   (path.contains("?guestToken=") || path.contains("/status/"));
+                   (path.contains("?accessToken=") || path.contains("/status/"));
+        }
+
+        // Add in isPublicPath method after Swagger endpoints check
+        if (path.startsWith("/ws")) {
+            return true;
+        }
+
+        // WebSocket endpoints
+        if (path.startsWith("/ws") || path.startsWith("/websocket/")) {
+            return true;
         }
 
         return false;

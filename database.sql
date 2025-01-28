@@ -57,23 +57,32 @@
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- Table: Order
-    CREATE TABLE `Order` (
-        orderId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-        customerId BIGINT,
-        guestEmail VARCHAR(255),
-        guestToken VARCHAR(255),
-        expiresAt DATETIME,
-        shippingAddress TEXT NOT NULL,
-        phoneNumber VARCHAR(20) NOT NULL,
-        paymentMethod ENUM('CARD', 'BITCOIN') NOT NULL,
-        orderDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-        status ENUM('PENDING', 'ACCEPTED', 'DECLINED', 'DELIVERED', 'CANCELLED', 'RETURNED') DEFAULT 'PENDING',
-        totalPrice DECIMAL(10, 2) NOT NULL,
-        paymentId BIGINT,
-        FOREIGN KEY (customerId) REFERENCES User(userId) ON DELETE SET NULL,
-        FOREIGN KEY (paymentId) REFERENCES PaymentInfo(paymentId)
-    );
+-- Table: Order
+CREATE TABLE `Order` (
+    orderId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    customerId BIGINT,
+    guestEmail VARCHAR(255),
+    accessToken VARCHAR(255),
+    expiresAt DATETIME,
+    shippingAddress TEXT NOT NULL,
+    phoneNumber VARCHAR(20) NOT NULL,
+    paymentMethod ENUM('CARD', 'BITCOIN') NOT NULL,
+    orderDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM(
+        'PENDING_PAYMENT',
+        'PAYMENT_FAILED',
+        'PAYMENT_COMPLETED',
+        'PROCESSING',
+        'SHIPPED',
+        'DELIVERED',
+        'CANCELLED',
+        'RETURNED'
+    ) DEFAULT 'PENDING_PAYMENT',
+    totalPrice DECIMAL(10, 2) NOT NULL,
+    paymentId BIGINT,
+    FOREIGN KEY (customerId) REFERENCES User(userId) ON DELETE SET NULL,
+    FOREIGN KEY (paymentId) REFERENCES PaymentInfo(paymentId)
+);
 
     -- Table: OrderItem
     CREATE TABLE OrderItem (
@@ -118,14 +127,39 @@
         FOREIGN KEY (customerId) REFERENCES User(userId) ON DELETE CASCADE
     );
 
-    -- Update PaymentInfo to add Order foreign key
-    ALTER TABLE PaymentInfo
-    ADD FOREIGN KEY (orderId) REFERENCES `Order`(orderId) ON DELETE CASCADE;
+-- Table: StockReservation
+CREATE TABLE StockReservation (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    productId BIGINT NOT NULL,
+    orderId BIGINT NOT NULL,
+    quantity INT NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expiresAt DATETIME NOT NULL,
+    FOREIGN KEY (productId) REFERENCES Product(productId) ON DELETE CASCADE,
+    FOREIGN KEY (orderId) REFERENCES `Order`(orderId) ON DELETE CASCADE
+);
 
-    -- Add indexes for analytics queries
-    ALTER TABLE User ADD INDEX idx_created_at (createdAt);
-    ALTER TABLE User ADD INDEX idx_role_created_at (role, createdAt);
-    ALTER TABLE `Order` ADD INDEX idx_order_date (orderDate);
-    ALTER TABLE `Order` ADD INDEX idx_status_date (status, orderDate);
-    ALTER TABLE PaymentInfo ADD INDEX idx_created_at (createdAt);
-    ALTER TABLE PaymentInfo ADD INDEX idx_status_created (paymentStatus, createdAt);
+-- Table: AccessToken
+CREATE TABLE AccessToken (
+    token VARCHAR(255) PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    expiresAt DATETIME NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_email (email),
+    INDEX idx_expires (expiresAt)
+);
+
+-- Update PaymentInfo to add Order foreign key
+ALTER TABLE PaymentInfo
+ADD FOREIGN KEY (orderId) REFERENCES `Order`(orderId) ON DELETE CASCADE;
+
+-- Add indexes for analytics queries
+ALTER TABLE User ADD INDEX idx_created_at (createdAt);
+ALTER TABLE User ADD INDEX idx_role_created_at (role, createdAt);
+ALTER TABLE `Order` ADD INDEX idx_order_date (orderDate);
+ALTER TABLE `Order` ADD INDEX idx_status_date (status, orderDate);
+ALTER TABLE PaymentInfo ADD INDEX idx_created_at (createdAt);
+ALTER TABLE PaymentInfo ADD INDEX idx_status_created (paymentStatus, createdAt);
+
+-- Add index for expired reservations cleanup
+ALTER TABLE StockReservation ADD INDEX idx_expires_at (expiresAt);

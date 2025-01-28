@@ -110,7 +110,7 @@ image: [file] (optional, but either imageUrl or image must be provided)
 | POST   | /                 | Create order          | No           | Any   | `OrderRequest`         |
 | GET    | /                 | Get all orders        | Yes          | Admin | None                  |
 | GET    | /{id}            | Get order by ID       | Yes          | User  | None                  |
-| GET    | /guest/{id}?guestToken={token}   | Get guest order       | No           | Any   | None                  |
+| GET    | /guest/{id}?accessToken={token}   | Get guest order       | No           | Any   | None                  |
 
 ### OrderRequest Example
 ```json
@@ -122,7 +122,7 @@ image: [file] (optional, but either imageUrl or image must be provided)
   "shippingAddress": "string",
   "phoneNumber": "string",
   "guestEmail": "string (optional)",
-  "guestToken": "string (optional)",
+  "accessToken": "string (optional)",
   "accountCreation": {
     "createAccount": "boolean",
     "username": "string",
