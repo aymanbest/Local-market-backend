@@ -62,6 +62,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/users/{id}").authenticated()
                 .requestMatchers(HttpMethod.GET,"/api/users").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/send-email").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/analytics/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/producer-applications/status").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/orders/producer-orders/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/orders/producer-orders/status/**").authenticated()

@@ -180,7 +180,7 @@ public class OrderService {
             .orElseThrow(() -> new ApiException(ErrorType.PAYMENT_NOT_FOUND, "Payment not found"));
         payment.setOrderId(order.getOrderId());
         order.setPayment(payment);
-        order.setStatus(OrderStatus.ACCEPTED);
+        order.setStatus(OrderStatus.PROCESSING);
         
         return orderRepository.save(order);
     }
@@ -274,14 +274,14 @@ public class OrderService {
     private void validateStatusTransition(OrderStatus currentStatus, OrderStatus newStatus) {
         // Define valid status transitions
         if (currentStatus == OrderStatus.PENDING) {
-            if (newStatus != OrderStatus.ACCEPTED && newStatus != OrderStatus.DECLINED) {
+            if (newStatus != OrderStatus.PROCESSING && newStatus != OrderStatus.DECLINED) {
                 throw new ApiException(ErrorType.INVALID_STATUS_TRANSITION, 
-                    "Pending orders can only be accepted or declined");
+                    "Pending orders can only be PROCESSING or declined");
             }
-        } else if (currentStatus == OrderStatus.ACCEPTED) {
+        } else if (currentStatus == OrderStatus.PROCESSING) {
             if (newStatus != OrderStatus.DELIVERED && newStatus != OrderStatus.CANCELLED) {
                 throw new ApiException(ErrorType.INVALID_STATUS_TRANSITION, 
-                    "Accepted orders can only be delivered or cancelled");
+                    "accepted orders can only be delivered or cancelled");
             }
         } else if (currentStatus == OrderStatus.DELIVERED) {
             if (newStatus != OrderStatus.RETURNED) {

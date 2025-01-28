@@ -4,6 +4,7 @@ import com.localmarket.main.entity.order.Order;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import com.localmarket.main.entity.order.OrderStatus;
 import jakarta.persistence.Tuple;
@@ -75,4 +76,37 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     List<Order> findByItemsProductProducerUserId(Long producerId);
     List<Order> findByItemsProductProducerUserIdAndStatus(Long producerId, OrderStatus status);
-}
+
+        // Count total orders
+        @Query("SELECT COUNT(o) FROM Order o")
+        int countAllOrders();
+    
+        // Count orders in a specific period
+        @Query("SELECT COUNT(o) FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate")
+        int countAllOrdersPreviousPeriod(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    
+        // Count total revenue
+        @Query("SELECT SUM(o.totalPrice) FROM Order o")
+        Double calculateTotalRevenue();
+    
+        // Count total revenue in a period
+        @Query("SELECT SUM(o.totalPrice) FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate")
+        Double calculateTotalRevenuePreviousPeriod(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    
+        // Count orders by status (e.g., PENDING, DELIVERED, PROCESSING)
+        @Query("SELECT COUNT(o) FROM Order o WHERE o.status = :status")
+        int countOrdersByStatus(@Param("status") OrderStatus status);
+    
+        // Count orders in a specific period and status
+        @Query("SELECT COUNT(o) FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate AND o.status = :status")
+        int countOrdersByStatusInPeriod(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, @Param("status") OrderStatus status);
+    
+        // Revenue trend per month (monthly breakdown for current year)
+        @Query("SELECT MONTH(o.orderDate) AS month, SUM(o.totalPrice) AS revenue FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate GROUP BY MONTH(o.orderDate) ORDER BY month")
+        List<Object[]> calculateRevenueTrend(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    
+        // Monthly orders (count per month for current year)
+        @Query("SELECT MONTH(o.orderDate) AS month, COUNT(o) AS totalOrders FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate GROUP BY MONTH(o.orderDate) ORDER BY month")
+        List<Object[]> calculateMonthlyOrders(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    }
+    

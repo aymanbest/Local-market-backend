@@ -5,8 +5,6 @@ import com.localmarket.main.dto.analytics.TransactionAnalyticsResponse;
 import com.localmarket.main.dto.analytics.BusinessMetricsResponse;
 import com.localmarket.main.repository.user.UserRepository;
 import com.localmarket.main.repository.order.OrderRepository;
-import com.localmarket.main.repository.product.ProductRepository;
-import com.localmarket.main.repository.category.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
@@ -34,8 +32,6 @@ import com.localmarket.main.dto.analytics.CombinedAnalyticsResponse;
 public class AnalyticsService {
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
-    private final ProductRepository productRepository;
-    private final CategoryRepository categoryRepository;
 
     @Autowired
     private CSVExportService csvExportService;
