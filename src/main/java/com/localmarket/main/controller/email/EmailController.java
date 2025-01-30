@@ -1,6 +1,5 @@
 package com.localmarket.main.controller.email;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,7 +13,12 @@ import com.localmarket.main.service.email.EmailService;
 
 import org.springframework.web.multipart.MultipartFile;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+
 @RestController
+@Tag(name = "Email", description = "Email APIs")
+@RequiredArgsConstructor
 public class EmailController {
 
     @Autowired

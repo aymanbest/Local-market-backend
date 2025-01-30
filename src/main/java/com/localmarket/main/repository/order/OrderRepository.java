@@ -113,4 +113,16 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByGuestEmail(String guestEmail);
 
     List<Order> findByAccessToken(String accessToken);
+
+    @Query("""
+        SELECT COUNT(o) > 0 FROM Order o 
+        JOIN o.items i 
+        WHERE o.customer.userId = :customerId 
+        AND i.product.productId = :productId 
+        AND o.status = :status
+    """)
+    boolean existsByCustomerUserIdAndProductIdAndStatus(
+        @Param("customerId") Long customerId, 
+        @Param("productId") Long productId, 
+        @Param("status") OrderStatus status);
 }

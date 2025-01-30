@@ -1,4 +1,4 @@
-package com.localmarket.main.dto.analytics;
+package com.localmarket.main.dto.analytics.admin;
 
 import java.math.BigDecimal;
 import java.util.List;

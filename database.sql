@@ -100,12 +100,14 @@ CREATE TABLE `Order` (
         reviewId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
         productId BIGINT NOT NULL,
         customerId BIGINT NOT NULL,
-        rating INT NOT NULL,
+        rating ENUM('0', '1', '2', '3', '4' ,'5') NOT NULL,
         comment TEXT,
+        status ENUM('PENDING', 'APPROVED', 'DECLINED') DEFAULT 'PENDING',
+        verifiedPurchase BOOLEAN DEFAULT FALSE,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (productId) REFERENCES Product(productId) ON DELETE CASCADE,
         FOREIGN KEY (customerId) REFERENCES User(userId) ON DELETE CASCADE
-    );
+);
 
     -- Table: ProducerApplication
     CREATE TABLE ProducerApplication (

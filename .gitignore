@@ -35,3 +35,7 @@ build/
 ### Localmarket uploads ###
 uploads/
 uploads/**
+
+.env
+*.env
+!.env.example

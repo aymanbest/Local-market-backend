@@ -1,24 +1,27 @@
 jwt:
-  secret: NDA0RTYzNTI2NjU1NkE1ODZFMzI3MjM1NzUzODc4MkY0MTNGNDQ= 
+  secret: ${JWT_SECRET}
 
 app:
   admin:
-    username: admin
-    firstname: System
-    lastname: Administrator
-    email: admin@localmarket.com
-    password: ${ADMIN_PASSWORD:admin123}  # Use env variable or default
+    username: ${ADMIN_USERNAME}
+    firstname: ${ADMIN_FIRSTNAME}
+    lastname: ${ADMIN_LASTNAME}
+    email: ${ADMIN_EMAIL}
+    password: ${ADMIN_PASSWORD}
   upload:
-    dir: uploads/products
+    dir: ${UPLOAD_DIR}
     
 spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   mail:
-    host: sandbox.smtp.mailtrap.io
-    port : 2525
-    # ssl : false
-    tls : true
-    username: c8a069051b5d2d
-    password: 814a5d6d6c9a7c
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    tls: ${MAIL_TLS}
     properties:
       mail:
         smtp:

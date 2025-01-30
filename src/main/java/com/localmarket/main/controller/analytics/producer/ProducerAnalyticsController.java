@@ -19,13 +19,10 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/analytics")
+@Tag(name = "Analytics Producer", description = "Analytics APIs (Producer only)")
+@RequiredArgsConstructor
 public class ProducerAnalyticsController {
-
     private final ProducerAnalyticsService producerAnalyticsService;
-
-    public ProducerAnalyticsController(ProducerAnalyticsService producerAnalyticsService) {
-        this.producerAnalyticsService = producerAnalyticsService;
-    }
 
     @ProducerOnly
     @GetMapping("/overview")

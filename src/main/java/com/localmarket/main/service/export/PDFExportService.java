@@ -13,8 +13,9 @@ import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.properties.UnitValue;
+import com.localmarket.main.dto.analytics.admin.CombinedAnalyticsResponse;
+
 import java.time.format.DateTimeFormatter;
-import com.localmarket.main.dto.analytics.CombinedAnalyticsResponse;
 import java.io.ByteArrayOutputStream;
 import com.itextpdf.layout.properties.HorizontalAlignment;
 

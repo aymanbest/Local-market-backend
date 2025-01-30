@@ -1,8 +1,5 @@
-package com.localmarket.main.controller.analytics;
+package com.localmarket.main.controller.analytics.admin;
 
-import com.localmarket.main.dto.analytics.UserAnalyticsResponse;
-import com.localmarket.main.dto.analytics.TransactionAnalyticsResponse;
-import com.localmarket.main.dto.analytics.BusinessMetricsResponse;
 import com.localmarket.main.service.analytics.AnalyticsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -11,6 +8,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import com.localmarket.main.dto.analytics.admin.BusinessMetricsResponse;
+import com.localmarket.main.dto.analytics.admin.TransactionAnalyticsResponse;
+import com.localmarket.main.dto.analytics.admin.UserAnalyticsResponse;
 import com.localmarket.main.security.AdminOnly;
 import java.time.LocalDate;
 import org.springframework.core.io.ByteArrayResource;
@@ -21,8 +22,8 @@ import org.springframework.core.io.Resource;
 @RestController
 @RequestMapping("/api/analytics")
 @RequiredArgsConstructor
-@Tag(name = "Analytics", description = "Analytics APIs (Admin only)")
-public class AnalyticsController {
+@Tag(name = "Analytics Admin", description = "Analytics APIs (Admin only)")
+public class AdminAnalyticsController {
     private final AnalyticsService analyticsService;
 
     @Operation(summary = "Get user analytics", description = "Get user-related analytics")

@@ -154,6 +154,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     path.matches("/api/orders/\\d+/pay");
         }
 
+        // Public GET endpoints for reviews
+        if ("GET".equals(method) && path.startsWith("/api/reviews")) {
+            return path.startsWith("/api/reviews/product/") && 
+                   !path.contains("/pending") &&
+                   !path.contains("/eligibility");
+        }
+
         return false;
     }
 

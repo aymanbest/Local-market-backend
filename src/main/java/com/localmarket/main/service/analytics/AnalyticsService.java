@@ -1,8 +1,5 @@
 package com.localmarket.main.service.analytics;
 
-import com.localmarket.main.dto.analytics.UserAnalyticsResponse;
-import com.localmarket.main.dto.analytics.TransactionAnalyticsResponse;
-import com.localmarket.main.dto.analytics.BusinessMetricsResponse;
 import com.localmarket.main.repository.user.UserRepository;
 import com.localmarket.main.repository.order.OrderRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,15 +14,18 @@ import java.time.temporal.ChronoUnit;
 import com.localmarket.main.entity.user.Role;
 import com.localmarket.main.entity.order.Order;
 import com.localmarket.main.entity.order.OrderStatus;
-import com.localmarket.main.dto.analytics.CategorySalesMetric;
-import com.localmarket.main.dto.analytics.MonthlyRevenue;
-import com.localmarket.main.dto.analytics.ProducerPerformance;
-import com.localmarket.main.dto.analytics.TransactionDetails;
+import com.localmarket.main.dto.analytics.admin.BusinessMetricsResponse;
+import com.localmarket.main.dto.analytics.admin.CategorySalesMetric;
+import com.localmarket.main.dto.analytics.admin.CombinedAnalyticsResponse;
+import com.localmarket.main.dto.analytics.admin.MonthlyRevenue;
+import com.localmarket.main.dto.analytics.admin.ProducerPerformance;
+import com.localmarket.main.dto.analytics.admin.TransactionAnalyticsResponse;
+import com.localmarket.main.dto.analytics.admin.TransactionDetails;
+import com.localmarket.main.dto.analytics.admin.UserAnalyticsResponse;
 import com.localmarket.main.entity.category.Category;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.localmarket.main.service.export.CSVExportService;
 import com.localmarket.main.service.export.PDFExportService;
-import com.localmarket.main.dto.analytics.CombinedAnalyticsResponse;
 
 @Service
 @RequiredArgsConstructor

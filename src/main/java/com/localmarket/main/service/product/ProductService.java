@@ -36,6 +36,9 @@ import java.time.LocalDateTime;
 import com.localmarket.main.entity.order.Order;
 import com.localmarket.main.entity.order.OrderItem;
 import com.localmarket.main.dto.notification.NotificationResponse;
+import com.localmarket.main.dto.review.ReviewResponse;
+import com.localmarket.main.repository.review.ReviewRepository;
+import com.localmarket.main.entity.review.ReviewStatus;
 
 
 @Service
@@ -47,6 +50,7 @@ public class ProductService {
     private final FileStorageService fileStorageService;
     private final ProducerNotificationService producerNotificationService;
     private final StockReservationRepository stockReservationRepository;
+    private final ReviewRepository reviewRepository;
     private static final int LOW_STOCK_THRESHOLD = 10;
     private static final int CRITICAL_STOCK_THRESHOLD = 5;
 
@@ -145,18 +149,33 @@ public class ProductService {
             producer.getEmail()
         );
         
-        return new ProductResponse(
-            product.getProductId(),
-            product.getName(),
-            product.getDescription(),
-            product.getPrice(),
-            product.getQuantity(),
-            product.getImageUrl(),
-            product.getCreatedAt(),
-            product.getUpdatedAt(),
-            producerDTO,
-            product.getCategories()
-        );
+        List<ReviewResponse> verifiedReviews = reviewRepository.findByProductProductId(product.getProductId())
+            .stream()
+            .filter(review -> review.isVerifiedPurchase() && review.getStatus() == ReviewStatus.APPROVED)
+            .map(review -> ReviewResponse.builder()
+                .reviewId(review.getReviewId())
+                .customerUsername(review.getCustomer().getUsername())
+                .rating(review.getRating())
+                .comment(review.getComment())
+                .verifiedPurchase(review.isVerifiedPurchase())
+                .createdAt(review.getCreatedAt())
+                .build())
+            .collect(Collectors.toList());
+
+        ProductResponse response = new ProductResponse();
+        response.setProductId(product.getProductId());
+        response.setName(product.getName());
+        response.setDescription(product.getDescription());
+        response.setPrice(product.getPrice());
+        response.setQuantity(product.getQuantity());
+        response.setImageUrl(product.getImageUrl());
+        response.setCreatedAt(product.getCreatedAt());
+        response.setUpdatedAt(product.getUpdatedAt());
+        response.setCategories(product.getCategories());
+        response.setProducer(producerDTO);
+        response.setVerifiedReviews(verifiedReviews);
+        
+        return response;
     }
 
     @Transactional(readOnly = true)
