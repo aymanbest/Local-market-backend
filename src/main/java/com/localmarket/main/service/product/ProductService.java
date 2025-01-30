@@ -36,9 +36,10 @@ import java.time.LocalDateTime;
 import com.localmarket.main.entity.order.Order;
 import com.localmarket.main.entity.order.OrderItem;
 import com.localmarket.main.dto.notification.NotificationResponse;
-import com.localmarket.main.dto.review.ReviewResponse;
+import com.localmarket.main.dto.review.VerifiedReviews;
 import com.localmarket.main.repository.review.ReviewRepository;
 import com.localmarket.main.entity.review.ReviewStatus;
+import com.localmarket.main.entity.review.Review;
 
 
 @Service
@@ -149,10 +150,10 @@ public class ProductService {
             producer.getEmail()
         );
         
-        List<ReviewResponse> verifiedReviews = reviewRepository.findByProductProductId(product.getProductId())
+        List<VerifiedReviews> verifiedReviews = reviewRepository.findByProductProductId(product.getProductId())
             .stream()
             .filter(review -> review.isVerifiedPurchase() && review.getStatus() == ReviewStatus.APPROVED)
-            .map(review -> ReviewResponse.builder()
+            .map((Review review) -> VerifiedReviews.builder()
                 .reviewId(review.getReviewId())
                 .customerUsername(review.getCustomer().getUsername())
                 .rating(review.getRating())

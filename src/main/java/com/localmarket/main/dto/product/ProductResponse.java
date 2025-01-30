@@ -7,7 +7,7 @@ import java.util.Set;
 
 import com.localmarket.main.entity.category.Category;
 import com.localmarket.main.dto.user.FilterUsersResponse;
-import com.localmarket.main.dto.review.ReviewResponse;
+import com.localmarket.main.dto.review.VerifiedReviews;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -27,6 +27,6 @@ public class ProductResponse {
     private LocalDateTime updatedAt;
     private FilterUsersResponse producer;
     private Set<Category> categories;
-    private List<ReviewResponse> verifiedReviews;
+    private List<VerifiedReviews> verifiedReviews;
 }
 
