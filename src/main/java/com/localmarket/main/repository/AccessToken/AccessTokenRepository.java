@@ -1,4 +1,4 @@
-package com.localmarket.main.repository.accesstoken;
+package com.localmarket.main.repository.AccessToken;
 
 import com.localmarket.main.entity.AccessToken.AccessToken;
 import org.springframework.data.jpa.repository.JpaRepository;

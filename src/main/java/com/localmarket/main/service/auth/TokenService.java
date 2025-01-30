@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import com.localmarket.main.entity.AccessToken.AccessToken;
-import com.localmarket.main.repository.accesstoken.AccessTokenRepository;
+import com.localmarket.main.repository.AccessToken.AccessTokenRepository;
 
 import java.time.LocalDateTime;
 import org.springframework.scheduling.annotation.Scheduled;
