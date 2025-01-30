@@ -26,4 +26,5 @@ public class MyProductResponse {
     private Set<Category> categories;
     private ProductStatus status;
     private String declineReason;
+    private boolean stock;
 } 

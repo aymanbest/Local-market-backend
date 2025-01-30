@@ -28,5 +28,6 @@ public class ProductResponse {
     private FilterUsersResponse producer;
     private Set<Category> categories;
     private List<VerifiedReviews> verifiedReviews;
+    private boolean stock;
 }
 

@@ -175,6 +175,7 @@ public class ProductService {
         response.setCategories(product.getCategories());
         response.setProducer(producerDTO);
         response.setVerifiedReviews(verifiedReviews);
+        response.setStock(product.getQuantity() > 0);
         
         return response;
     }
@@ -281,6 +282,7 @@ public class ProductService {
     }
 
     private MyProductResponse convertToMyProductDTO(Product product) {
+        boolean stock = product.getQuantity() > 0;
         return new MyProductResponse(
             product.getProductId(),
             product.getName(),
@@ -292,7 +294,8 @@ public class ProductService {
             product.getUpdatedAt(),
             product.getCategories(),
             product.getStatus(),
-            product.getDeclineReason()
+            product.getDeclineReason(),
+            stock
         );
     }
 
