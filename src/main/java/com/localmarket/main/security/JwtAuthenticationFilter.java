@@ -111,10 +111,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String method = request.getMethod();
         String accessToken = request.getParameter("accessToken");
 
+        if (path.startsWith("/api/orders/bundle/")) {
+            return true;
+        }
         // Add specific check for orders endpoint with accessToken
         if ("GET".equals(method) && path.equals("/api/orders") && accessToken != null) {
             return true;
         }
+
+
 
         // Swagger UI endpoints
         if (path.startsWith("/swagger-ui") ||
@@ -151,7 +156,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Allow guest orders
         if ("POST".equals(method)) {
             return path.equals("/api/orders/checkout") ||
-                    path.matches("/api/orders/\\d+/pay");
+                    (path.startsWith("/api/orders/pay") && path.contains("?accessToken=")) ||
+                    path.startsWith("/api/orders/bundle/");
         }
 
         // Public GET endpoints for reviews
@@ -194,7 +200,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Allow guest orders
         if ("POST".equals(method)) {
             return path.equals("/api/orders/checkout") ||
-                    path.matches("/api/orders/\\d+/pay");
+                    (path.startsWith("/api/orders/pay") && path.contains("?accessToken=")) ||
+                    path.startsWith("/api/orders/bundle/");
         }
 
         // New condition for producer orders

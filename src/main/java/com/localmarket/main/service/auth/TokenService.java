@@ -19,18 +19,14 @@ public class TokenService {
     
     private final AccessTokenRepository accessTokenRepository;
 
-    public String getOrCreateAccessToken(String email) {
-        return accessTokenRepository.findByEmail(email)
-            .map(AccessToken::getToken)
-            .orElseGet(() -> {
-                AccessToken token = new AccessToken();
-                token.setToken(UUID.randomUUID().toString());
-                token.setEmail(email);
-                token.setExpiresAt(LocalDateTime.now().plusDays(7));
-                token.setCreatedAt(LocalDateTime.now());
-                accessTokenRepository.save(token);
-                return token.getToken();
-            });
+    public String createCheckoutToken(String email) {
+        AccessToken token = new AccessToken();
+        token.setToken(UUID.randomUUID().toString());
+        token.setEmail(email);
+        token.setExpiresAt(LocalDateTime.now().plusDays(7));
+        token.setCreatedAt(LocalDateTime.now());
+        accessTokenRepository.save(token);
+        return token.getToken();
     }
 
     public String validateAccessToken(String token) {

@@ -120,27 +120,31 @@ public class OrderService {
         
         List<OrderResponse> orders = new ArrayList<>();
         
+        // Generate single access token for all orders in this checkout
+        String accessToken = null;
+        if (userEmail != null) {
+            accessToken = tokenService.createCheckoutToken(userEmail);
+        } else if (request.getGuestEmail() != null) {
+            accessToken = tokenService.createCheckoutToken(request.getGuestEmail());
+        }
+        
         // Create separate order for each producer
         for (Map.Entry<Long, List<OrderItemRequest>> entry : itemsByProducer.entrySet()) {
             Order order = new Order();
-            String accessToken = null;
             
-            // Set customer info
+            // Set customer info using the same access token
             if (userEmail != null) {
                 User customer = userRepository.findByEmail(userEmail)
                     .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "User not found"));
-                setupCustomerOrder(order, customer);
-                accessToken = order.getAccessToken();
+                setupCustomerOrder(order, customer, accessToken);
             } else if (request.getAccountCreation() != null && request.getAccountCreation().isCreateAccount()) {
                 RegisterRequest registerRequest = createRegisterRequest(request);
                 AuthResponse authResponse = authService.register(registerRequest, null);
                 User newCustomer = userRepository.findByEmail(request.getGuestEmail())
                     .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User creation failed"));
-                setupCustomerOrder(order, newCustomer);
-                accessToken = order.getAccessToken();
+                setupCustomerOrder(order, newCustomer, accessToken);
             } else {
-                setupGuestOrder(order, request);
-                accessToken = order.getAccessToken();
+                setupGuestOrder(order, request, accessToken);
             }
             
             // Set common order details
@@ -185,18 +189,16 @@ public class OrderService {
         return registerRequest;
     }
 
-    private void setupGuestOrder(Order order, OrderRequest request) {
+    private void setupGuestOrder(Order order, OrderRequest request, String accessToken) {
         if (request.getGuestEmail() == null || request.getGuestEmail().trim().isEmpty()) {
             throw new ApiException(ErrorType.VALIDATION_FAILED, "Guest email is required for guest orders");
         }
-        String accessToken = tokenService.getOrCreateAccessToken(request.getGuestEmail());
         order.setAccessToken(accessToken);
         order.setGuestEmail(request.getGuestEmail());
         order.setExpiresAt(LocalDateTime.now().plusHours(24));
     }
 
-    private void setupCustomerOrder(Order order, User customer) {
-        String accessToken = tokenService.getOrCreateAccessToken(customer.getEmail());
+    private void setupCustomerOrder(Order order, User customer, String accessToken) {
         order.setAccessToken(accessToken);
         order.setCustomer(customer);
         order.setExpiresAt(LocalDateTime.now().plusHours(24));
@@ -210,29 +212,54 @@ public class OrderService {
     }
 
     @Transactional
-    public Order processOrderPayment(Long orderId, PaymentInfo paymentInfo, String userEmail) {
-        Order order = orderRepository.findById(orderId)
-            .orElseThrow(() -> new ApiException(ErrorType.ORDER_NOT_FOUND, "Order not found"));
-            
+    public List<Order> processOrdersPayment(PaymentInfo paymentInfo, String userEmail, String accessToken) {
+        // Get all orders from the checkout session
+        List<Order> orders = orderRepository.findAllByAccessToken(accessToken);
+        if (orders.isEmpty()) {
+            throw new ApiException(ErrorType.ORDER_NOT_FOUND, "No orders found for this access token");
+        }
+        
+        // Validate orders are in PENDING_PAYMENT status
+        orders.forEach(order -> {
+            if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
+                throw new ApiException(ErrorType.INVALID_REQUEST, 
+                    "Order " + order.getOrderId() + " is not pending payment");
+            }
+        });
+        
+        // Calculate total price for all orders
+        BigDecimal totalAmount = orders.stream()
+            .map(Order::getTotalPrice)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        if (totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ApiException(ErrorType.VALIDATION_FAILED, "Total order amount must be greater than 0");
+        }
+        
         try {
-            PaymentResponse paymentResponse = paymentService.processPayment(paymentInfo, order.getTotalPrice());
+            // Process single payment for total amount
+            PaymentResponse paymentResponse = paymentService.processPayment(paymentInfo, totalAmount);
             
-            // Update order status and confirm stock reduction
-            order.setStatus(OrderStatus.PAYMENT_COMPLETED);
-            productService.confirmStockReduction(order);
+            // Update all orders
+            List<Order> processedOrders = new ArrayList<>();
+            for (Order order : orders) {
+                order.setStatus(OrderStatus.PAYMENT_COMPLETED);
+                productService.confirmStockReduction(order);
+                updateOrderPayment(order, paymentResponse);
+                processedOrders.add(orderRepository.save(order));
+            }
             
-            // Update order with payment info
-            updateOrderPayment(order, paymentResponse);
-            
-            return orderRepository.save(order);
+            return processedOrders;
         } catch (Exception e) {
-            order.setStatus(OrderStatus.PAYMENT_FAILED);
-            productService.releaseStock(order);
-            orderRepository.save(order);
+            // If payment fails, update all orders
+            orders.forEach(order -> {
+                order.setStatus(OrderStatus.PAYMENT_FAILED);
+                productService.releaseStock(order);
+                orderRepository.save(order);
+            });
             throw e;
         }
     }
-
 
     private List<OrderItem> createOrderItems(Order order, List<OrderItemRequest> itemRequests) {
         List<OrderItem> orderItems = new ArrayList<>();
@@ -362,12 +389,59 @@ public class OrderService {
         order.setPayment(payment);
     }
 
-    public List<Order> getGuestOrders(String accessToken) {
+    public Order getGuestOrders(String accessToken) {
         String email = tokenService.validateAccessToken(accessToken);
         if (email == null) {
             throw new ApiException(ErrorType.INVALID_TOKEN, "Invalid or expired access token");
         }
-        return orderRepository.findByAccessToken(accessToken);
+        return orderRepository.findByAccessToken(accessToken)
+            .orElseThrow(() -> new ApiException(ErrorType.ORDER_NOT_FOUND, "Order not found"));
+    }
+
+    public Order getOrderByAccessToken(String accessToken) {
+        String email = tokenService.validateAccessToken(accessToken);
+        if (email == null) {
+            throw new ApiException(ErrorType.INVALID_TOKEN, "Invalid or expired access token");
+        }
+        
+        Order order = orderRepository.findByAccessToken(accessToken)
+            .orElseThrow(() -> new ApiException(ErrorType.ORDER_NOT_FOUND, 
+                "Order not found for this access token"));
+                
+        if (order.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new ApiException(ErrorType.TOKEN_EXPIRED, "Access token has expired");
+        }
+        
+        return order;
+    }
+
+    public List<Order> getOrdersByAccessToken(String accessToken) {
+        String email = tokenService.validateAccessToken(accessToken);
+        if (email == null) {
+            throw new ApiException(ErrorType.INVALID_TOKEN, "Invalid or expired access token");
+        }
+        
+        List<Order> orders = orderRepository.findAllByAccessToken(accessToken);
+        if (orders.isEmpty()) {
+            throw new ApiException(ErrorType.ORDER_NOT_FOUND, "No orders found for this access token");
+        }
+        
+        // Check expiration on the first order since all orders in a checkout session share the same expiration
+        if (orders.get(0).getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new ApiException(ErrorType.TOKEN_EXPIRED, "Access token has expired");
+        }
+        
+        return orders;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Order> getOrderBundle(String accessToken) {
+        List<Order> orders = orderRepository.findAllByAccessToken(accessToken);
+        if (orders.isEmpty()) {
+            throw new ApiException(ErrorType.ORDER_NOT_FOUND, 
+                "No orders found for this access token bundle");
+        }
+        return orders;
     }
 
 } 

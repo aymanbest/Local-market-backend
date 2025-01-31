@@ -59,31 +59,33 @@ public class OrderController {
         @ApiResponse(responseCode = "404", description = "Order not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "400", description = "Invalid payment information", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @PostMapping("/{orderId}/pay")
+    @PostMapping("/pay")
     @PreAuthorize("permitAll()")
-    public ResponseEntity<Order> processPayment(
-            @PathVariable Long orderId,
+    public ResponseEntity<List<Order>> processPayment(
             @RequestBody PaymentInfo paymentInfo,
-            @RequestHeader(value = "Authorization", required = false) String token) {
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @RequestParam(value = "accessToken", required = false) String accessToken) {
         String userEmail = null;
         if (token != null && token.startsWith("Bearer ")) {
             userEmail = jwtService.extractUsername(token.substring(7));
         }
-        return ResponseEntity.ok(orderService.processOrderPayment(orderId, paymentInfo, userEmail));
+        return ResponseEntity.ok(orderService.processOrdersPayment(paymentInfo, userEmail, accessToken));
     }
 
-    @Operation(summary = "Get user orders", description = "Retrieve all orders for authenticated user")
+    @Operation(summary = "Get user orders", description = "Retrieve order details using access token or authentication")
     @SecurityRequirement(name = "bearer-jwt")
     @PreAuthorize("permitAll()")
     @GetMapping
     public ResponseEntity<List<Order>> getOrders(
             @RequestHeader(value = "Authorization", required = false) String token,
-            @RequestParam(value = "accessToken", required = false) String accessToken) {
-        if (token != null && token.startsWith("Bearer ")) {
+            @RequestParam(value = "accessToken", required = false) String accessToken,
+            @RequestParam(value = "showall", required = false) String showall) {
+                
+        if (accessToken != null) {
+            return ResponseEntity.ok(orderService.getOrdersByAccessToken(accessToken));
+        } else if (token != null && token.startsWith("Bearer ") && "true".equals(showall)) {
             Long userId = jwtService.extractUserId(token.substring(7));
             return ResponseEntity.ok(orderService.getUserOrders(userId));
-        } else if (accessToken != null) {
-            return ResponseEntity.ok(orderService.getGuestOrders(accessToken));
         }
         throw new ApiException(ErrorType.ACCESS_DENIED, "Authentication required");
     }
@@ -169,5 +171,13 @@ public class OrderController {
             @PathVariable OrderStatus status) {
         Long producerId = jwtService.extractUserId(token.substring(7));
         return ResponseEntity.ok(orderService.getProducerOrdersByStatus(producerId, status));
+    }
+
+    @Operation(summary = "Get orders by access token", description = "Retrieve all orders associated with an access token")
+    @GetMapping("/bundle/{accessToken}")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<List<Order>> getOrderBundle(
+            @PathVariable String accessToken) {
+        return ResponseEntity.ok(orderService.getOrderBundle(accessToken));
     }
 } 

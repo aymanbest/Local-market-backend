@@ -112,7 +112,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     
     List<Order> findByGuestEmail(String guestEmail);
 
-    List<Order> findByAccessToken(String accessToken);
+    Optional<Order> findByAccessToken(String accessToken);
 
     @Query("""
         SELECT COUNT(o) > 0 FROM Order o 
@@ -125,4 +125,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Param("customerId") Long customerId, 
         @Param("productId") Long productId, 
         @Param("status") OrderStatus status);
+
+    @Query("SELECT o FROM Order o WHERE o.accessToken = :accessToken")
+    List<Order> findAllByAccessToken(@Param("accessToken") String accessToken);
 }

@@ -16,6 +16,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
+import org.springframework.security.authorization.AuthorizationDecision;
 
 
 @Configuration
@@ -44,8 +45,9 @@ public class SecurityConfig {
                                "/webjars/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/orders/checkout").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/orders/*/pay").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/orders/pay").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/orders/**").permitAll()
+                .requestMatchers("/api/orders/bundle/**").permitAll()
                 .requestMatchers("/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/images/**").permitAll()
@@ -77,6 +79,12 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/reviews/*/approve").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/reviews/*/decline").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/reviews/pending").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/orders").access((authentication, context) -> {
+                    String showall = context.getRequest().getParameter("showall");
+                    return new AuthorizationDecision(showall != null ? 
+                        authentication.get().isAuthenticated() : 
+                        true);
+                })
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider)
@@ -91,7 +99,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList("*"));  // For testing only
         configuration.setAllowedMethods(Arrays.asList("*"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(false);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
