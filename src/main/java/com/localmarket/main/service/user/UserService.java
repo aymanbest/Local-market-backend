@@ -14,6 +14,8 @@ import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.dto.auth.RegisterRequest;
 import com.localmarket.main.dto.user.FilterUsersResponse;
+import com.localmarket.main.dto.user.GetAllUsersResponse;
+
 import lombok.RequiredArgsConstructor;
 
 
@@ -95,18 +97,22 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public List<FilterUsersResponse> getUsers(Role role) {
+    public List<GetAllUsersResponse> getUsers(Role role) {
         List<User> users = (role != null) 
             ? findUsersByRole(role)
             : getAllUsers();
         
         return users.stream()
-                .map(user -> new FilterUsersResponse(
+                .map(user -> new GetAllUsersResponse(
                     user.getUserId(),
-                    user.getUsername(), 
-                    user.getEmail(), 
-                    user.getFirstname(), 
-                    user.getLastname()))
+                    user.getUsername(),
+                    user.getEmail(),
+                    user.getFirstname(),
+                    user.getLastname(),
+                    user.getRole(),
+                    user.getCreatedAt(),
+                    user.getLastLogin()
+                ))
                 .collect(Collectors.toList());
     }
 

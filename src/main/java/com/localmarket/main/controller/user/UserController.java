@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.localmarket.main.dto.user.FilterUsersResponse;
+import com.localmarket.main.dto.user.GetAllUsersResponse;
 import com.localmarket.main.entity.user.Role;
 import com.localmarket.main.entity.user.User;
 import com.localmarket.main.security.AdminOnly;
@@ -44,7 +45,7 @@ public class UserController {
     })
     @GetMapping
     @AdminOnly
-    public List<FilterUsersResponse> getUsers(
+    public List<GetAllUsersResponse> getUsers(
             @RequestParam(required = false) Role role,
             @RequestHeader("Authorization") String token) {
         return userService.getUsers(role);
