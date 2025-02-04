@@ -30,6 +30,8 @@ public class Review {
     @Min(0)
     @Max(5)
     private Integer rating;
+
+    @Column(columnDefinition = "LONGTEXT")
     private String comment;
 
     @Enumerated(EnumType.STRING)

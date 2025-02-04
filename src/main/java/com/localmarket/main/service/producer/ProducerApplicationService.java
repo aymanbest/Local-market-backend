@@ -62,6 +62,7 @@ public class ProducerApplicationService {
         application.setCustomer(customer);
         application.setBusinessName(request.getBusinessName());
         application.setBusinessDescription(request.getBusinessDescription());
+        application.setBusinessPhoneNumber(request.getBusinessPhoneNumber());
         application.setCategoryIds(request.getCategoryIds().stream()
             .map(String::valueOf)
             .collect(Collectors.joining(",")));

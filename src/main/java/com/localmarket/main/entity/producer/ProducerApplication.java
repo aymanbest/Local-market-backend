@@ -47,12 +47,16 @@ public class ProducerApplication {
     private Integer yearsOfExperience;
     
     private String websiteOrSocialLink;
+
+    @NotBlank(message = "Business phone number is required")
+    private String businessPhoneNumber;
     
     private String messageToAdmin;
     
     @Enumerated(EnumType.STRING)
     private ApplicationStatus status = ApplicationStatus.PENDING;
     
+
     private String declineReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

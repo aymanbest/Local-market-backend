@@ -16,6 +16,7 @@ public class ProducerApplicationResponse {
     private String[] categories;
     private String customCategory;
     private String businessAddress;
+    private String businessPhoneNumber;
     private String cityRegion;
     private String customCityRegion;
     private Integer yearsOfExperience;
