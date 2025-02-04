@@ -90,6 +90,7 @@ public class ProducerApplicationService {
                 .categories(categories)
                 .customCategory(application.getCustomCategory())
                 .businessAddress(application.getBusinessAddress())
+                .businessPhoneNumber(application.getBusinessPhoneNumber())
                 .cityRegion(application.getCityRegion())
                 .yearsOfExperience(application.getYearsOfExperience())
                 .websiteOrSocialLink(application.getWebsiteOrSocialLink())
