@@ -36,6 +36,7 @@ import com.localmarket.main.dto.order.OrderResponse;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.service.product.ProductService;
+import com.localmarket.main.service.coupon.CouponService;
 
 
 @Service
@@ -52,6 +53,7 @@ public class OrderService {
     private final ProducerNotificationService producerNotificationService;
     private final ProductService productService;
     private final CustomerNotificationService customerNotificationService;
+    private final CouponService couponService;
 
 
     public List<Order> getUserOrders(Long userId) {
@@ -157,6 +159,16 @@ public class OrderService {
             // Calculate total for this producer's items
             BigDecimal totalPrice = calculateTotalPrice(entry.getValue());
             order.setTotalPrice(totalPrice);
+            
+            // Apply coupon discount
+            if (request.getCouponCode() != null) {
+                BigDecimal discount = couponService.calculateDiscount(
+                    request.getCouponCode(), 
+                    order.getTotalPrice()
+                );
+                order.setTotalPrice(order.getTotalPrice().subtract(discount));
+                couponService.applyCoupon(request.getCouponCode());
+            }
             
             // Save order and reserve stock
             order = orderRepository.save(order);

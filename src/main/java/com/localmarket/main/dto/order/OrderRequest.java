@@ -13,4 +13,5 @@ public class OrderRequest {
     private String guestEmail;
     private AccountCreationRequest accountCreation;
     private PaymentMethod paymentMethod;
+    private String couponCode;
 }

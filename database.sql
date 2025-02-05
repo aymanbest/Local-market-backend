@@ -165,3 +165,21 @@ ALTER TABLE PaymentInfo ADD INDEX idx_status_created (paymentStatus, createdAt);
 
 -- Add index for expired reservations cleanup
 ALTER TABLE StockReservation ADD INDEX idx_expires_at (expiresAt);
+
+-- Table: Coupon
+CREATE TABLE Coupon (
+    couponId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    discountType ENUM('PERCENTAGE', 'FIXED_AMOUNT') NOT NULL,
+    discountValue DECIMAL(10, 2) NOT NULL,
+    minimumPurchaseAmount DECIMAL(10, 2),
+    maximumDiscountAmount DECIMAL(10, 2),
+    validFrom DATETIME NOT NULL,
+    validUntil DATETIME NOT NULL,
+    usageLimit INT,
+    timesUsed INT DEFAULT 0,
+    isActive BOOLEAN DEFAULT TRUE,
+    INDEX idx_code (code),
+    INDEX idx_valid_dates (validFrom, validUntil)
+);

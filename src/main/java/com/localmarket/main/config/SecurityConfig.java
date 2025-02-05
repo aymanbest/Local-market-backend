@@ -85,6 +85,10 @@ public class SecurityConfig {
                         authentication.get().isAuthenticated() : 
                         true);
                 })
+                .requestMatchers(HttpMethod.POST, "/api/coupons/**").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/coupons/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/coupons/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/coupons/validate/**").permitAll()
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider)
