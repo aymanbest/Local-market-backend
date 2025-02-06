@@ -89,6 +89,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/coupons/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/coupons/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/coupons/validate/**").permitAll()
+                .requestMatchers("/api/regions/**").permitAll()
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider)

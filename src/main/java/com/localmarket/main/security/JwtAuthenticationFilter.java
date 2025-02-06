@@ -119,7 +119,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return true;
         }
 
-
+        // Add regions endpoint
+        if (path.startsWith("/api/regions")) {
+            return true;
+        }
 
         // Swagger UI endpoints
         if (path.startsWith("/swagger-ui") ||
