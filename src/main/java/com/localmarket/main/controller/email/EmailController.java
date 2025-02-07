@@ -15,7 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-
+import jakarta.servlet.http.HttpServletRequest;
 @RestController
 @Tag(name = "Email", description = "Email APIs")
 @RequiredArgsConstructor
@@ -30,7 +30,7 @@ public class EmailController {
     
     @GetMapping("/api/send-email")
     public ResponseEntity<String> sendEmail(
-            @RequestHeader("Authorization") String token, 
+            HttpServletRequest request, 
             @RequestParam String to,
             @RequestParam String subject,
             @RequestParam String body,

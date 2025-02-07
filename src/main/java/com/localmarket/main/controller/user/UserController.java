@@ -23,6 +23,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import com.localmarket.main.dto.error.ErrorResponse;
 import com.localmarket.main.dto.user.PasswordChangeRequest;
 import com.localmarket.main.service.auth.JwtService;
+import com.localmarket.main.util.CookieUtil;
+import jakarta.servlet.http.HttpServletRequest;
+
 
 @RestController
 @RequestMapping("/api/users")
@@ -30,11 +33,9 @@ import com.localmarket.main.service.auth.JwtService;
 @Tag(name = "Users", description = "User management APIs")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
-
-    @Autowired
-    private JwtService jwtService;
+    private final UserService userService;
+    private final JwtService jwtService;
+    private final CookieUtil cookieUtil;
 
     
     @Operation(summary = "Get users", description = "Get all users with optional role filter (Admin only)")
@@ -46,10 +47,10 @@ public class UserController {
     @GetMapping
     @AdminOnly
     public List<GetAllUsersResponse> getUsers(
-            @RequestParam(required = false) Role role,
-            @RequestHeader("Authorization") String token) {
+            @RequestParam(required = false) Role role) {
         return userService.getUsers(role);
     }
+
 
     @Operation(summary = "Get user by ID", description = "Get specific user details (Admin only)")
     @SecurityRequirement(name = "bearer-jwt")
@@ -61,8 +62,7 @@ public class UserController {
     @GetMapping("/{id}")
     @AdminOnly
     public ResponseEntity<User> getUserById(
-            @PathVariable Long id, 
-            @RequestHeader("Authorization") String token) {
+            @PathVariable Long id) {
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
@@ -77,10 +77,10 @@ public class UserController {
     @AdminOnly
     public ResponseEntity<User> updateUser(
             @PathVariable Long id,
-            @RequestBody RegisterRequest request,
-            @RequestHeader("Authorization") String token) {
+            @RequestBody RegisterRequest request) {
         return ResponseEntity.ok(userService.updateUser(id, request));
     }
+
 
     // Delete User
     @Operation(summary = "Delete user", description = "Delete user (Admin only)")
@@ -93,11 +93,11 @@ public class UserController {
     @DeleteMapping("/{id}")
     @AdminOnly
     public ResponseEntity<Void> deleteUser(
-            @PathVariable Long id, 
-            @RequestHeader("Authorization") String token) {
+            @PathVariable Long id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
+
 
     @Operation(summary = "Change password", description = "Change user's password (requires old password)")
     @SecurityRequirement(name = "bearer-jwt")
@@ -111,8 +111,9 @@ public class UserController {
     @PostMapping("/change-password")
     public ResponseEntity<Void> changePassword(
             @RequestBody PasswordChangeRequest request,
-            @RequestHeader("Authorization") String token) {
-        Long userId = jwtService.extractUserId(token.substring(7));
+            HttpServletRequest httpRequest) {
+        String jwt = cookieUtil.getJwtFromRequest(httpRequest);
+        Long userId = jwtService.extractUserId(jwt);
         userService.changePassword(userId, request.getOldPassword(), request.getNewPassword());
         return ResponseEntity.ok().build();
     }

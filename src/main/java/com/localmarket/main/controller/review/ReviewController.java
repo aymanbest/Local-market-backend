@@ -11,6 +11,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.List;
+import jakarta.servlet.http.HttpServletRequest;
+import com.localmarket.main.util.CookieUtil;
+
 
 @RestController
 @RequestMapping("/api/reviews")
@@ -19,26 +22,31 @@ import java.util.List;
 public class ReviewController {
     private final ReviewService reviewService;
     private final JwtService jwtService;
+    private final CookieUtil cookieUtil;
     
     @GetMapping("/eligibility/{productId}")
     @Operation(summary = "Check review eligibility", description = "Check if user can review a product")
     @SecurityRequirement(name = "bearer-jwt")
     public ResponseEntity<ReviewEligibilityResponse> checkEligibility(
             @PathVariable Long productId,
-            @RequestHeader("Authorization") String token) {
-        Long customerId = jwtService.extractUserId(token.substring(7));
+            HttpServletRequest request) {
+        String jwt = cookieUtil.getJwtFromRequest(request);     
+        Long customerId = jwtService.extractUserId(jwt);
         return ResponseEntity.ok(reviewService.checkReviewEligibility(productId, customerId));
     }
+
     
     @PostMapping
     @Operation(summary = "Create review", description = "Create a new review for a product")
     @SecurityRequirement(name = "bearer-jwt")
     public ResponseEntity<ReviewResponse> createReview(
             @RequestBody ReviewRequest request,
-            @RequestHeader("Authorization") String token) {
-        Long customerId = jwtService.extractUserId(token.substring(7));
+            HttpServletRequest requestco) {
+        String jwt = cookieUtil.getJwtFromRequest(requestco);
+        Long customerId = jwtService.extractUserId(jwt);
         return ResponseEntity.ok(reviewService.createReview(request, customerId));
     }
+
     
     @PutMapping("/{reviewId}")
     @Operation(summary = "Update review", description = "Update an existing review")
@@ -46,10 +54,13 @@ public class ReviewController {
     public ResponseEntity<ReviewResponse> updateReview(
             @PathVariable Long reviewId,
             @RequestBody ReviewRequest request,
-            @RequestHeader("Authorization") String token) {
-        Long customerId = jwtService.extractUserId(token.substring(7));
+            HttpServletRequest requestco) {
+        String jwt = cookieUtil.getJwtFromRequest(requestco);
+        Long customerId = jwtService.extractUserId(jwt);
         return ResponseEntity.ok(reviewService.updateReview(reviewId, request, customerId));
     }
+
+
 
     @PostMapping("/{reviewId}/approve")
     @Operation(summary = "Approve review", description = "Approve a pending review")
@@ -71,10 +82,12 @@ public class ReviewController {
     @Operation(summary = "Get customer reviews", description = "Get all reviews by the authenticated customer")
     @SecurityRequirement(name = "bearer-jwt")
     public ResponseEntity<List<ReviewResponse>> getCustomerReviews(
-            @RequestHeader("Authorization") String token) {
-        Long customerId = jwtService.extractUserId(token.substring(7));
+            HttpServletRequest requestco) {
+        String jwt = cookieUtil.getJwtFromRequest(requestco);
+        Long customerId = jwtService.extractUserId(jwt);
         return ResponseEntity.ok(reviewService.getCustomerReviews(customerId));
     }
+
 
     @GetMapping("/product/{productId}")
     @Operation(summary = "Get product reviews", description = "Get all approved reviews for a product")

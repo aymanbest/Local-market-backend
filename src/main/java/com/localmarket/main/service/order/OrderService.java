@@ -37,7 +37,7 @@ import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.service.product.ProductService;
 import com.localmarket.main.service.coupon.CouponService;
-
+import com.localmarket.main.dto.auth.AuthServiceResult;
 
 @Service
 @RequiredArgsConstructor
@@ -141,10 +141,11 @@ public class OrderService {
                 setupCustomerOrder(order, customer, accessToken);
             } else if (request.getAccountCreation() != null && request.getAccountCreation().isCreateAccount()) {
                 RegisterRequest registerRequest = createRegisterRequest(request);
-                AuthResponse authResponse = authService.register(registerRequest, null);
+                AuthServiceResult authResult = authService.register(registerRequest, null);
                 User newCustomer = userRepository.findByEmail(request.getGuestEmail())
                     .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User creation failed"));
                 setupCustomerOrder(order, newCustomer, accessToken);
+
             } else {
                 setupGuestOrder(order, request, accessToken);
             }
@@ -224,7 +225,7 @@ public class OrderService {
     }
 
     @Transactional
-    public List<Order> processOrdersPayment(PaymentInfo paymentInfo, String userEmail, String accessToken) {
+    public List<Order> processOrdersPayment(PaymentInfo paymentInfo, String accessToken) {
         // Get all orders from the checkout session
         List<Order> orders = orderRepository.findAllByAccessToken(accessToken);
         if (orders.isEmpty()) {

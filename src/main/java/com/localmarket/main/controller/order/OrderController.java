@@ -25,6 +25,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import com.localmarket.main.dto.error.ErrorResponse;
 import com.localmarket.main.security.ProducerOnly;
 import io.swagger.v3.oas.annotations.Parameter;
+import jakarta.servlet.http.HttpServletRequest;
+import com.localmarket.main.util.CookieUtil;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -33,43 +35,40 @@ import io.swagger.v3.oas.annotations.Parameter;
 public class OrderController {
     private final OrderService orderService;
     private final JwtService jwtService;
-
-    
+    private final CookieUtil cookieUtil;
 
     @Operation(summary = "Create pending order", description = "Creates a pending order awaiting payment")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Pending order created", content = @Content(schema = @Schema(implementation = OrderResponse.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Pending order created", content = @Content(schema = @Schema(implementation = OrderResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/checkout")
-    @PreAuthorize("permitAll()")
     public ResponseEntity<List<OrderResponse>> createOrder(
             @Valid @RequestBody OrderRequest request,
-            @RequestHeader(value = "Authorization", required = false) String token) {
+            HttpServletRequest requestco) {
         String userEmail = null;
-        if (token != null && token.startsWith("Bearer ")) {
-            userEmail = jwtService.extractUsername(token.substring(7));
+        try {
+            String jwt = cookieUtil.getJwtFromRequest(requestco);
+            if (jwt != null) {
+                userEmail = jwtService.extractUsername(jwt);
+            }
+        } catch (Exception e) {
+            // Continue as guest if no valid token
         }
         return ResponseEntity.ok(orderService.createPendingOrder(request, userEmail));
     }
 
     @Operation(summary = "Process payment", description = "Process payment for an existing order")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Payment processed successfully", content = @Content(schema = @Schema(implementation = OrderResponse.class))),
-        @ApiResponse(responseCode = "404", description = "Order not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid payment information", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Payment processed successfully", content = @Content(schema = @Schema(implementation = OrderResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Order not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid payment information", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/pay")
-    @PreAuthorize("permitAll()")
     public ResponseEntity<List<Order>> processPayment(
             @RequestBody PaymentInfo paymentInfo,
-            @RequestHeader(value = "Authorization", required = false) String token,
             @RequestParam(value = "accessToken", required = false) String accessToken) {
-        String userEmail = null;
-        if (token != null && token.startsWith("Bearer ")) {
-            userEmail = jwtService.extractUsername(token.substring(7));
-        }
-        return ResponseEntity.ok(orderService.processOrdersPayment(paymentInfo, userEmail, accessToken));
+        return ResponseEntity.ok(orderService.processOrdersPayment(paymentInfo, accessToken));
     }
 
     @Operation(summary = "Get user orders", description = "Retrieve order details using access token or authentication")
@@ -77,26 +76,29 @@ public class OrderController {
     @PreAuthorize("permitAll()")
     @GetMapping
     public ResponseEntity<List<Order>> getOrders(
-            @RequestHeader(value = "Authorization", required = false) String token,
+            HttpServletRequest request,
             @RequestParam(value = "accessToken", required = false) String accessToken,
             @RequestParam(value = "showall", required = false) String showall) {
-                
+
         if (accessToken != null) {
             return ResponseEntity.ok(orderService.getOrdersByAccessToken(accessToken));
-        } else if (token != null && token.startsWith("Bearer ") && "true".equals(showall)) {
-            Long userId = jwtService.extractUserId(token.substring(7));
+        }
+
+        String jwt = cookieUtil.getJwtFromRequest(request);
+        if (jwt != null && "true".equals(showall)) {
+            Long userId = jwtService.extractUserId(jwt);
             return ResponseEntity.ok(orderService.getUserOrders(userId));
         }
+
         throw new ApiException(ErrorType.ACCESS_DENIED, "Authentication required");
     }
-
 
     @Operation(summary = "Get my orders by status", description = "Retrieve all orders for authenticated user by status")
     @GetMapping("/my-orders/status/{status}")
     public ResponseEntity<List<Order>> getMyOrdersByStatus(
-            @RequestHeader("Authorization") String token,
+            HttpServletRequest request,
             @PathVariable OrderStatus status) {
-        String jwt = token.substring(7);
+        String jwt = cookieUtil.getJwtFromRequest(request);
         Long userId = jwtService.extractUserId(jwt);
         return ResponseEntity.ok(orderService.getUserOrdersByStatus(userId, status));
     }
@@ -104,72 +106,67 @@ public class OrderController {
     @Operation(summary = "Get my order by ID", description = "Retrieve specific order for authenticated user")
     @GetMapping("/my-orders/{orderId}")
     public ResponseEntity<Order> getMyOrder(
-            @RequestHeader("Authorization") String token,
+            HttpServletRequest request,
             @PathVariable Long orderId) {
-        String jwt = token.substring(7);
+        String jwt = cookieUtil.getJwtFromRequest(request);
         Long userId = jwtService.extractUserId(jwt);
         return ResponseEntity.ok(orderService.getUserOrder(orderId, userId));
     }
 
-    @Operation(
-        summary = "Update order status", 
-        description = "Update order status (Producer only). Valid status transitions:\n\n" +
+    @Operation(summary = "Update order status", description = "Update order status (Producer only). Valid status transitions:\n\n"
+            +
             "- PENDING → ACCEPTED or DECLINED\n" +
             "- ACCEPTED → DELIVERED or CANCELLED\n" +
             "- DELIVERED → RETURNED\n" +
-            "- DECLINED/CANCELLED/RETURNED → No further transitions allowed"
-    )
+            "- DECLINED/CANCELLED/RETURNED → No further transitions allowed")
     @SecurityRequirement(name = "bearer-jwt")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Order status updated successfully", 
-            content = @Content(schema = @Schema(implementation = Order.class))),
-        @ApiResponse(responseCode = "403", description = "Not authorized to update this order", 
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "404", description = "Order not found", 
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid status transition", 
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Order status updated successfully", content = @Content(schema = @Schema(implementation = Order.class))),
+            @ApiResponse(responseCode = "403", description = "Not authorized to update this order", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Order not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid status transition", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PutMapping("/{orderId}/status")
     @ProducerOnly
     public ResponseEntity<Order> updateOrderStatus(
             @PathVariable Long orderId,
-            @Parameter(description = "New status. Must follow valid transition rules", 
-                schema = @Schema(allowableValues = {
+            @Parameter(description = "New status. Must follow valid transition rules", schema = @Schema(allowableValues = {
                     "ACCEPTED", "DECLINED", "DELIVERED", "CANCELLED", "RETURNED"
-                }))
-            @RequestParam OrderStatus status,
-            @RequestHeader("Authorization") String token) {
-        Long producerId = jwtService.extractUserId(token.substring(7));
+            })) @RequestParam OrderStatus status,
+            HttpServletRequest request) {
+        String jwt = cookieUtil.getJwtFromRequest(request);
+        Long producerId = jwtService.extractUserId(jwt);
         return ResponseEntity.ok(orderService.updateOrderStatus(orderId, status, producerId));
     }
 
     @Operation(summary = "Get producer orders", description = "Get all orders containing producer's products")
     @SecurityRequirement(name = "bearer-jwt")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Orders found", content = @Content(schema = @Schema(implementation = Order.class))),
-        @ApiResponse(responseCode = "403", description = "Not authorized as producer", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Orders found", content = @Content(schema = @Schema(implementation = Order.class))),
+            @ApiResponse(responseCode = "403", description = "Not authorized as producer", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/producer-orders")
     @ProducerOnly
     public ResponseEntity<List<Order>> getProducerOrders(
-            @RequestHeader("Authorization") String token) {
-        Long producerId = jwtService.extractUserId(token.substring(7));
+            HttpServletRequest request) {
+        String jwt = cookieUtil.getJwtFromRequest(request);
+        Long producerId = jwtService.extractUserId(jwt);
         return ResponseEntity.ok(orderService.getProducerOrders(producerId));
     }
 
     @Operation(summary = "Get producer orders by status", description = "Get all orders containing producer's products filtered by status")
     @SecurityRequirement(name = "bearer-jwt")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Orders found", content = @Content(schema = @Schema(implementation = Order.class))),
-        @ApiResponse(responseCode = "403", description = "Not authorized as producer", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "200", description = "Orders found", content = @Content(schema = @Schema(implementation = Order.class))),
+            @ApiResponse(responseCode = "403", description = "Not authorized as producer", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/producer-orders/status/{status}")
     @ProducerOnly
     public ResponseEntity<List<Order>> getProducerOrdersByStatus(
-            @RequestHeader("Authorization") String token,
+            HttpServletRequest request,
             @PathVariable OrderStatus status) {
-        Long producerId = jwtService.extractUserId(token.substring(7));
+        String jwt = cookieUtil.getJwtFromRequest(request);
+        Long producerId = jwtService.extractUserId(jwt);
         return ResponseEntity.ok(orderService.getProducerOrdersByStatus(producerId, status));
     }
 
@@ -180,4 +177,4 @@ public class OrderController {
             @PathVariable String accessToken) {
         return ResponseEntity.ok(orderService.getOrderBundle(accessToken));
     }
-} 
+}

@@ -13,7 +13,7 @@ import org.springdoc.core.models.GroupedOpenApi;
 
 @Configuration
 public class SwaggerConfig {
-    final String securitySchemeName = "bearer-jwt";
+    final String securitySchemeName = "cookie";
 
     @Bean
     public OpenAPI localMarketOpenAPI() {
@@ -32,10 +32,10 @@ public class SwaggerConfig {
                 .addList(securitySchemeName))
             .components(new Components()
                 .addSecuritySchemes(securitySchemeName, new SecurityScheme()
-                    .name(securitySchemeName)
-                    .type(SecurityScheme.Type.HTTP)
-                    .scheme("bearer")
-                    .bearerFormat("JWT")));
+                    .name("JWT")
+                    .type(SecurityScheme.Type.APIKEY)
+                    .in(SecurityScheme.In.COOKIE)
+                    .scheme("cookie")));
     }
 
     @Bean

@@ -16,6 +16,7 @@ import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.repository.token.TokenRepository;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import com.localmarket.main.dto.auth.AuthServiceResult;
 
 @Service
 @RequiredArgsConstructor
@@ -25,23 +26,21 @@ public class AuthService {
     private final JwtService jwtService;
     private final TokenRepository tokenRepository;
 
-    public AuthResponse register(RegisterRequest request, String authHeader) {
+    public AuthServiceResult register(RegisterRequest request, String jwt) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new ApiException(ErrorType.EMAIL_ALREADY_EXISTS, "Email already exists");
         }
 
-        Role roleToAssign = Role.CUSTOMER; // Default role
+        Role roleToAssign = Role.CUSTOMER;
 
         // Check if admin is trying to assign a role
         if (request.getRole() != null && request.getRole() != Role.CUSTOMER) {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            if (jwt == null) {
                 throw new ApiException(ErrorType.UNAUTHORIZED_ROLE_ASSIGNMENT, 
                     "Admin authorization required to assign non-customer roles");
             }
 
-            String jwt = authHeader.substring(7);
             String role = jwtService.extractRole(jwt);
-
             if (!"ADMIN".equals(role)) {
                 throw new ApiException(ErrorType.UNAUTHORIZED_ROLE_ASSIGNMENT, 
                     "Only admins can assign non-customer roles");
@@ -61,24 +60,21 @@ public class AuthService {
         
         User savedUser = userRepository.save(user);
         String token = jwtService.generateToken(savedUser);
-        if (roleToAssign == Role.CUSTOMER) {
-            tokenRepository.storeToken(token, savedUser.getUserId());
-        }
-        String statusMessage = "Registration successful";
         
         if (roleToAssign == Role.CUSTOMER) {
             tokenRepository.storeToken(token, savedUser.getUserId());
-        } else {
-            statusMessage = "User created by admin with role: " + roleToAssign;
         }
         
-        return AuthResponse.builder()
-                .token(token)
-                .status(statusMessage)
-                .build();
+        return new AuthServiceResult(
+            AuthResponse.builder()
+                .status(200)
+                .message("Registration successful" + (roleToAssign != Role.CUSTOMER ? " with role: " + roleToAssign : ""))
+                .build(),
+            token
+        );
     }
 
-    public AuthResponse login(AuthRequest request) {
+    public AuthServiceResult login(AuthRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("Invalid email or password"));
         
@@ -91,26 +87,26 @@ public class AuthService {
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
         tokenRepository.storeToken(token, user.getUserId());
-
         
-        return AuthResponse.builder()
-                .token(token)
-                .status("Login successful")
-                .build();
+        return new AuthServiceResult(
+            AuthResponse.builder()
+                .status(200)
+                .message("Login successful")
+                .build(),
+            token
+        );
     }
 
     @Transactional
     public void logout(String token) {
-        String jwt = token.substring(7);
-        Long userId = jwtService.extractUserId(jwt);
-
+        Long userId = jwtService.extractUserId(token);
+        
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND,
-                        "uSER with id " + userId + " not found"));
+                        "User with id " + userId + " not found"));
 
-        // Increment token version and reset to 0 if it reaches 10
-        int newVersion = (user.getTokenVersion() + 1) % 10;
-        user.setTokenVersion(newVersion);
+        user.setTokenVersion((user.getTokenVersion() + 1) % 10);
         userRepository.save(user);
+        tokenRepository.invalidateToken(token);
     }
 }

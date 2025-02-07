@@ -21,14 +21,18 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.localmarket.main.dto.error.ErrorResponse;
 import java.util.List;
+import jakarta.servlet.http.HttpServletRequest;
+import com.localmarket.main.util.CookieUtil;
 
 @RestController
 @RequestMapping("/api/producer-applications")
 @RequiredArgsConstructor
 @Tag(name = "Producer Applications", description = "Producer application management APIs")
+
 public class ProducerApplicationController {
     private final ProducerApplicationService applicationService;
     private final JwtService jwtService;
+    private final CookieUtil cookieUtil;
 
     @Operation(summary = "Submit producer application", description = "Submit application to become a producer")
     @SecurityRequirement(name = "bearer-jwt")
@@ -41,11 +45,12 @@ public class ProducerApplicationController {
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<ProducerApplicationResponse> submitApplication(
             @RequestBody ProducerApplicationRequest request,
-            @RequestHeader("Authorization") String token) {
-        String jwt = token.substring(7);
+            HttpServletRequest requestco) {
+        String jwt = cookieUtil.getJwtFromRequest(requestco);
         Long customerId = jwtService.extractUserId(jwt);
         return ResponseEntity.ok(applicationService.submitApplication(request, customerId));
     }
+
 
     @Operation(summary = "Get all applications", description = "Get all producer applications (Admin only)")
     @SecurityRequirement(name = "bearer-jwt")
@@ -111,11 +116,12 @@ public class ProducerApplicationController {
     @GetMapping("/my-application")
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<ProducerApplicationResponse> getMyApplication(
-            @RequestHeader("Authorization") String token) {
-        String jwt = token.substring(7);
+        HttpServletRequest request) {
+        String jwt = cookieUtil.getJwtFromRequest(request);
         Long customerId = jwtService.extractUserId(jwt);
         return ResponseEntity.ok(applicationService.getCustomerApplication(customerId));
     }
+
     
     @Operation(summary = "Check application status", description = "Check my producer application status")
     @SecurityRequirement(name = "bearer-jwt")
@@ -127,9 +133,10 @@ public class ProducerApplicationController {
     @GetMapping("/status")
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<String> checkApplicationStatus(
-            @RequestHeader("Authorization") String token) {
-        String jwt = token.substring(7);
+            HttpServletRequest request) {
+        String jwt = cookieUtil.getJwtFromRequest(request);
         Long customerId = jwtService.extractUserId(jwt);
         return ResponseEntity.ok(applicationService.checkApplicationStatus(customerId));
     }
+
 } 

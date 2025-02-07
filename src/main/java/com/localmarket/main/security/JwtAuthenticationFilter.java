@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 
 import com.localmarket.main.repository.token.TokenRepository;
 import com.localmarket.main.exception.ApiException;
+import com.localmarket.main.util.CookieUtil;
 
 @Component
 @RequiredArgsConstructor
@@ -33,6 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final TokenRepository tokenRepository;
+    private final CookieUtil cookieUtil;
 
     @Override
     protected void doFilterInternal(
@@ -40,28 +42,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
-        // Skip authentication for public endpoints
         if (isPublicEndpoint(request)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String accessToken = request.getParameter("accessToken");
-        final String authHeader = request.getHeader("Authorization");
-
-        // Allow requests with accessToken without requiring Authorization header
-        if (accessToken != null) {
-            filterChain.doFilter(request, response);
+        String jwt = cookieUtil.getJwtFromCookies(request);
+        
+        if (jwt == null) {
+            handleUnauthorizedResponse(response, request, "Missing authentication token");
             return;
         }
-
-        // For all other protected endpoints, require Authorization header
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            handleUnauthorizedResponse(response, request, "Missing or invalid authorization header");
-            return;
-        }
-
-        final String jwt = authHeader.substring(7);
 
         try {
             // Verify token is still valid in TokenRepository
@@ -111,19 +102,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String method = request.getMethod();
         String accessToken = request.getParameter("accessToken");
 
-        if (path.startsWith("/api/orders/bundle/")) {
-            return true;
-        }
-        // Add specific check for orders endpoint with accessToken
-        if ("GET".equals(method) && path.equals("/api/orders") && accessToken != null) {
-            return true;
-        }
-
-        // Add regions endpoint
-        if (path.startsWith("/api/regions")) {
-            return true;
-        }
-
         // Swagger UI endpoints
         if (path.startsWith("/swagger-ui") ||
                 path.startsWith("/v3/api-docs") ||
@@ -142,9 +120,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return true;
         }
 
+        // Regions endpoint
+        if (path.startsWith("/api/regions")) {
+            return true;
+        }
+
         // Public GET endpoints for products
         if ("GET".equals(method) && path.startsWith("/api/products")) {
-            // Exclude protected product endpoints
             return !path.contains("/my-products") && 
                    !path.contains("/my-pending") && 
                    !path.contains("/pending");
@@ -153,13 +135,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Other public GET endpoints
         if ("GET".equals(method)) {
             return path.startsWith("/api/categories") ||
-                    (path.startsWith("/api/orders/") && accessToken != null);
+                    (path.startsWith("/api/orders/") && accessToken != null) ||
+                    (path.equals("/api/orders") && accessToken != null);
         }
 
         // Allow guest orders
         if ("POST".equals(method)) {
             return path.equals("/api/orders/checkout") ||
-                    (path.startsWith("/api/orders/pay") && path.contains("?accessToken=")) ||
+                    (path.equals("/api/orders/pay") && accessToken != null) ||
                     path.startsWith("/api/orders/bundle/");
         }
 
@@ -168,59 +151,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return path.startsWith("/api/reviews/product/") && 
                    !path.contains("/pending") &&
                    !path.contains("/eligibility");
-        }
-
-        return false;
-    }
-
-    private boolean isPublicPath(String path, String method) {
-        // Swagger UI endpoints
-        if (path.startsWith("/swagger-ui") ||
-                path.startsWith("/v3/api-docs") ||
-                path.equals("/swagger-ui.html")) {
-            return true;
-        }
-
-        // Auth endpoints
-        if (path.startsWith("/api/auth/")) {
-            return true;
-        }
-
-        // Public GET endpoints for products
-        if ("GET".equals(method) && path.startsWith("/api/products")) {
-            // Exclude protected product endpoints
-            return !path.contains("/my-products") && 
-                   !path.contains("/my-pending") && 
-                   !path.contains("/pending");
-        }
-
-        // Other public GET endpoints
-        if ("GET".equals(method)) {
-            return path.startsWith("/api/categories") ||
-                    (path.startsWith("/api/orders/") && path.contains("?accessToken="));
-        }
-
-        // Allow guest orders
-        if ("POST".equals(method)) {
-            return path.equals("/api/orders/checkout") ||
-                    (path.startsWith("/api/orders/pay") && path.contains("?accessToken=")) ||
-                    path.startsWith("/api/orders/bundle/");
-        }
-
-        // New condition for producer orders
-        if ("GET".equals(method) && path.startsWith("/api/orders/")) {
-            return !path.contains("/producer-orders") && 
-                   (path.contains("?accessToken=") || path.contains("/status/"));
-        }
-
-        // Add in isPublicPath method after Swagger endpoints check
-        if (path.startsWith("/ws")) {
-            return true;
-        }
-
-        // WebSocket endpoints
-        if (path.startsWith("/ws") || path.startsWith("/websocket/")) {
-            return true;
         }
 
         return false;
