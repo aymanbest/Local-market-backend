@@ -27,6 +27,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import io.jsonwebtoken.Claims;
 import com.localmarket.main.service.auth.JwtService;
+import com.localmarket.main.repository.token.TokenRepository;
+import com.localmarket.main.exception.ApiException;
+import com.localmarket.main.exception.ErrorType;
+
 
 
 @RestController
@@ -38,6 +42,7 @@ public class AuthController {
     private final AuthService authService;
     private final CookieUtil cookieUtil;
     private final JwtService jwtService;
+    private final TokenRepository tokenRepository;
 
     @Operation(
         summary = "Register a new user",
@@ -121,6 +126,7 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UserInfoResponse> getCurrentUser(HttpServletRequest request) {
         String jwt = cookieUtil.getJwtFromRequest(request);
+        tokenRepository.isTokenValid(jwt);
         Claims claims = jwtService.extractAllClaims(jwt);
         
         return ResponseEntity.ok(UserInfoResponse.builder()
