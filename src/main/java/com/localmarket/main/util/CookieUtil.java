@@ -53,4 +53,16 @@ public class CookieUtil {
         }
         return jwt;
     }
+
+    public String extractJwtFromCookie(String cookieHeader) {
+        if (cookieHeader == null) return null;
+        
+        String[] cookies = cookieHeader.split(";");
+        for (String cookie : cookies) {
+            if (cookie.trim().startsWith("jwt=")) {
+                return cookie.trim().substring(4);
+            }
+        }
+        return null;
+    }
 } 

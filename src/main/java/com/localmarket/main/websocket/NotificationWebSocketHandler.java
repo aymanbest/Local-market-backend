@@ -18,6 +18,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
+import com.localmarket.main.util.CookieUtil;
+
 
 @Component
 @Slf4j
@@ -25,17 +28,18 @@ import jakarta.annotation.PostConstruct;
 public class NotificationWebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
     private final JwtService jwtService;
+    private final CookieUtil cookieUtil;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     private static final ConcurrentHashMap<String, WebSocketSession> userSessions = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Set<String>> roleSessions = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<WebSocketSession, String> sessionTokens = new ConcurrentHashMap<>();
-    
+
     @PostConstruct
     public void startTokenValidator() {
         scheduler.scheduleAtFixedRate(this::validateActiveSessions, 0, 30, TimeUnit.SECONDS);
     }
-    
+
     private void validateActiveSessions() {
         userSessions.values().forEach(session -> {
             String token = sessionTokens.get(session);
@@ -44,25 +48,26 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
             }
         });
     }
-    
+
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         try {
             String token = extractToken(session);
             sessionTokens.put(session, token);
             Map<String, String> authInfo = extractAuthInfo(session);
-            
+
             userSessions.put(authInfo.get("email"), session);
             roleSessions.computeIfAbsent(authInfo.get("role"), k -> new ConcurrentSkipListSet<>())
-                .add(authInfo.get("email"));
-            
-            log.info("WebSocket connection established for user: {} with role: {}", authInfo.get("email"), authInfo.get("role"));
+                    .add(authInfo.get("email"));
+
+            log.info("WebSocket connection established for user: {} with role: {}", authInfo.get("email"),
+                    authInfo.get("role"));
         } catch (Exception e) {
             log.error("Failed to establish WebSocket connection: {}", e.getMessage());
             closeSession(session, "Invalid or expired token");
         }
     }
-    
+
     private void closeSession(WebSocketSession session, String reason) {
         try {
             session.close(new CloseStatus(4001, reason));
@@ -70,33 +75,43 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
             log.error("Error closing WebSocket session: {}", e.getMessage());
         }
     }
-    
+
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        sessionTokens.remove(session);
-        Map<String, String> authInfo = extractAuthInfo(session);
-        String email = authInfo.get("email");
-        String role = authInfo.get("role");
-        
-        userSessions.remove(email);
-        if (roleSessions.containsKey(role)) {
-            roleSessions.get(role).remove(email);
+        try {
+            Map<String, String> authInfo = extractAuthInfo(session);
+            String email = authInfo.get("email");
+            String role = authInfo.get("role");
+
+            userSessions.remove(email);
+            if (roleSessions.containsKey(role)) {
+                roleSessions.get(role).remove(email);
+            }
+            
+            log.info("WebSocket connection closed for user: {} with role: {} - Status: {}", 
+                email, role, status.getReason() != null ? status.getReason() : "Connection closed normally");
+            
+        } catch (Exception e) {
+            log.info("WebSocket connection closed - Status: {}", 
+                status.getReason() != null ? status.getReason() : "Connection closed normally");
+        } finally {
+            sessionTokens.remove(session);
         }
     }
-    
+
     public void sendNotification(String email, Object notification) {
         WebSocketSession session = userSessions.get(email);
         if (session != null && session.isOpen()) {
             try {
                 String message = objectMapper.writeValueAsString(notification);
                 session.sendMessage(new TextMessage(message));
-              
+
             } catch (IOException e) {
                 log.error("Error sending notification to user: {}", email, e);
             }
         }
     }
-    
+
     public void sendToRole(String role, Object notification) {
         Set<String> users = roleSessions.get(role.toUpperCase());
         if (users != null) {
@@ -109,36 +124,34 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
                         session.sendMessage(new TextMessage(message));
                     }
                 }
-                
+
             } catch (IOException e) {
                 log.error("Error sending notification to role: {}", role, e);
             }
         }
     }
-    
+
     private Map<String, String> extractAuthInfo(WebSocketSession session) {
-        String token = session.getHandshakeHeaders().getFirst("Authorization");
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-            
-            // Validate token
-            if (!jwtService.isTokenValid(token)) {
-                throw new IllegalStateException("Token is expired or invalid");
-            }
-            
-            return Map.of(
-                "email", jwtService.extractUsername(token),
-                "role", jwtService.extractRole(token)
-            );
+        String jwt = sessionTokens.get(session);
+        
+        // Validate token
+        if (!jwtService.isTokenValid(jwt)) {
+            throw new IllegalStateException("Token is expired or invalid");
         }
-        throw new IllegalStateException("Invalid authorization token");
+        
+        return Map.of(
+            "email", jwtService.extractUsername(jwt),
+            "role", jwtService.extractRole(jwt)
+        );
     }
-    
+
     private String extractToken(WebSocketSession session) {
-        String auth = session.getHandshakeHeaders().getFirst("Authorization");
-        if (auth != null && auth.startsWith("Bearer ")) {
-            return auth.substring(7);
+        // Extract token from WebSocket handshake headers
+        String jwt = session.getHandshakeHeaders().getFirst("Cookie");
+        if (jwt != null) {
+            return cookieUtil.extractJwtFromCookie(jwt);
         }
-        throw new IllegalStateException("Invalid authorization token");
+        throw new IllegalStateException("No JWT token found in WebSocket session");
     }
-} 
+
+}
