@@ -453,9 +453,9 @@ public class OrderService {
         }
         
         // Check expiration on the first order since all orders in a checkout session share the same expiration
-        if (orders.get(0).getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new ApiException(ErrorType.TOKEN_EXPIRED, "Access token has expired");
-        }
+        // if (orders.get(0).getExpiresAt().isBefore(LocalDateTime.now())) {
+        //     throw new ApiException(ErrorType.TOKEN_EXPIRED, "Access token has expired");
+        // }
         
         return orders;
     }

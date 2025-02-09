@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .receipt-container {
+            max-width: 600px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #007bff;
+        }
+        .order-info, .customer-info {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f1f1f1;
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff;
+            color: #fff;
+        }
+        .totals {
+            text-align: right;
+            margin-top: 20px;
+        }
+        .total-line {
+            margin: 5px 0;
+            font-size: 1.1em;
+        }
+        .grand-total {
+            font-weight: bold;
+            font-size: 1.3em;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-container">
+        <div class="header">
+            <h1>LocalMarket Receipt</h1>
+        </div>
+        <div class="order-info">
+            <p><strong>Order #:</strong> <span th:text="${orderId}"></span></p>
+            <p><strong>Date:</strong> <span th:text="${orderDate}"></span></p>
+        </div>
+        <div class="customer-info">
+            <p><strong>Customer:</strong> <span th:text="${customerName}"></span></p>
+            <p><strong>Email:</strong> <span th:text="${email}"></span></p>
+            <p><strong>Shipping Address:</strong> <span th:text="${shippingAddress}"></span></p>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="item : ${items}">
+                    <td th:text="${item.name}"></td>
+                    <td th:text="${item.quantity}"></td>
+                    <td th:text="'\$' + ${item.price}"></td>
+                    <td th:text="'\$' + ${item.total}"></td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="totals">
+            <div class="total-line">Subtotal: $<span th:text="${subtotal}"></span></div>
+            <div class="total-line" th:if="${discount > 0}">Discount: -$<span th:text="${discount}"></span></div>
+            <div class="grand-total">Total: $<span th:text="${total}"></span></div>
+        </div>
+    </div>
+</body>
+</html>

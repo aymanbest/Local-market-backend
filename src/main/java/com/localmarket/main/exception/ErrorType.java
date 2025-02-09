@@ -15,6 +15,7 @@ public enum ErrorType {
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED),
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND),
+    NOT_FOUND(HttpStatus.NOT_FOUND),
     
     // Review errors
     REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND),

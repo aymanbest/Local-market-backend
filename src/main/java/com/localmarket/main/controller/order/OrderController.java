@@ -27,6 +27,11 @@ import com.localmarket.main.security.ProducerOnly;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
 import com.localmarket.main.util.CookieUtil;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import com.localmarket.main.service.pdf.PdfGeneratorService;
+import org.springframework.core.io.Resource;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -36,6 +41,7 @@ public class OrderController {
     private final OrderService orderService;
     private final JwtService jwtService;
     private final CookieUtil cookieUtil;
+    private final PdfGeneratorService pdfGeneratorService;
 
     @Operation(summary = "Create pending order", description = "Creates a pending order awaiting payment")
     @ApiResponses(value = {
@@ -179,5 +185,37 @@ public class OrderController {
     public ResponseEntity<List<Order>> getOrderBundle(
             @PathVariable String accessToken) {
         return ResponseEntity.ok(orderService.getOrderBundle(accessToken));
+    }
+
+    @Operation(summary = "Get order receipt PDF", description = "Generate PDF receipt for an order")
+    @GetMapping("/receipt")
+    public ResponseEntity<Resource> getOrderReceipt(
+            @RequestParam(value = "accessToken", required = false) String accessToken,
+            HttpServletRequest request) {
+        
+        List<Order> orders;
+        if (accessToken != null) {
+            orders = orderService.getOrdersByAccessToken(accessToken);
+        } else {
+            String jwt = cookieUtil.getJwtFromRequest(request);
+            if (jwt == null) {
+                throw new ApiException(ErrorType.ACCESS_DENIED, "Authentication required");
+            }
+            Long userId = jwtService.extractUserId(jwt);
+            orders = orderService.getUserOrders(userId);
+        }
+
+        if (orders.isEmpty()) {
+            throw new ApiException(ErrorType.NOT_FOUND, "No orders found");
+        }
+
+        byte[] pdfContent = pdfGeneratorService.generateReceipt(orders.get(0));
+        ByteArrayResource resource = new ByteArrayResource(pdfContent);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, 
+                        "attachment; filename=receipt_" + orders.get(0).getOrderId() + ".pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(resource);
     }
 }
