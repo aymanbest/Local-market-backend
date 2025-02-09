@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.localmarket.main.entity.product.Product;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
+import jakarta.persistence.Column;
 @Entity
 @Data
 @Table(name = "Category")
@@ -25,8 +25,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "categoryId")
     private Long categoryId;
     
+    @Column(name = "name")
     private String name;
     
     @JsonIgnore

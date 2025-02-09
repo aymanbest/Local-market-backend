@@ -231,9 +231,13 @@ public class OrderService {
     }
 
     private void setupOrderDetails(Order order, OrderRequest request) {
+        if (request.getPhoneNumber() == null || request.getPhoneNumber().trim().isEmpty()) {
+            throw new ApiException(ErrorType.VALIDATION_FAILED, "Phone number is required");
+        }
         order.setShippingAddress(request.getShippingAddress());
         order.setPhoneNumber(request.getPhoneNumber());
         order.setPaymentMethod(request.getPaymentMethod());
+        order.setOrderDate(LocalDateTime.now());
         order.setStatus(OrderStatus.PENDING_PAYMENT);
     }
 

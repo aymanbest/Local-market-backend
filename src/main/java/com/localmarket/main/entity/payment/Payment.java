@@ -17,6 +17,7 @@ import jakarta.validation.constraints.Digits;
 public class Payment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "paymentId")
     private Long paymentId;
     
     @NotNull(message = "Payment method is required")
@@ -30,13 +31,16 @@ public class Payment {
     private PaymentStatus paymentStatus;
     
     @Size(max = 255, message = "Transaction ID cannot exceed 255 characters")
+    @Column(name = "transactionId")
     private String transactionId;
     
     @NotNull(message = "Amount is required")
     @DecimalMin(value = "0.01", message = "Amount must be greater than 0")
     @Digits(integer = 10, fraction = 2, message = "Amount must have at most 10 digits and 2 decimal places")
+    @Column(name = "amount")
     private BigDecimal amount;
     
+    @Column(name = "createdAt")
     private LocalDateTime createdAt;
     
     @Column(name = "orderId")

@@ -36,22 +36,27 @@ public class Order {
     @JsonIgnoreProperties({"passwordHash", "role", "createdAt", "updatedAt"})
     private User customer;
     
+    @Column(name = "guestEmail")
     private String guestEmail;
     
     @NotBlank(message = "Shipping address is required")
     @Size(max = 500, message = "Shipping address cannot exceed 500 characters")
+    @Column(name = "shippingAddress")
     private String shippingAddress;
     
     @NotBlank(message = "Phone number is required")
-    @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format")
+    @Column(name = "phoneNumber")
     private String phoneNumber;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Column(name = "orderDate")
     private LocalDateTime orderDate;
     
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private OrderStatus status = OrderStatus.PENDING_PAYMENT;
     
+
     @NotNull(message = "Total price is required")
     @DecimalMin(value = "0.01", message = "Total price must be greater than 0")
     @Digits(integer = 10, fraction = 2, message = "Total price must have at most 10 digits and 2 decimal places")
@@ -68,12 +73,15 @@ public class Order {
     @JoinColumn(name = "paymentId")
     private Payment payment;
  
+
     @Column(name = "expiresAt")
     private LocalDateTime expiresAt;
     
     @Enumerated(EnumType.STRING)
+    @Column(name = "paymentMethod")
     private PaymentMethod paymentMethod;
     
+
     @Column(name = "accessToken")
     private String accessToken;
     

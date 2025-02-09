@@ -198,4 +198,13 @@ public class CouponService {
                 .build();
         }
     }
+
+    @Transactional
+    public Coupon updateCouponStatus(Long couponId, Boolean isActive) {
+        Coupon coupon = couponRepository.findById(couponId)
+            .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Coupon not found"));
+            
+        coupon.setIsActive(isActive);
+        return couponRepository.save(coupon);
+    }
 } 

@@ -28,6 +28,7 @@ import jakarta.validation.constraints.Size;
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "productId")
     private Long productId;
     
     @NotNull(message = "Producer is required")
@@ -38,20 +39,29 @@ public class Product {
     
     @NotBlank(message = "Product name is required")
     @Size(min = 2, max = 255, message = "Product name must be between 2 and 255 characters")
+    @Column(name = "name")
     private String name;
-    
+
+
     @Size(max = 1000, message = "Description cannot exceed 1000 characters")
+    @Column(name = "description")
     private String description;
     
+
     @NotNull(message = "Price is required")
     @DecimalMin(value = "0.01", message = "Price must be greater than 0")
     @Digits(integer = 8, fraction = 2, message = "Price must have at most 8 digits and 2 decimal places")
+    @Column(name = "price")
     private BigDecimal price;
     
+
     @NotNull(message = "Quantity is required")
     @Min(value = 0, message = "Quantity cannot be negative")
+    @Column(name = "quantity")
     private Integer quantity;
     
+
+    @Column(name = "imageUrl")
     private String imageUrl;
     
     @ManyToMany(fetch = FetchType.LAZY)
@@ -60,20 +70,23 @@ public class Product {
         joinColumns = @JoinColumn(name = "productId"),
         inverseJoinColumns = @JoinColumn(name = "categoryId")
     )
-    
     @JsonIgnoreProperties("products")
     @ToString.Exclude
     private Set<Category> categories = new HashSet<>();
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Column(name = "createdAt")
     private LocalDateTime createdAt;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Column(name = "updatedAt")
     private LocalDateTime updatedAt;
     
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private ProductStatus status = ProductStatus.PENDING;
-    
+
+    @Column(name = "declineReason")
     private String declineReason;
     
     @PrePersist

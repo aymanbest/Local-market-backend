@@ -15,11 +15,13 @@ import jakarta.validation.constraints.Max;
 public class Review {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "reviewId")
     private Long reviewId;
 
     @ManyToOne
     @JoinColumn(name = "productId")
     private Product product;
+
 
     @ManyToOne
     @JoinColumn(name = "customerId")
@@ -31,14 +33,20 @@ public class Review {
     @Max(5)
     private Integer rating;
 
-    @Column(columnDefinition = "LONGTEXT")
+    @Column(name = "comment", columnDefinition = "LONGTEXT")
     private String comment;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private ReviewStatus status = ReviewStatus.PENDING;
 
+
+    @Column(name = "verifiedPurchase")
     private boolean verifiedPurchase;
+
+    @Column(name = "createdAt")
     private LocalDateTime createdAt;
+
 
     @PrePersist
     protected void onCreate() {

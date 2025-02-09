@@ -64,4 +64,14 @@ public class CouponController {
             @RequestParam BigDecimal cartTotal) {
         return ResponseEntity.ok(couponService.validateCoupon(code, cartTotal));
     }
+
+    @PatchMapping("/{couponId}/status")
+    @AdminOnly
+    @Operation(summary = "Update coupon status", description = "Enable or disable a coupon (Admin only)")
+    @SecurityRequirement(name = "cookie")
+    public ResponseEntity<Coupon> updateCouponStatus(
+            @PathVariable Long couponId,
+            @RequestParam Boolean isActive) {
+        return ResponseEntity.ok(couponService.updateCouponStatus(couponId, isActive));
+    }
 } 
