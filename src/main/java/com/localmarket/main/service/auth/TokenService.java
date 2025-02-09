@@ -8,6 +8,7 @@ import com.localmarket.main.repository.AccessToken.AccessTokenRepository;
 
 import java.time.LocalDateTime;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.annotation.Transactional;
 
 // TokenService is a service that handles access tokens for users. 
 // It generates and validates access tokens, and schedules cleanup of expired tokens.
@@ -36,7 +37,8 @@ public class TokenService {
             .orElse(null);
     }
 
-    @Scheduled(cron = "0 0 * * * *") // Run every hour
+    @Scheduled(fixedRate = 3600000) // Run every hour
+    @Transactional
     public void cleanupExpiredTokens() {
         accessTokenRepository.deleteByExpiresAtBefore(LocalDateTime.now());
     }

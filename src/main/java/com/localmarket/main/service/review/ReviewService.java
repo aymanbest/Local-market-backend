@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 import com.localmarket.main.service.notification.review.ReviewNotificationService;
+import com.localmarket.main.service.notification.admin.AdminNotificationService;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +28,7 @@ public class ReviewService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final ReviewNotificationService reviewNotificationService;
+    private final AdminNotificationService adminNotificationService;
     
     @Transactional(readOnly = true)
     public ReviewEligibilityResponse checkReviewEligibility(Long productId, Long customerId) {
@@ -90,6 +92,8 @@ public class ReviewService {
             request.getProductId(), 
             OrderStatus.DELIVERED
         ));
+
+        adminNotificationService.notifyNewReviewNeedsApproval(review);
 
         return convertToDTO(reviewRepository.save(review));
     }

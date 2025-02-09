@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8" />
+    <title>Order Confirmation</title>
+</head>
+<body style="background-color:#FFFFFF;font-family:'Helvetica Neue',Arial,sans-serif;">
+    <div style="max-width:600px;margin:0 auto;padding:20px;">
+        <h1>Order Confirmation</h1>
+        <p>Dear <span th:text="${name}"></span>,</p>
+        <p>Thank you for your order! Here's a summary of your purchase:</p>
+        
+        <div style="margin:20px 0;padding:20px;background-color:#f8f9fa;border-radius:5px;">
+            <h3>Order Details</h3>
+            <p>Order #<span th:text="${orderId}"></span></p>
+            
+            <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+                <thead>
+                    <tr style="border-bottom:2px solid #dee2e6;">
+                        <th style="text-align:left;padding:10px;">Item</th>
+                        <th style="text-align:right;padding:10px;">Quantity</th>
+                        <th style="text-align:right;padding:10px;">Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="item : ${items}" style="border-bottom:1px solid #dee2e6;">
+                        <td style="padding:10px;" th:text="${item.productName}"></td>
+                        <td style="text-align:right;padding:10px;" th:text="${item.quantity}"></td>
+                        <td style="text-align:right;padding:10px;" th:text="${'$' + item.price}"></td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2" style="text-align:right;padding:10px;"><strong>Subtotal:</strong></td>
+                        <td style="text-align:right;padding:10px;" th:text="${'$' + subtotal}"></td>
+                    </tr>
+                    <tr th:if="${discount != null}">
+                        <td colspan="2" style="text-align:right;padding:10px;"><strong>Discount:</strong></td>
+                        <td style="text-align:right;padding:10px;" th:text="${'$' + discount}"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="text-align:right;padding:10px;"><strong>Shipping:</strong></td>
+                        <td style="text-align:right;padding:10px;" th:text="${'$' + shipping}"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="text-align:right;padding:10px;"><strong>Total:</strong></td>
+                        <td style="text-align:right;padding:10px;font-weight:bold;" th:text="${'$' + total}"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div style="margin:20px 0;">
+            <h3>Shipping Address</h3>
+            <p th:text="${shippingAddress}"></p>
+        </div>
+
+        <p>We'll notify you when your order ships.</p>
+        
+        <div style="margin-top:40px;padding-top:20px;border-top:1px solid #dee2e6;">
+            <p>Best regards,</p>
+            <p><strong>The LocalMarket Team</strong></p>
+        </div>
+    </div>
+</body>
+</html>

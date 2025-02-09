@@ -27,7 +27,7 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @Operation(summary = "Create category", description = "Create a new category (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Category created successfully", content = @Content(schema = @Schema(implementation = CategoryResponse.class))),
         @ApiResponse(responseCode = "400", description = "Invalid input", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -59,7 +59,7 @@ public class CategoryController {
     }
 
     @Operation(summary = "Update category", description = "Update existing category (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Category updated successfully", content = @Content(schema = @Schema(implementation = CategoryResponse.class))),
         @ApiResponse(responseCode = "404", description = "Category not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -74,7 +74,7 @@ public class CategoryController {
     }
 
     @Operation(summary = "Delete category", description = "Delete existing category (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "Category deleted successfully"),
         @ApiResponse(responseCode = "404", description = "Category not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),

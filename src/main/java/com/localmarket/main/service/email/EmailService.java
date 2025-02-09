@@ -14,6 +14,8 @@ import jakarta.mail.internet.MimeMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 
+import java.util.Map;
+
 
 
 @Service
@@ -25,34 +27,32 @@ public class EmailService {
     @Autowired
     private TemplateEngine templateEngine;
 
-    public void sendHtmlEmail(  String to, 
-                                String subject, 
-                                String name, 
-                                String body, 
-                                MultipartFile attachment) throws MessagingException {
-
-        // Prepare Thymeleaf context
+    public void sendHtmlEmail(
+            String to, 
+            String subject, 
+            String name, 
+            String templateName,
+            MultipartFile attachment,
+            Map<String, Object> templateVariables) throws MessagingException {
+        
         Context context = new Context();
-        context.setVariable("name", name);  
+        context.setVariable("name", name);
         context.setVariable("subject", subject);
-        context.setVariable("body", body); 
-    
-        // Load and process the HTML template
-        String htmlContent = templateEngine.process("email-template", context);
-    
+        
+        if (templateVariables != null) {
+            templateVariables.forEach(context::setVariable);
+        }
+
+        String htmlContent = templateEngine.process(templateName, context);
         
         MimeMessage message = emailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true);
-    
-        helper.setTo(to);
-        helper.setFrom("localMarket@trial-x2p03477y0k4zdrn.mlsender.net");
-        helper.setSubject(subject);
-        helper.setText(htmlContent, true); 
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
         
-        helper.addInline("logoImage", new ClassPathResource("static/logo.png"));
-
-        // Add attachment if provided
-        if (attachment != null && !attachment.isEmpty()) {
+        helper.setTo(to);
+        helper.setSubject(subject);
+        helper.setText(htmlContent, true);
+        
+        if (attachment != null) {
             helper.addAttachment(attachment.getOriginalFilename(), attachment);
         }
         

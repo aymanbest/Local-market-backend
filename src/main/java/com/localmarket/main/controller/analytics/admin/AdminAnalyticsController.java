@@ -27,7 +27,7 @@ public class AdminAnalyticsController {
     private final AnalyticsService analyticsService;
 
     @Operation(summary = "Get user analytics", description = "Get user-related analytics")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @GetMapping("/users")
     @AdminOnly
     public ResponseEntity<UserAnalyticsResponse> getUserAnalytics(
@@ -37,7 +37,7 @@ public class AdminAnalyticsController {
     }
 
     @Operation(summary = "Get transaction analytics", description = "Get transaction-related analytics")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @GetMapping("/transactions")
     @AdminOnly
     public ResponseEntity<TransactionAnalyticsResponse> getTransactionAnalytics(
@@ -47,7 +47,7 @@ public class AdminAnalyticsController {
     }
 
     @Operation(summary = "Get business metrics", description = "Get business performance metrics")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @GetMapping("/business-metrics")
     @AdminOnly
     public ResponseEntity<BusinessMetricsResponse> getBusinessMetrics(
@@ -57,7 +57,7 @@ public class AdminAnalyticsController {
     }
 
     @Operation(summary = "Export analytics", description = "Export combined analytics data as CSV or PDF")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @GetMapping("/export")
     @AdminOnly
     public ResponseEntity<Resource> exportAnalytics(

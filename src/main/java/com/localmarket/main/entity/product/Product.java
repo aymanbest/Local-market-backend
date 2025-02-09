@@ -52,11 +52,9 @@ public class Product {
     @Min(value = 0, message = "Quantity cannot be negative")
     private Integer quantity;
     
-    
     private String imageUrl;
     
     @ManyToMany(fetch = FetchType.LAZY)
-
     @JoinTable(
         name = "ProductCategory",
         joinColumns = @JoinColumn(name = "productId"),

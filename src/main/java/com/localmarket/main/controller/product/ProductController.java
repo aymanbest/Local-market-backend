@@ -56,7 +56,7 @@ public class ProductController {
     private String uploadDir;
 
     @Operation(summary = "Create new product", description = "Create a new product (Producer only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Product created successfully", content = @Content(schema = @Schema(implementation = ProductResponse.class))),
         @ApiResponse(responseCode = "400", description = "Invalid input", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -123,7 +123,7 @@ public class ProductController {
     }
 
     @Operation(summary = "Update product", description = "Update existing product (Producer only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Product updated successfully", content = @Content(schema = @Schema(implementation = ProductResponse.class))),
         @ApiResponse(responseCode = "403", description = "Not authorized to update this product", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -180,7 +180,7 @@ public class ProductController {
     }
 
     @Operation(summary = "Delete product", description = "Delete existing product (Producer only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "Product deleted successfully"),
         @ApiResponse(responseCode = "403", description = "Not authorized to delete this product", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -235,7 +235,7 @@ public class ProductController {
     }
 
     @Operation(summary = "Get pending products", description = "Get all pending products (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Products found"),
         @ApiResponse(responseCode = "403", description = "Not authorized as admin")
@@ -247,7 +247,7 @@ public class ProductController {
     }
 
     @Operation(summary = "Approve product", description = "Approve a pending product (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Product approved"),
         @ApiResponse(responseCode = "403", description = "Not authorized as admin"),
@@ -260,7 +260,7 @@ public class ProductController {
     }
 
     @Operation(summary = "Decline product", description = "Decline a pending product (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Product declined"),
         @ApiResponse(responseCode = "403", description = "Not authorized as admin"),
@@ -275,7 +275,7 @@ public class ProductController {
     }
 
     @Operation(summary = "Get my pending and declined products", description = "Get producer's pending and declined products")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Products found"),
         @ApiResponse(responseCode = "403", description = "Not authorized as producer")
@@ -291,7 +291,7 @@ public class ProductController {
 
 
     @Operation(summary = "Get my products", description = "Get all products for the authenticated producer")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Products found"),
         @ApiResponse(responseCode = "403", description = "Not authorized as producer")

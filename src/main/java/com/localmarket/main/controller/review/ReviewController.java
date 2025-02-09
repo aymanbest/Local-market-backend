@@ -26,7 +26,7 @@ public class ReviewController {
     
     @GetMapping("/eligibility/{productId}")
     @Operation(summary = "Check review eligibility", description = "Check if user can review a product")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     public ResponseEntity<ReviewEligibilityResponse> checkEligibility(
             @PathVariable Long productId,
             HttpServletRequest request) {
@@ -38,7 +38,7 @@ public class ReviewController {
     
     @PostMapping
     @Operation(summary = "Create review", description = "Create a new review for a product")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     public ResponseEntity<ReviewResponse> createReview(
             @RequestBody ReviewRequest request,
             HttpServletRequest requestco) {
@@ -50,7 +50,7 @@ public class ReviewController {
     
     @PutMapping("/{reviewId}")
     @Operation(summary = "Update review", description = "Update an existing review")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     public ResponseEntity<ReviewResponse> updateReview(
             @PathVariable Long reviewId,
             @RequestBody ReviewRequest request,
@@ -64,7 +64,7 @@ public class ReviewController {
 
     @PostMapping("/{reviewId}/approve")
     @Operation(summary = "Approve review", description = "Approve a pending review")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @AdminOnly
     public ResponseEntity<ReviewResponse> approveReview(@PathVariable Long reviewId) {
         return ResponseEntity.ok(reviewService.approveReview(reviewId));
@@ -72,7 +72,7 @@ public class ReviewController {
 
     @PostMapping("/{reviewId}/decline")
     @Operation(summary = "Decline review", description = "Decline a pending review")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @AdminOnly
     public ResponseEntity<ReviewResponse> declineReview(@PathVariable Long reviewId) {
         return ResponseEntity.ok(reviewService.declineReview(reviewId));
@@ -80,7 +80,7 @@ public class ReviewController {
 
     @GetMapping
     @Operation(summary = "Get customer reviews", description = "Get all reviews by the authenticated customer")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     public ResponseEntity<List<ReviewResponse>> getCustomerReviews(
             HttpServletRequest requestco) {
         String jwt = cookieUtil.getJwtFromRequest(requestco);
@@ -97,7 +97,7 @@ public class ReviewController {
 
     @GetMapping("/pending")
     @Operation(summary = "Get pending reviews", description = "Get all pending reviews (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @AdminOnly
     public ResponseEntity<List<ReviewResponse>> getPendingReviews() {
         return ResponseEntity.ok(reviewService.getPendingReviews());

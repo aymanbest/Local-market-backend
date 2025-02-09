@@ -40,6 +40,7 @@ import com.localmarket.main.dto.review.VerifiedReviews;
 import com.localmarket.main.repository.review.ReviewRepository;
 import com.localmarket.main.entity.review.ReviewStatus;
 import com.localmarket.main.entity.review.Review;
+import com.localmarket.main.service.notification.admin.AdminNotificationService;
 
 
 @Service
@@ -52,6 +53,7 @@ public class ProductService {
     private final ProducerNotificationService producerNotificationService;
     private final StockReservationRepository stockReservationRepository;
     private final ReviewRepository reviewRepository;
+    private final AdminNotificationService adminNotificationService;
     private static final int LOW_STOCK_THRESHOLD = 10;
     private static final int CRITICAL_STOCK_THRESHOLD = 5;
 
@@ -88,8 +90,11 @@ public class ProductService {
             }
 
             product.setStatus(ProductStatus.PENDING);
+            Product savedProduct = productRepository.save(product);
 
-            return convertToDTO(productRepository.save(product));
+            adminNotificationService.notifyNewProductNeedsReview(savedProduct);
+
+            return convertToDTO(savedProduct);
         } catch (DataIntegrityViolationException e) {
             throw new ApiException(ErrorType.DUPLICATE_RESOURCE, "Product with similar details already exists");
         }
@@ -334,7 +339,7 @@ public class ProductService {
         productRepository.save(product);
     }
 
-    @Scheduled(fixedRate = 60000) // Run every minute
+    @Scheduled(fixedRate = 3600000) // Run every hour
     @Transactional
     public void monitorStockLevels() {
         List<Product> products = productRepository.findAll();

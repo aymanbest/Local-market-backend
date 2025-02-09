@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Welcome to LocalMarket as Producer</title>
+  </head>
+  <body style="
+      margin: 0;
+      padding: 0;
+      background-color: #f1fdee;
+      color: #171717;
+      font-family: Bahnschrift, 'DIN Alternate', 'Franklin Gothic Medium',
+        'Nimbus Sans Narrow', sans-serif-condensed, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;">
+    <div style="width: 100%; padding: 32px 0; background-color: #f1fdee;">
+      <table align="center" width="100%" cellpadding="0" cellspacing="0" border="0"
+        style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);">
+        <!-- Logo -->
+        <tr>
+          <td style="padding: 24px; text-align: center;">
+            <img src="cid:logoImage" alt="Logo" width="64" height="64"
+              style="display: block; margin: 0 auto; border-radius: 50%;" />
+          </td>
+        </tr>
+
+        <!-- Subject -->
+        <tr>
+          <td style="padding: 0 24px; text-align: center;">
+            <h2 style="margin: 0; font-size: 22px;">
+              <strong>Congratulations! Your Producer Application is Approved</strong>
+            </h2>
+          </td>
+        </tr>
+
+        <!-- Content -->
+        <tr>
+          <td style="padding: 24px; text-align: left;">
+            <p style="margin: 0;">Dear <span th:text="${name}"></span>,</p>
+            <p>
+              Welcome to <strong>LocalMarket</strong> as an official producer! We're excited to have you join 
+              our vibrant community of local producers. Your application has been reviewed and approved.
+            </p>
+            <p>
+              You can now:
+            </p>
+            <ul>
+              <li>List your products on our marketplace</li>
+              <li>Manage your inventory</li>
+              <li>Process orders from customers</li>
+              <li>Track your sales and performance</li>
+            </ul>
+            <p>
+              We're here to support you every step of the way to help your business grow. If you need any 
+              assistance, our producer support team is always ready to help.
+            </p>
+
+            <!-- Call to Action Button -->
+            <div style="text-align: center; margin-top: 24px;">
+              <a href="http://localhost:5173/producer/dashboard"
+                style="background-color: #171717; color: #ffffff; text-decoration: none; font-size: 16px;
+                  font-weight: bold; padding: 12px 24px; border-radius: 8px; display: inline-block;">
+                Access Producer Dashboard
+              </a>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding: 24px; text-align: center;">
+            <hr style="border: 0; border-top: 1px solid #f1fdee; margin: 20px 0;" />
+            <p style="margin: 0; font-size: 15px;">Best regards,</p>
+            <p style="margin: 0; font-size: 15px; font-weight: bold;">
+              The LocalMarket Team
+            </p>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html> 

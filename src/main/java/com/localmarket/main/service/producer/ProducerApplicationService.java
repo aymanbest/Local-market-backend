@@ -23,6 +23,12 @@ import com.localmarket.main.repository.category.CategoryRepository;
 import com.localmarket.main.entity.category.Category;
 import java.util.Arrays;
 import com.localmarket.main.dto.category.CategoryResponse;
+import com.localmarket.main.service.notification.admin.AdminNotificationService;
+import com.localmarket.main.service.email.EmailService;
+import jakarta.mail.MessagingException;
+import java.util.HashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 @Service
@@ -32,6 +38,10 @@ public class ProducerApplicationService {
     private final UserRepository userRepository;
     private final CategoryService categoryService;
     private final CategoryRepository categoryRepository;
+    private final AdminNotificationService adminNotificationService;
+    private final EmailService emailService;
+    private static final Logger log = LoggerFactory.getLogger(ProducerApplicationService.class);
+
 
 
 
@@ -72,6 +82,8 @@ public class ProducerApplicationService {
         application.setYearsOfExperience(request.getYearsOfExperience());
         application.setWebsiteOrSocialLink(request.getWebsiteOrSocialLink());
         application.setMessageToAdmin(request.getMessageToAdmin());
+
+        adminNotificationService.notifyNewProducerApplication(application);
         
         return mapToDTO(applicationRepository.save(application));
     }
@@ -113,10 +125,26 @@ public class ProducerApplicationService {
         
         if (approved) {
             application.setStatus(ApplicationStatus.APPROVED);
+            
+            try {
+                emailService.sendHtmlEmail(
+                    application.getCustomer().getEmail(),
+                    "Producer Application Approved",
+                    application.getCustomer().getUsername(),
+                    "producer-accepted-email",
+                    null,
+                    new HashMap<>()
+                );
+            } catch (MessagingException e) {
+                log.error("Failed to send producer accepted email to {}: {}", application.getCustomer().getEmail(), e.getMessage());
+            }
+
+
             User customer = application.getCustomer();
             customer.setRole(Role.PRODUCER);
             
             int newVersion = (customer.getTokenVersion() + 1) % 10;
+
             customer.setTokenVersion(newVersion);
             userRepository.save(customer);
             

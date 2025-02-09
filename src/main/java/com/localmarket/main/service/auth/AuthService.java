@@ -17,6 +17,11 @@ import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.repository.token.TokenRepository;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import com.localmarket.main.dto.auth.AuthServiceResult;
+import com.localmarket.main.service.email.EmailService;
+import jakarta.mail.MessagingException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +30,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final TokenRepository tokenRepository;
+    private final EmailService emailService;
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     public AuthServiceResult register(RegisterRequest request, String jwt) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -60,6 +67,20 @@ public class AuthService {
         
         User savedUser = userRepository.save(user);
         String token = jwtService.generateToken(savedUser);
+        
+        // Send welcome email
+        try {
+            emailService.sendHtmlEmail(
+                savedUser.getEmail(),
+                "Welcome to LocalMarket!",
+                savedUser.getFirstname(),
+                "welcome-email",
+                null,
+                new HashMap<>()
+            );
+        } catch (MessagingException e) {
+            log.error("Failed to send welcome email to {}: {}", savedUser.getEmail(), e.getMessage());
+        }
         
         if (roleToAssign == Role.CUSTOMER) {
             tokenRepository.storeToken(token, savedUser.getUserId());

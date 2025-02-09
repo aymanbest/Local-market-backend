@@ -35,7 +35,7 @@ public class ProducerApplicationController {
     private final CookieUtil cookieUtil;
 
     @Operation(summary = "Submit producer application", description = "Submit application to become a producer")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Application submitted successfully", content = @Content(schema = @Schema(implementation = ProducerApplicationResponse.class))),
         @ApiResponse(responseCode = "400", description = "Invalid input", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -53,7 +53,7 @@ public class ProducerApplicationController {
 
 
     @Operation(summary = "Get all applications", description = "Get all producer applications (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Applications retrieved successfully", content = @Content(schema = @Schema(implementation = ProducerApplicationResponse.class))),
         @ApiResponse(responseCode = "403", description = "Not authorized as admin", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -65,7 +65,7 @@ public class ProducerApplicationController {
     }
 
     @Operation(summary = "Get pending applications", description = "Get all pending producer applications (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Pending applications retrieved successfully", content = @Content(schema = @Schema(implementation = ProducerApplicationResponse.class))),
         @ApiResponse(responseCode = "403", description = "Not authorized as admin", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -77,7 +77,7 @@ public class ProducerApplicationController {
     }
 
     @Operation(summary = "Approve application", description = "Approve producer application (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Application approved", content = @Content(schema = @Schema(implementation = ProducerApplicationResponse.class))),
         @ApiResponse(responseCode = "404", description = "Application not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -92,7 +92,7 @@ public class ProducerApplicationController {
     }
     
     @Operation(summary = "Decline application", description = "Decline producer application (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Application declined", content = @Content(schema = @Schema(implementation = ProducerApplicationResponse.class))),
         @ApiResponse(responseCode = "404", description = "Application not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -107,7 +107,7 @@ public class ProducerApplicationController {
     }
 
     @Operation(summary = "Get my application", description = "Get my producer application")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Application retrieved successfully", content = @Content(schema = @Schema(implementation = ProducerApplicationResponse.class))),
         @ApiResponse(responseCode = "404", description = "Application not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -124,7 +124,7 @@ public class ProducerApplicationController {
 
     
     @Operation(summary = "Check application status", description = "Check my producer application status")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Application status retrieved successfully", content = @Content(schema = @Schema(implementation = String.class))),
         @ApiResponse(responseCode = "404", description = "Application not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),

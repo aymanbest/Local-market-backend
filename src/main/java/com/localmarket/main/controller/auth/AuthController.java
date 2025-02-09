@@ -94,7 +94,7 @@ public class AuthController {
         summary = "Logout user",
         description = "Invalidates the JWT token"
     )
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully logged out", content = @Content(schema = @Schema(implementation = LogoutResponse.class))),
         @ApiResponse(responseCode = "401", description = "Invalid token", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -116,7 +116,7 @@ public class AuthController {
         summary = "Get current user info",
         description = "Retrieves the current authenticated user's information from JWT"
     )
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "User info retrieved successfully", 
             content = @Content(schema = @Schema(implementation = UserInfoResponse.class))),

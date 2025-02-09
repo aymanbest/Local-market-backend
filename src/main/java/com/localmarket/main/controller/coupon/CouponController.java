@@ -25,7 +25,7 @@ public class CouponController {
     @PostMapping
     @AdminOnly
     @Operation(summary = "Create coupon", description = "Create a new coupon (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     public ResponseEntity<Coupon> createCoupon(@Valid @RequestBody CouponRequest request) {
         return ResponseEntity.ok(couponService.createCoupon(request));
     }
@@ -33,7 +33,7 @@ public class CouponController {
     @PutMapping("/{couponId}")
     @AdminOnly
     @Operation(summary = "Update coupon", description = "Update an existing coupon (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     public ResponseEntity<Coupon> updateCoupon(
             @PathVariable Long couponId,
             @Valid @RequestBody CouponRequest request) {
@@ -43,7 +43,7 @@ public class CouponController {
     @DeleteMapping("/{couponId}")
     @AdminOnly
     @Operation(summary = "Delete coupon", description = "Delete an existing coupon (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     public ResponseEntity<Void> deleteCoupon(@PathVariable Long couponId) {
         couponService.deleteCoupon(couponId);
         return ResponseEntity.noContent().build();
@@ -52,7 +52,7 @@ public class CouponController {
     @GetMapping
     @AdminOnly
     @Operation(summary = "Get all coupons", description = "Get all coupons with usage statistics (Admin only)")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     public ResponseEntity<List<CouponStatsResponse>> getAllCoupons() {
         return ResponseEntity.ok(couponService.getAllCouponsWithStats());
     }

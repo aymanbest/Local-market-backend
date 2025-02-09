@@ -72,7 +72,7 @@ public class OrderController {
     }
 
     @Operation(summary = "Get user orders", description = "Retrieve order details using access token or authentication")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @PreAuthorize("permitAll()")
     @GetMapping
     public ResponseEntity<List<Order>> getOrders(
@@ -122,7 +122,7 @@ public class OrderController {
             "- SHIPPED → DELIVERED\n" +
             "- DELIVERED → RETURNED\n" +
             "- CANCELLED/RETURNED → No further transitions allowed")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Order status updated successfully", content = @Content(schema = @Schema(implementation = Order.class))),
             @ApiResponse(responseCode = "403", description = "Not authorized to update this order", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -143,7 +143,7 @@ public class OrderController {
     }
 
     @Operation(summary = "Get producer orders", description = "Get all orders containing producer's products")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Orders found", content = @Content(schema = @Schema(implementation = Order.class))),
             @ApiResponse(responseCode = "403", description = "Not authorized as producer", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -158,7 +158,7 @@ public class OrderController {
     }
 
     @Operation(summary = "Get producer orders by status", description = "Get all orders containing producer's products filtered by status")
-    @SecurityRequirement(name = "bearer-jwt")
+    @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Orders found", content = @Content(schema = @Schema(implementation = Order.class))),
             @ApiResponse(responseCode = "403", description = "Not authorized as producer", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

@@ -9,11 +9,17 @@ import java.util.List;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.HashMap;
+import jakarta.mail.MessagingException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 import com.localmarket.main.repository.order.OrderRepository;
 import com.localmarket.main.repository.product.ProductRepository;
 import com.localmarket.main.repository.user.UserRepository;
 import com.localmarket.main.repository.payment.PaymentRepository;
+
 import com.localmarket.main.entity.order.OrderStatus;
 
 import com.localmarket.main.entity.order.Order;
@@ -38,6 +44,7 @@ import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.service.product.ProductService;
 import com.localmarket.main.service.coupon.CouponService;
 import com.localmarket.main.dto.auth.AuthServiceResult;
+import com.localmarket.main.service.email.EmailService;
 
 @Service
 @RequiredArgsConstructor
@@ -54,6 +61,9 @@ public class OrderService {
     private final ProductService productService;
     private final CustomerNotificationService customerNotificationService;
     private final CouponService couponService;
+    private final EmailService emailService;
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+
 
 
     public List<Order> getUserOrders(Long userId) {
@@ -181,12 +191,15 @@ public class OrderService {
             
             // Notify producer
             producerNotificationService.notifyNewOrder(entry.getKey(), order);
+
+            sendOrderConfirmationEmail(order);
             
             orders.add(OrderResponse.builder()
                 .order(order)
                 .orderId(order.getOrderId())
                 .accessToken(accessToken)
                 .build());
+
         }
         
         return orders;
@@ -456,5 +469,53 @@ public class OrderService {
         }
         return orders;
     }
+
+    private void sendOrderConfirmationEmail(Order order) {
+        String recipientEmail = order.getCustomer() != null ? 
+            order.getCustomer().getEmail() : order.getGuestEmail();
+        String recipientName = order.getCustomer() != null ? 
+            order.getCustomer().getFirstname() : "Valued Customer";
+
+        Map<String, Object> templateModel = new HashMap<>();
+        templateModel.put("name", recipientName);
+        templateModel.put("orderId", order.getOrderId());
+        templateModel.put("items", order.getItems().stream()
+            .map(item -> Map.of(
+                "productName", item.getProduct().getName(),
+                "quantity", item.getQuantity(),
+                "price", item.getProduct().getPrice()
+            ))
+            .collect(Collectors.toList()));
+        
+        BigDecimal originalTotal = order.getTotalPrice();
+        BigDecimal finalTotal = order.getTotalPrice();
+        BigDecimal discount = BigDecimal.ZERO;
+        
+        // Calculate discount if coupon was applied
+        if (order.getTotalPrice().compareTo(originalTotal) < 0) {
+            discount = originalTotal.subtract(order.getTotalPrice());
+            finalTotal = order.getTotalPrice();
+        }
+
+        templateModel.put("subtotal", originalTotal);
+        templateModel.put("shipping", BigDecimal.ZERO);
+        templateModel.put("discount", discount);
+        templateModel.put("total", finalTotal);
+        templateModel.put("shippingAddress", order.getShippingAddress());
+
+        try {
+            emailService.sendHtmlEmail(
+                recipientEmail,
+                "Order Confirmation - LocalMarket",
+                recipientName,
+                "receipt_email",
+                null,
+                templateModel
+            );
+        } catch (MessagingException e) {
+            log.error("Failed to send order confirmation email: {}", e.getMessage());
+        }
+    }
+
 
 } 
