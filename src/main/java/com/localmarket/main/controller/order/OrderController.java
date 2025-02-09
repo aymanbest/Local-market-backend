@@ -115,10 +115,13 @@ public class OrderController {
 
     @Operation(summary = "Update order status", description = "Update order status (Producer only). Valid status transitions:\n\n"
             +
-            "- PENDING → ACCEPTED or DECLINED\n" +
-            "- ACCEPTED → DELIVERED or CANCELLED\n" +
+            "- PENDING_PAYMENT → No transitions allowed (automatic)\n" +
+            "- PAYMENT_FAILED → No transitions allowed (automatic)\n" +
+            "- PAYMENT_COMPLETED → PROCESSING\n" +
+            "- PROCESSING → SHIPPED or CANCELLED\n" +
+            "- SHIPPED → DELIVERED\n" +
             "- DELIVERED → RETURNED\n" +
-            "- DECLINED/CANCELLED/RETURNED → No further transitions allowed")
+            "- CANCELLED/RETURNED → No further transitions allowed")
     @SecurityRequirement(name = "bearer-jwt")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Order status updated successfully", content = @Content(schema = @Schema(implementation = Order.class))),
@@ -131,7 +134,7 @@ public class OrderController {
     public ResponseEntity<Order> updateOrderStatus(
             @PathVariable Long orderId,
             @Parameter(description = "New status. Must follow valid transition rules", schema = @Schema(allowableValues = {
-                    "ACCEPTED", "DECLINED", "DELIVERED", "CANCELLED", "RETURNED"
+                    "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"
             })) @RequestParam OrderStatus status,
             HttpServletRequest request) {
         String jwt = cookieUtil.getJwtFromRequest(request);
