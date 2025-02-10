@@ -92,7 +92,20 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private List<Category> seedCategories() {
-        String[] categoryNames = { "Vegetables", "Fruits", "Dairy", "Meat", "Bakery", "Honey", "Eggs" };
+        String[] categoryNames = {
+            "Fresh Vegetables", 
+            "Organic Fruits", 
+            "Dairy & Eggs",
+            "Meat & Poultry",
+            "Artisanal Bread",
+            "Raw Honey & Bee Products",
+            "Herbs & Spices",
+            "Jams & Preserves",
+            "Organic Grains",
+            "Handmade Pasta",
+            "Farm Fresh Eggs",
+            "Artisanal Cheese"
+        };
         List<Category> categories = new ArrayList<>();
 
         for (String name : categoryNames) {
@@ -125,52 +138,65 @@ public class DataSeeder implements CommandLineRunner {
 
     private List<Product> seedProducts(List<User> producers, List<Category> categories) {
         List<Product> products = new ArrayList<>();
-        String[] productNames = { "Fresh Tomatoes", "Organic Apples", "Farm Eggs", "Raw Honey", "Whole Milk" };
+        Map<String, String> productDetails = new HashMap<>();
+        
+        // Realistic product details
+        productDetails.put("Organic Heirloom Tomatoes", "Fresh, locally grown heirloom tomatoes. Perfect for salads and cooking.");
+        productDetails.put("Free-Range Farm Eggs", "Fresh eggs from free-range chickens, collected daily.");
+        productDetails.put("Wildflower Raw Honey", "Pure, unprocessed honey from local wildflowers.");
+        productDetails.put("Artisanal Sourdough Bread", "Traditional sourdough bread made with organic flour.");
+        productDetails.put("Fresh Grass-Fed Beef", "Premium grass-fed beef from local pastures.");
+        productDetails.put("Organic Baby Spinach", "Tender, organic baby spinach leaves.");
+        productDetails.put("Handmade Goat Cheese", "Creamy goat cheese made in small batches.");
+        productDetails.put("Heritage Apple Varieties", "Mix of heritage apple varieties grown without pesticides.");
+        productDetails.put("Fresh Herbs Bundle", "Mixed bundle of fresh organic herbs.");
+        productDetails.put("Homemade Berry Jam", "Small-batch berry jam made with local fruits.");
+
         String[] declineReasons = {
-            "Price too high for market standards",
-            "Product description needs more detail",
-            "Image quality insufficient",
-            "Missing certification documentation"
+            "Product pricing exceeds market standards",
+            "Insufficient product description and details",
+            "Missing required certification documentation",
+            "Product images don't meet quality guidelines",
+            "Incomplete ingredient information"
         };
 
         for (User producer : producers) {
-            // Create 3 products for each producer with different statuses
+            // Create 3-5 products for each producer
+            int productCount = 3 + random.nextInt(3);
             
-            // APPROVED product
-            Product approvedProduct = new Product();
-            approvedProduct.setName(productNames[random.nextInt(productNames.length)] + " by " + producer.getUsername());
-            approvedProduct.setDescription("Fresh local product - Approved");
-            approvedProduct.setPrice(BigDecimal.valueOf(10 + random.nextInt(90)));
-            approvedProduct.setQuantity(100 + random.nextInt(900));
-            approvedProduct.setProducer(producer);
-            approvedProduct.setStatus(ProductStatus.APPROVED);
-            approvedProduct.setCategories(Set.of(categories.get(random.nextInt(categories.size()))));
-            products.add(productRepository.save(approvedProduct));
+            for (int i = 0; i < productCount; i++) {
+                String productName = new ArrayList<>(productDetails.keySet()).get(random.nextInt(productDetails.size()));
+                String description = productDetails.get(productName);
+                
+                Product product = new Product();
+                product.setName(productName + " by " + producer.getFirstname());
+                product.setDescription(description);
+                product.setPrice(BigDecimal.valueOf(5 + random.nextInt(46)));
+                product.setQuantity(10 + random.nextInt(91));
+                product.setProducer(producer);
+                
+                // Randomly assign 1-2 categories
+                Set<Category> productCategories = new HashSet<>();
+                productCategories.add(categories.get(random.nextInt(categories.size())));
+                if (random.nextBoolean()) {
+                    productCategories.add(categories.get(random.nextInt(categories.size())));
+                }
+                product.setCategories(productCategories);
 
-            // PENDING product
-            Product pendingProduct = new Product();
-            pendingProduct.setName(productNames[random.nextInt(productNames.length)] + " by " + producer.getUsername());
-            pendingProduct.setDescription("Fresh local product - Pending");
-            pendingProduct.setPrice(BigDecimal.valueOf(10 + random.nextInt(90)));
-            pendingProduct.setQuantity(100 + random.nextInt(900));
-            pendingProduct.setProducer(producer);
-            pendingProduct.setStatus(ProductStatus.PENDING);
-            pendingProduct.setCategories(Set.of(categories.get(random.nextInt(categories.size()))));
-            products.add(productRepository.save(pendingProduct));
+                // Assign random status with realistic distribution
+                int statusRoll = random.nextInt(10);
+                if (statusRoll < 6) { // 60% approved
+                    product.setStatus(ProductStatus.APPROVED);
+                } else if (statusRoll < 8) { // 20% pending
+                    product.setStatus(ProductStatus.PENDING);
+                } else { // 20% declined
+                    product.setStatus(ProductStatus.DECLINED);
+                    product.setDeclineReason(declineReasons[random.nextInt(declineReasons.length)]);
+                }
 
-            // DECLINED product
-            Product declinedProduct = new Product();
-            declinedProduct.setName(productNames[random.nextInt(productNames.length)] + " by " + producer.getUsername());
-            declinedProduct.setDescription("Fresh local product - Declined");
-            declinedProduct.setPrice(BigDecimal.valueOf(10 + random.nextInt(90)));
-            declinedProduct.setQuantity(100 + random.nextInt(900));
-            declinedProduct.setProducer(producer);
-            declinedProduct.setStatus(ProductStatus.DECLINED);
-            declinedProduct.setDeclineReason(declineReasons[random.nextInt(declineReasons.length)]);
-            declinedProduct.setCategories(Set.of(categories.get(random.nextInt(categories.size()))));
-            products.add(productRepository.save(declinedProduct));
+                products.add(productRepository.save(product));
+            }
         }
-        
         return products;
     }
 
@@ -260,7 +286,6 @@ public class DataSeeder implements CommandLineRunner {
                     .collect(Collectors.toList());
 
             if (producerProducts.isEmpty()) {
-                System.out.println("No products found for producer: " + producerUsername);
                 return;
             }
 
@@ -269,22 +294,33 @@ public class DataSeeder implements CommandLineRunner {
             for (int i = 0; i < orderCount; i++) {
                 Order order = new Order();
                 order.setCustomer(customer);
-                order.setShippingAddress("123 Test St, City");
-                order.setPhoneNumber("+1234567890");
-                order.setPaymentMethod(PaymentMethod.CARD); // Set default payment method
-                order.setStatus(OrderStatus.DELIVERED); // Orders in seed data are completed
+                order.setShippingAddress(customer.getFirstname() + "'s Address, City");
+                order.setPhoneNumber("+1" + (random.nextInt(900) + 100) + 
+                                   (random.nextInt(900) + 100) + 
+                                   (random.nextInt(9000) + 1000));
+                order.setPaymentMethod(PaymentMethod.CARD);
 
-                // Choose date array based on period
-                LocalDateTime orderDate;
-                if (startDate != null && startDate.getYear() == 2025) {
-                    orderDate = JANUARY_DATES[random.nextInt(JANUARY_DATES.length)];
-                } else {
-                    orderDate = DECEMBER_DATES[random.nextInt(DECEMBER_DATES.length)];
+                // Randomize order status with realistic distribution
+                int statusRoll = random.nextInt(100);
+                if (statusRoll < 60) { // 60% delivered
+                    order.setStatus(OrderStatus.DELIVERED);
+                } else if (statusRoll < 75) { // 15% shipped
+                    order.setStatus(OrderStatus.SHIPPED);
+                } else if (statusRoll < 85) { // 10% processing
+                    order.setStatus(OrderStatus.PROCESSING);
+                } else if (statusRoll < 90) { // 5% pending payment
+                    order.setStatus(OrderStatus.PENDING_PAYMENT);
+                } else if (statusRoll < 95) { // 5% payment failed
+                    order.setStatus(OrderStatus.PAYMENT_FAILED);
+                } else { // 5% cancelled
+                    order.setStatus(OrderStatus.CANCELLED);
                 }
-                
+
+                // Set order date
+                LocalDateTime orderDate = DECEMBER_DATES[random.nextInt(DECEMBER_DATES.length)];
                 order.setOrderDate(orderDate);
 
-                // Create order items
+                // Create order items (1-3 items per order)
                 Set<OrderItem> orderItems = new HashSet<>();
                 int itemCount = 1 + random.nextInt(3);
 
@@ -293,42 +329,43 @@ public class DataSeeder implements CommandLineRunner {
                     OrderItem orderItem = new OrderItem();
                     orderItem.setOrder(order);
                     orderItem.setProduct(product);
-                    orderItem.setQuantity(1 + random.nextInt(5));
+                    orderItem.setQuantity(1 + random.nextInt(3));
                     orderItem.setPrice(product.getPrice());
                     orderItems.add(orderItem);
                 }
 
-                // Calculate total price
                 BigDecimal totalPrice = orderItems.stream()
                         .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                 order.setTotalPrice(totalPrice);
 
-                // Create payment for the order
-                Payment payment = new Payment();
-                payment.setPaymentMethod(PaymentMethod.CARD);
-                payment.setPaymentStatus(PaymentStatus.COMPLETED);
-                payment.setTransactionId("SEED_TRANS_" + UUID.randomUUID().toString());
-                payment.setAmount(totalPrice);
-                payment.setCreatedAt(orderDate);
-                Payment savedPayment = paymentRepository.save(payment);
+                // Create payment only for appropriate order statuses
+                if (order.getStatus() != OrderStatus.PENDING_PAYMENT && 
+                    order.getStatus() != OrderStatus.PAYMENT_FAILED) {
+                    Payment payment = new Payment();
+                    payment.setPaymentMethod(PaymentMethod.CARD);
+                    payment.setPaymentStatus(PaymentStatus.COMPLETED);
+                    payment.setTransactionId("TR" + System.currentTimeMillis() + random.nextInt(1000));
+                    payment.setAmount(totalPrice);
+                    payment.setCreatedAt(orderDate);
+                    Payment savedPayment = paymentRepository.save(payment);
+                    order.setPayment(savedPayment);
+                }
 
-                // Set items and payment to order
                 List<OrderItem> savedItems = new ArrayList<>();
                 for (OrderItem item : orderItems) {
                     item.setOrder(order);
                     savedItems.add(item);
                 }
                 order.setItems(savedItems);
-                order.setPayment(savedPayment);
 
-                // Save order
                 Order savedOrder = orderRepository.save(order);
-                savedPayment.setOrderId(savedOrder.getOrderId());
-                paymentRepository.save(savedPayment);
-
-                producerRevenue = producerRevenue.add(totalPrice);
+                if (order.getPayment() != null) {
+                    order.getPayment().setOrderId(savedOrder.getOrderId());
+                    paymentRepository.save(order.getPayment());
+                    producerRevenue = producerRevenue.add(totalPrice);
+                }
             }
 
             revenueMap.merge(producerUsername, producerRevenue, BigDecimal::add);
