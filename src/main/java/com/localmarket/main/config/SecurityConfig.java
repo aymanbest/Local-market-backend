@@ -13,6 +13,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import com.localmarket.main.security.JwtAuthenticationFilter;
+import com.localmarket.main.entity.user.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -28,6 +29,9 @@ import java.time.Duration;
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
+    private final String PRODUCER = Role.PRODUCER.name();
+    private final String ADMIN = Role.ADMIN.name();
+    private final String CUSTOMER = Role.CUSTOMER.name();
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -89,17 +93,52 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/orders/**").permitAll()
                 .requestMatchers("/api/orders/bundle/**").permitAll()
                 .requestMatchers("/api/categories/**").permitAll()
+                // Products
                 .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/images/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/category/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/{id}").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/products/my-products").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/products/my-pending").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/products/pending").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/products/{id}/approve").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/products/{id}/decline").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/products").hasAuthority(PRODUCER)
+                .requestMatchers(HttpMethod.PUT, "/api/products/**").hasAuthority(PRODUCER)
+                .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAuthority(PRODUCER)
+                .requestMatchers(HttpMethod.GET, "/api/products/my-products").hasAuthority(PRODUCER)
+                .requestMatchers(HttpMethod.GET, "/api/products/my-pending").hasAuthority(PRODUCER)
+                .requestMatchers(HttpMethod.GET, "/api/products/pending").hasAuthority(ADMIN)
+                .requestMatchers(HttpMethod.POST, "/api/products/{id}/approve").hasAuthority(ADMIN)
+                .requestMatchers(HttpMethod.POST, "/api/products/{id}/decline").hasAuthority(ADMIN)
+                
+                // Reviews
                 .requestMatchers(HttpMethod.GET, "/api/reviews/product/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/reviews/eligibility/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/reviews").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/reviews").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/reviews/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/reviews/pending").hasAuthority(ADMIN)
+                .requestMatchers(HttpMethod.POST, "/api/reviews/{reviewId}/approve").hasAuthority(ADMIN)
+                .requestMatchers(HttpMethod.POST, "/api/reviews/{reviewId}/decline").hasAuthority(ADMIN)
+                
+                // Regions
                 .requestMatchers("/api/regions/**").permitAll()
+                // Producer Applications
+                .requestMatchers(HttpMethod.POST, "/api/producer-applications").hasAuthority(CUSTOMER)
+                .requestMatchers(HttpMethod.GET, "/api/producer-applications/my-application").hasAuthority(CUSTOMER)
+                .requestMatchers(HttpMethod.GET, "/api/producer-applications/status").hasAuthority(CUSTOMER)
+                .requestMatchers("/api/producer-applications/**").hasAuthority(ADMIN)
+                // Coupons
+                .requestMatchers(HttpMethod.GET, "/api/coupons/validate/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/coupons/check-welcome").authenticated()
+                .requestMatchers("/api/coupons/**").hasAuthority(ADMIN)
+                // Analytics - Admin endpoints
+                .requestMatchers("/api/analytics/users").hasAuthority(ADMIN)
+                .requestMatchers("/api/analytics/transactions").hasAuthority(ADMIN)
+                .requestMatchers("/api/analytics/business-metrics").hasAuthority(ADMIN)
+                .requestMatchers("/api/analytics/export").hasAuthority(ADMIN)
+                // Analytics - Producer endpoints
+                .requestMatchers("/api/analytics/overview").hasAuthority(PRODUCER)
+                .requestMatchers("/api/analytics/total-orders").hasAuthority(PRODUCER)
+                .requestMatchers("/api/analytics/total-pending-orders").hasAuthority(PRODUCER)
+                .requestMatchers("/api/analytics/total-delivered-orders").hasAuthority(PRODUCER)
+                .requestMatchers("/api/analytics/total-processing-orders").hasAuthority(PRODUCER)
                 .anyRequest().authenticated()
             )
             

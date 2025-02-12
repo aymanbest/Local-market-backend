@@ -89,9 +89,11 @@ public class ProducerApplicationService {
     }
 
     private ProducerApplicationResponse mapToDTO(ProducerApplication application) {
-        String[] categories = Arrays.stream(application.getCategoryIds().split(","))
-            .map(id -> categoryRepository.getReferenceById(Long.parseLong(id)).getName())
-            .toArray(String[]::new);
+        String[] categories = application.getCategoryIds() == null || application.getCategoryIds().isEmpty() 
+            ? new String[0]
+            : Arrays.stream(application.getCategoryIds().split(","))
+                .map(id -> categoryRepository.getReferenceById(Long.parseLong(id)).getName())
+                .toArray(String[]::new);
 
         return ProducerApplicationResponse.builder()
                 .applicationId(application.getApplicationId())
