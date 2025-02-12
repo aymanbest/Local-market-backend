@@ -185,7 +185,13 @@ public class OrderService {
                     request.getCouponCode(), 
                     order.getTotalPrice()
                 );
-                order.setTotalPrice(order.getTotalPrice().subtract(discount));
+                // Format the total price to ensure it has at most 10 digits and 2 decimal places
+                BigDecimal newTotal = order.getTotalPrice().subtract(discount).setScale(2, BigDecimal.ROUND_HALF_UP);
+                if (newTotal.precision() > 12) { // 10 digits + 2 decimal places
+                    throw new ApiException(ErrorType.VALIDATION_FAILED, 
+                        "Total price after discount exceeds maximum allowed digits");
+                }
+                order.setTotalPrice(newTotal);
                 couponService.applyCoupon(request.getCouponCode(), order.getCustomer() != null ? 
                     order.getCustomer().getUserId() : null);
             }
