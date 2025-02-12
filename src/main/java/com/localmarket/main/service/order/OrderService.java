@@ -142,7 +142,10 @@ public class OrderService {
             customer = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User not found"));
             accessToken = tokenService.createCheckoutToken(userEmail);
-        } else if (request.getGuestEmail() != null) {
+        } else if (request.getGuestEmail() == null) {
+            // Neither authenticated nor guest email provided
+            throw new ApiException(ErrorType.VALIDATION_FAILED, "Guest email is required for guest orders");
+        } else {
             // Guest user flow
             log.info("Processing as guest user with email: {}", request.getGuestEmail());
             accessToken = tokenService.createCheckoutToken(request.getGuestEmail());
@@ -152,9 +155,6 @@ public class OrderService {
                 customer = userRepository.findByEmail(request.getGuestEmail())
                     .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User creation failed"));
             }
-        } else {
-            log.error("No user email or guest email provided for unauthenticated request");
-            throw new ApiException(ErrorType.VALIDATION_FAILED, "Guest email is required for guest orders");
         }
         
         // Create separate order for each producer

@@ -7,6 +7,8 @@ import com.localmarket.main.entity.review.ReviewStatus;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
     List<Review> findByCustomerUserId(Long customerId);

@@ -12,6 +12,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 @RestController
 @RequestMapping("/api/reviews")
@@ -49,11 +53,17 @@ public class ReviewController {
     }
 
     @GetMapping
-    @Operation(summary = "Get customer reviews", description = "Get all reviews by the authenticated customer")
+    @Operation(summary = "Get customer reviews", description = "Get all reviews by the authenticated customer with pagination")
     @SecurityRequirement(name = "cookie")
-    public ResponseEntity<List<ReviewResponse>> getCustomerReviews(
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(reviewService.getCustomerReviews(userDetails.getId()));
+    public ResponseEntity<Page<ReviewResponse>> getCustomerReviews(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        return ResponseEntity.ok(reviewService.getCustomerReviews(userDetails.getId(), pageable));
     }
 
     @PostMapping("/{reviewId}/approve")

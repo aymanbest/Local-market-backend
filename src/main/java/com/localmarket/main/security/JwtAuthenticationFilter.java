@@ -41,19 +41,43 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain) throws ServletException, IOException {
 
         try {
-            // For public endpoints, proceed without any authentication
+            // Always let authentication endpoints through
+            if (isAuthEndpoint(request)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            String jwt = cookieUtil.getJwtFromCookies(request);
+            
+            // If JWT is present, try to authenticate regardless of endpoint
+            if (jwt != null) {
+                try {
+                    // Only authenticate if not already authenticated
+                    if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                        authenticateUser(jwt);
+                    }
+                } catch (ApiException e) {
+                    // If authentication fails on a public endpoint, continue without authentication
+                    if (isPublicEndpoint(request)) {
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+                    // For protected endpoints, throw the error
+                    throw e;
+                }
+            }
+            
+            // For public endpoints, proceed without authentication
             if (isPublicEndpoint(request)) {
                 filterChain.doFilter(request, response);
                 return;
             }
 
-            // For protected endpoints, require valid JWT
-            String jwt = cookieUtil.getJwtFromCookies(request);
-            if (jwt == null) {
-                throw new ApiException(ErrorType.INVALID_TOKEN, "Missing authentication token");
+            // For protected endpoints without valid JWT, return unauthorized
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                throw new ApiException(ErrorType.INVALID_TOKEN, "Missing or invalid authentication token");
             }
-            
-            authenticateUser(jwt);
+
             filterChain.doFilter(request, response);
             
         } catch (ApiException e) {
@@ -154,5 +178,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         return false;
+    }
+
+    private boolean isAuthEndpoint(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/api/auth/") && 
+               !path.equals("/api/auth/me") && 
+               !path.equals("/api/auth/logout");
     }
 }

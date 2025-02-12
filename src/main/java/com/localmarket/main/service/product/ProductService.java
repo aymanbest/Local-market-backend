@@ -41,6 +41,12 @@ import com.localmarket.main.repository.review.ReviewRepository;
 import com.localmarket.main.entity.review.ReviewStatus;
 import com.localmarket.main.entity.review.Review;
 import com.localmarket.main.service.notification.admin.AdminNotificationService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 
 @Service
@@ -186,9 +192,62 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProducerProductsResponse> getAllProductsGroupedByProducer() {
+    public Page<ProducerProductsResponse> getAllProductsGroupedByProducer(Pageable pageable) {
         List<Product> allProducts = productRepository.findAllWithCategories();
-        return groupProductsByProducer(allProducts);
+        
+        // Sort all products first
+        List<Product> sortedProducts = allProducts.stream()
+            .sorted((p1, p2) -> {
+                if (pageable.getSort().isEmpty()) {
+                    return 0;
+                }
+                String sortBy = pageable.getSort().iterator().next().getProperty();
+                boolean isAsc = pageable.getSort().iterator().next().isAscending();
+                
+                int comparison = switch(sortBy) {
+                    case "price" -> p1.getPrice().compareTo(p2.getPrice());
+                    case "name" -> p1.getName().compareTo(p2.getName());
+                    case "quantity" -> Integer.compare(p1.getQuantity(), p2.getQuantity());
+                    case "updatedAt" -> p1.getUpdatedAt().compareTo(p2.getUpdatedAt());
+                    case "createdAt" -> p1.getCreatedAt().compareTo(p2.getCreatedAt());
+                    default -> 0;
+                };
+                return isAsc ? comparison : -comparison;
+            })
+            .collect(Collectors.toList());
+
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), sortedProducts.size());
+        
+        if (start >= sortedProducts.size()) {
+            return new PageImpl<>(List.of(), pageable, sortedProducts.size());
+        }
+        
+        // Get the paginated subset
+        List<Product> paginatedProducts = sortedProducts.subList(start, end);
+
+        // Group the paginated products by producer and maintain the sort order within each group
+        Map<User, List<Product>> groupedProducts = new LinkedHashMap<>();
+        for (Product product : paginatedProducts) {
+            groupedProducts.computeIfAbsent(product.getProducer(), k -> new ArrayList<>()).add(product);
+        }
+
+        // Convert to response objects while maintaining order
+        List<ProducerProductsResponse> responses = groupedProducts.entrySet().stream()
+            .map(entry -> new ProducerProductsResponse(
+                entry.getKey().getUserId(),
+                entry.getKey().getUsername(),
+                entry.getKey().getFirstname(),
+                entry.getKey().getLastname(),
+                entry.getKey().getEmail(),
+                entry.getValue().stream()
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList())
+            ))
+            .collect(Collectors.toList());
+            
+        return new PageImpl<>(responses, pageable, sortedProducts.size());
     }
 
     @Transactional(readOnly = true)
@@ -198,37 +257,72 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProducerProductsResponse> getProductsByCategory(Long categoryId) {
+    public Page<ProducerProductsResponse> getProductsByCategory(Long categoryId, Pageable pageable) {
         if (!categoryRepository.existsById(categoryId)) {
             throw new ApiException(ErrorType.CATEGORY_NOT_FOUND, 
                 "Category with id " + categoryId + " not found");
         }
         
         List<Product> products = productRepository.findByCategoriesCategoryId(categoryId);
-        return groupProductsByProducer(products);
-    }
-
-    private List<ProducerProductsResponse> groupProductsByProducer(List<Product> products) {
-        Map<User, List<Product>> groupedProducts = products.stream()
-            .collect(Collectors.groupingBy(Product::getProducer));
         
-        return groupedProducts.entrySet().stream()
-            .map(entry -> {
-                User producer = entry.getKey();
-                List<ProductResponse> productResponses = entry.getValue().stream()
-                    .map(this::convertToDTO)
-                    .collect(Collectors.toList());
-                    
-                return new ProducerProductsResponse(
-                    producer.getUserId(),
-                    producer.getUsername(),
-                    producer.getFirstname(),
-                    producer.getLastname(),
-                    producer.getEmail(),
-                    productResponses
-                );
+        // Sort products by the requested field
+        List<Product> sortedProducts = products.stream()
+            .sorted((p1, p2) -> {
+                if (pageable.getSort().isEmpty()) {
+                    return 0;
+                }
+                String sortBy = pageable.getSort().iterator().next().getProperty();
+                boolean isAsc = pageable.getSort().iterator().next().isAscending();
+                
+                return switch(sortBy) {
+                    case "price" -> isAsc ? 
+                        p1.getPrice().compareTo(p2.getPrice()) :
+                        p2.getPrice().compareTo(p1.getPrice());
+                    case "name" -> isAsc ? 
+                        p1.getName().compareTo(p2.getName()) :
+                        p2.getName().compareTo(p1.getName());
+                    case "quantity" -> isAsc ? 
+                        Integer.compare(p1.getQuantity(), p2.getQuantity()) :
+                        Integer.compare(p2.getQuantity(), p1.getQuantity());
+                    case "updatedAt" -> isAsc ? 
+                        p1.getUpdatedAt().compareTo(p2.getUpdatedAt()) :
+                        p2.getUpdatedAt().compareTo(p1.getUpdatedAt());
+                    case "createdAt" -> isAsc ? 
+                        p1.getCreatedAt().compareTo(p2.getCreatedAt()) :
+                        p2.getCreatedAt().compareTo(p1.getCreatedAt());
+                    default -> 0;
+                };
             })
             .collect(Collectors.toList());
+            
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), sortedProducts.size());
+        
+        if (start >= sortedProducts.size()) {
+            return new PageImpl<>(List.of(), pageable, sortedProducts.size());
+        }
+        
+        List<Product> paginatedProducts = sortedProducts.subList(start, end);
+        
+        // Group by producer
+        Map<User, List<Product>> groupedProducts = paginatedProducts.stream()
+            .collect(Collectors.groupingBy(Product::getProducer));
+
+        List<ProducerProductsResponse> responses = groupedProducts.entrySet().stream()
+            .map(entry -> new ProducerProductsResponse(
+                entry.getKey().getUserId(),
+                entry.getKey().getUsername(),
+                entry.getKey().getFirstname(),
+                entry.getKey().getLastname(),
+                entry.getKey().getEmail(),
+                entry.getValue().stream()
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList())
+            ))
+            .collect(Collectors.toList());
+            
+        return new PageImpl<>(responses, pageable, sortedProducts.size());
     }
 
     private void validateProductPrice(BigDecimal price) {
@@ -248,9 +342,26 @@ public class ProductService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<ProducerProductsResponse> getProductsByStatus(ProductStatus status) {
         List<Product> products = productRepository.findByStatus(status);
-        return groupProductsByProducer(products);
+        
+        // Group by producer
+        Map<User, List<Product>> groupedProducts = products.stream()
+            .collect(Collectors.groupingBy(Product::getProducer));
+
+        return groupedProducts.entrySet().stream()
+            .map(entry -> new ProducerProductsResponse(
+                entry.getKey().getUserId(),
+                entry.getKey().getUsername(),
+                entry.getKey().getFirstname(),
+                entry.getKey().getLastname(),
+                entry.getKey().getEmail(),
+                entry.getValue().stream()
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList())
+            ))
+            .collect(Collectors.toList());
     }
 
     public List<ProductResponse> getProducerProductsByStatus(Long producerId, ProductStatus status) {

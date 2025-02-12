@@ -38,6 +38,10 @@ import com.localmarket.main.dto.product.ProductDeclineRequest;
 import com.localmarket.main.dto.product.MyProductResponse;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.localmarket.main.security.CustomUserDetails;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 @RestController
 @RequestMapping("/api/products")
@@ -183,22 +187,35 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Get all products", description = "Retrieve all products")
+    @Operation(summary = "Get all products", description = "Retrieve all products with pagination")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Products found", content = @Content(schema = @Schema(implementation = ProducerProductsResponse.class)))
     })
     @GetMapping
-    public ResponseEntity<List<ProducerProductsResponse>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllProductsGroupedByProducer());
+    public ResponseEntity<Page<ProducerProductsResponse>> getAllProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        return ResponseEntity.ok(productService.getAllProductsGroupedByProducer(pageable));
     }
 
-    @Operation(summary = "Get products by category", description = "Retrieve products by category")
+    @Operation(summary = "Get products by category", description = "Retrieve products by category with pagination")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Products found", content = @Content(schema = @Schema(implementation = ProducerProductsResponse.class)))
     })
     @GetMapping("/category/{categoryId}")
-    public ResponseEntity<List<ProducerProductsResponse>> getProductsByCategory(@PathVariable Long categoryId) {
-        return ResponseEntity.ok(productService.getProductsByCategory(categoryId));
+    public ResponseEntity<Page<ProducerProductsResponse>> getProductsByCategory(
+            @PathVariable Long categoryId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        return ResponseEntity.ok(productService.getProductsByCategory(categoryId, pageable));
     }
 
     @Operation(summary = "Get product image", description = "Retrieve product image")
