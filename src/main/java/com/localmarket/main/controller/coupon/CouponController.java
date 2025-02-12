@@ -6,9 +6,11 @@ import com.localmarket.main.dto.coupon.CouponRequest;
 import com.localmarket.main.security.AdminOnly;
 import com.localmarket.main.dto.coupon.CouponStatsResponse;
 import com.localmarket.main.dto.coupon.CouponValidationResponse;
+import com.localmarket.main.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -21,6 +23,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CouponController {
     private final CouponService couponService;
+
+    @PostMapping("/initialize-welcome")
+    @AdminOnly
+    @Operation(summary = "Initialize welcome coupon", description = "Create the default 10% welcome coupon if it doesn't exist (Admin only)")
+    @SecurityRequirement(name = "cookie")
+    public ResponseEntity<Void> initializeWelcomeCoupon() {
+        couponService.initializeWelcomeCoupon();
+        return ResponseEntity.ok().build();
+    }
 
     @PostMapping
     @AdminOnly
@@ -58,11 +69,22 @@ public class CouponController {
     }
 
     @GetMapping("/validate/{code}")
-    @Operation(summary = "Validate coupon", description = "Check if a coupon exists and is valid")
+    @Operation(summary = "Validate coupon", description = "Check if a coupon exists and is valid for the current user")
+    @SecurityRequirement(name = "cookie")
     public ResponseEntity<CouponValidationResponse> validateCoupon(
             @PathVariable String code,
-            @RequestParam BigDecimal cartTotal) {
-        return ResponseEntity.ok(couponService.validateCoupon(code, cartTotal));
+            @RequestParam BigDecimal cartTotal,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(couponService.validateCoupon(code, cartTotal, userDetails.getId()));
+    }
+
+    @GetMapping("/check-welcome")
+    @Operation(summary = "Check welcome coupon", description = "Check if the user is eligible for the welcome coupon")
+    @SecurityRequirement(name = "cookie")
+    public ResponseEntity<Coupon> checkWelcomeCoupon(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return couponService.checkUserWelcomeCoupon(userDetails.getId())
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
     }
 
     @PatchMapping("/{couponId}/status")

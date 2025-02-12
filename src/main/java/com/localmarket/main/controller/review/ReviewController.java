@@ -2,18 +2,16 @@ package com.localmarket.main.controller.review;
 
 import com.localmarket.main.dto.review.*;
 import com.localmarket.main.service.review.ReviewService;
-import com.localmarket.main.service.auth.JwtService;
 import com.localmarket.main.security.AdminOnly;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.localmarket.main.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.List;
-import jakarta.servlet.http.HttpServletRequest;
-import com.localmarket.main.util.CookieUtil;
-
 
 @RestController
 @RequestMapping("/api/reviews")
@@ -21,46 +19,42 @@ import com.localmarket.main.util.CookieUtil;
 @Tag(name = "Reviews", description = "Review management APIs")
 public class ReviewController {
     private final ReviewService reviewService;
-    private final JwtService jwtService;
-    private final CookieUtil cookieUtil;
     
     @GetMapping("/eligibility/{productId}")
     @Operation(summary = "Check review eligibility", description = "Check if user can review a product")
     @SecurityRequirement(name = "cookie")
     public ResponseEntity<ReviewEligibilityResponse> checkEligibility(
             @PathVariable Long productId,
-            HttpServletRequest request) {
-        String jwt = cookieUtil.getJwtFromRequest(request);     
-        Long customerId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(reviewService.checkReviewEligibility(productId, customerId));
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(reviewService.checkReviewEligibility(productId, userDetails.getId()));
     }
 
-    
     @PostMapping
     @Operation(summary = "Create review", description = "Create a new review for a product")
     @SecurityRequirement(name = "cookie")
     public ResponseEntity<ReviewResponse> createReview(
             @RequestBody ReviewRequest request,
-            HttpServletRequest requestco) {
-        String jwt = cookieUtil.getJwtFromRequest(requestco);
-        Long customerId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(reviewService.createReview(request, customerId));
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(reviewService.createReview(request, userDetails.getId()));
     }
 
-    
     @PutMapping("/{reviewId}")
     @Operation(summary = "Update review", description = "Update an existing review")
     @SecurityRequirement(name = "cookie")
     public ResponseEntity<ReviewResponse> updateReview(
             @PathVariable Long reviewId,
             @RequestBody ReviewRequest request,
-            HttpServletRequest requestco) {
-        String jwt = cookieUtil.getJwtFromRequest(requestco);
-        Long customerId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(reviewService.updateReview(reviewId, request, customerId));
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(reviewService.updateReview(reviewId, request, userDetails.getId()));
     }
 
-
+    @GetMapping
+    @Operation(summary = "Get customer reviews", description = "Get all reviews by the authenticated customer")
+    @SecurityRequirement(name = "cookie")
+    public ResponseEntity<List<ReviewResponse>> getCustomerReviews(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(reviewService.getCustomerReviews(userDetails.getId()));
+    }
 
     @PostMapping("/{reviewId}/approve")
     @Operation(summary = "Approve review", description = "Approve a pending review")
@@ -77,17 +71,6 @@ public class ReviewController {
     public ResponseEntity<ReviewResponse> declineReview(@PathVariable Long reviewId) {
         return ResponseEntity.ok(reviewService.declineReview(reviewId));
     }
-
-    @GetMapping
-    @Operation(summary = "Get customer reviews", description = "Get all reviews by the authenticated customer")
-    @SecurityRequirement(name = "cookie")
-    public ResponseEntity<List<ReviewResponse>> getCustomerReviews(
-            HttpServletRequest requestco) {
-        String jwt = cookieUtil.getJwtFromRequest(requestco);
-        Long customerId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(reviewService.getCustomerReviews(customerId));
-    }
-
 
     @GetMapping("/product/{productId}")
     @Operation(summary = "Get product reviews", description = "Get all approved reviews for a product")

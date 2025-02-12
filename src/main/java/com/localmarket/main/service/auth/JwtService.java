@@ -8,19 +8,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.localmarket.main.entity.user.User;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-
-import com.localmarket.main.repository.producer.ProducerApplicationRepository;
 import com.localmarket.main.repository.user.UserRepository;
-import com.localmarket.main.entity.user.Role;
-
 import java.security.Key;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+
 
 @Service
 public class JwtService {
@@ -28,34 +23,24 @@ public class JwtService {
     private String secretKey;
     
     private final UserRepository userRepository;
-    private final ProducerApplicationRepository applicationRepository;
 
-    public JwtService(UserRepository userRepository, ProducerApplicationRepository applicationRepository) {
+    public JwtService(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.applicationRepository = applicationRepository;
     }
 
     public String generateToken(User user) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getUserId());
-        claims.put("username", user.getUsername());
-        claims.put("firstname", user.getFirstname());
-        claims.put("lastname", user.getLastname());
-        claims.put("email", user.getEmail());
         claims.put("role", user.getRole().name());
         claims.put("tokenVersion", user.getTokenVersion());
 
-        // Get application status if user is a customer
-        if (user.getRole() == Role.CUSTOMER) {
-            String status = applicationRepository.findByCustomer(user)
-                .map(app -> app.getStatus().name())
-                .orElse("NO_APPLICATION");
-            claims.put("applicationStatus", status);
-        }
+        return generateToken(claims, user.getEmail());
+    }
 
+    public String generateToken(Map<String, Object> claims, String subject) {
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(user.getEmail())
+                .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // 24 hours
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
@@ -79,8 +64,9 @@ public class JwtService {
     }
     
     public Claims extractAllClaims(String token) {
-        return Jwts.parser()
+        return Jwts.parserBuilder()
                 .setSigningKey(getSignInKey())
+                .build()
                 .parseClaimsJws(token)
                 .getBody();
     }
@@ -115,9 +101,4 @@ public class JwtService {
         return extractAllClaims(token).getExpiration().before(new Date());
     }
 
-    private LocalDateTime getTokenIssuedAt(String token) {
-        return extractAllClaims(token).getIssuedAt().toInstant()
-            .atZone(ZoneId.systemDefault())
-            .toLocalDateTime();
-    }
 } 

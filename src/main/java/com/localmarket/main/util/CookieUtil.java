@@ -1,12 +1,13 @@
 package com.localmarket.main.util;
 
 import org.springframework.stereotype.Component;
-import org.springframework.web.util.WebUtils;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseCookie;
-import com.localmarket.main.exception.ApiException;
-import com.localmarket.main.exception.ErrorType;
+import com.localmarket.main.security.CustomUserDetails;
+import com.localmarket.main.service.auth.JwtService;
+import java.util.HashMap;
+import java.util.Map;
 
 
 @Component
@@ -14,10 +15,16 @@ public class CookieUtil {
     private static final String JWT_COOKIE_NAME = "jwt";
     private static final int COOKIE_EXPIRY = 24 * 60 * 60; // 24 hours in seconds
 
+    private final JwtService jwtService;
+
+    public CookieUtil(JwtService jwtService) {
+        this.jwtService = jwtService;
+    }
+
     public ResponseCookie createJwtCookie(String token) {
         return ResponseCookie.from(JWT_COOKIE_NAME, token)
                 .httpOnly(true)
-                .secure(true)  // Enable for HTTPS
+                .secure(true)
                 .sameSite("Strict")
                 .path("/")
                 .maxAge(COOKIE_EXPIRY)
@@ -46,23 +53,19 @@ public class CookieUtil {
         return null;
     }
 
-    public String getJwtFromRequest(HttpServletRequest request) {
-        String jwt = getJwtFromCookies(request);
-        if (jwt == null) {
-            throw new ApiException(ErrorType.INVALID_SESSION, "Missing authentication token");
-        }
-        return jwt;
-    }
-
-    public String extractJwtFromCookie(String cookieHeader) {
-        if (cookieHeader == null) return null;
+    public String createJwtFromUserDetails(CustomUserDetails userDetails) {
+        if (userDetails == null) return null;
         
-        String[] cookies = cookieHeader.split(";");
-        for (String cookie : cookies) {
-            if (cookie.trim().startsWith("jwt=")) {
-                return cookie.trim().substring(4);
-            }
-        }
-        return null;
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userDetails.getId());
+        claims.put("username", userDetails.getUsername());
+        claims.put("firstname", userDetails.getFirstname());
+        claims.put("lastname", userDetails.getLastname());
+        claims.put("email", userDetails.getEmail());
+        claims.put("role", userDetails.getRole().name());
+        claims.put("tokenVersion", userDetails.getTokenVersion());
+        claims.put("applicationStatus", userDetails.getApplicationStatus());
+        
+        return jwtService.generateToken(claims, userDetails.getEmail());
     }
 } 

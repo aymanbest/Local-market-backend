@@ -10,29 +10,26 @@ import com.localmarket.main.entity.product.Product;
 import com.localmarket.main.entity.review.Review;
 import java.time.LocalDateTime;
 import java.util.Map;
+import com.localmarket.main.entity.user.Role;
+import com.localmarket.main.websocket.NotificationWebSocketHandler;
+import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AdminNotificationService {
     private final WebSocketService webSocketService;
+    private final NotificationWebSocketHandler webSocketHandler;
 
     public void notifyNewProducerApplication(ProducerApplication application) {
-        NotificationResponse notification = NotificationResponse.builder()
-            .type("NEW_PRODUCER_APPLICATION")
-            .message("New producer application received from " + application.getBusinessName())
-            .data(Map.of(
-                "applicationId", application.getApplicationId(),
-                "businessName", application.getBusinessName(),
-                "customerEmail", application.getCustomer().getEmail(),
-                "customerUsername", application.getCustomer().getUsername(),
-                "categories", application.getCategoryIds(),
-                "customCategory", application.getCustomCategory()
-            ))
-            .timestamp(LocalDateTime.now())
-            .build();
+        Map<String, Object> notification = new HashMap<>();
+        notification.put("type", "NEW_PRODUCER_APPLICATION");
+        notification.put("applicationId", application.getApplicationId());
+        notification.put("businessName", application.getBusinessName());
+        notification.put("customerEmail", application.getCustomer().getEmail());
+        notification.put("timestamp", application.getCreatedAt());
 
-        webSocketService.sendToRole("ADMIN", notification);
+        webSocketHandler.sendToRole(Role.ADMIN.name(), notification);
     }
 
     public void notifyNewProductNeedsReview(Product product) {
@@ -49,7 +46,7 @@ public class AdminNotificationService {
             .timestamp(LocalDateTime.now())
             .build();
 
-        webSocketService.sendToRole("ADMIN", notification);
+        webSocketService.sendToRole(Role.ADMIN.name(), notification);
     }
 
     public void notifyNewReviewNeedsApproval(Review review) {
@@ -66,6 +63,6 @@ public class AdminNotificationService {
             .timestamp(LocalDateTime.now())
             .build();
 
-        webSocketService.sendToRole("ADMIN", notification);
+        webSocketService.sendToRole(Role.ADMIN.name(), notification);
     }
 } 

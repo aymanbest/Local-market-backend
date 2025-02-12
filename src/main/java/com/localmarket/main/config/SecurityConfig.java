@@ -10,14 +10,16 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import com.localmarket.main.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
-import org.springframework.security.authorization.AuthorizationDecision;
-
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import java.time.Duration;
 
 @Configuration
 @EnableWebSecurity
@@ -29,14 +31,51 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
+        requestHandler.setCsrfRequestAttributeName(null);
+        
         http
+            // CORS configuration
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
+            
+            // CSRF protection
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .csrfTokenRequestHandler(requestHandler)
+                .ignoringRequestMatchers(
+                    "/api/auth/**",
+                    "/api/orders/checkout",
+                    "/api/orders/pay",
+                    "/api/orders/bundle/**",
+                    "/ws/**"  // Ignore CSRF for WebSocket
+                ))
+            
+            // Session management
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            
+            // Security context
             .securityContext(context -> context
                 .requireExplicitSave(false))
+            
+            // Security headers to prevent attacks xss
+            .headers(headers -> headers
+                .contentSecurityPolicy(csp -> csp.policyDirectives(
+                    "default-src 'self'; " +
+                    "img-src 'self' data: https:; " +
+                    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+                    "style-src 'self' 'unsafe-inline'; " +
+                    "connect-src 'self' ws: wss:;"
+                ))
+                .referrerPolicy(referrer -> referrer
+                    .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                .frameOptions(frame -> frame.deny())) // prevent clickjacking attacks 
+                
+            
+            // Request authorization
             .authorizeHttpRequests(auth -> auth
+                // WebSocket endpoint
+                .requestMatchers("/ws/**").permitAll()
                 // Swagger UI endpoints
                 .requestMatchers("/v3/api-docs/**", 
                                "/v3/api-docs.yaml",
@@ -44,6 +83,7 @@ public class SecurityConfig {
                                "/swagger-ui.html",
                                "/webjars/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
+                // Allow guest checkout but require authentication for authenticated users
                 .requestMatchers(HttpMethod.POST, "/api/orders/checkout").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/orders/pay").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/orders/**").permitAll()
@@ -58,40 +98,12 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/products/pending").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/products/{id}/approve").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/products/{id}/decline").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/users").authenticated() //It Can get users by role name
-                .requestMatchers(HttpMethod.GET, "/api/users/{id}").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/users").authenticated()
-                .requestMatchers(HttpMethod.PUT, "/api/users/{id}").authenticated()
-                .requestMatchers(HttpMethod.DELETE, "/api/users/{id}").authenticated()
-                .requestMatchers(HttpMethod.GET,"/api/users").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/send-email").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/analytics/**").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/producer-applications/status").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/orders/producer-orders/**").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/orders/producer-orders/status/**").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/users/change-password").authenticated()
-                .requestMatchers("/ws/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/reviews/product/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/reviews/eligibility/**").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/reviews").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/reviews").authenticated()
-                .requestMatchers(HttpMethod.PUT, "/api/reviews/**").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/reviews/*/approve").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/reviews/*/decline").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/reviews/pending").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/orders").access((authentication, context) -> {
-                    String showall = context.getRequest().getParameter("showall");
-                    return new AuthorizationDecision(showall != null ? 
-                        authentication.get().isAuthenticated() : 
-                        true);
-                })
-                .requestMatchers(HttpMethod.POST, "/api/coupons/**").authenticated()
-                .requestMatchers(HttpMethod.PUT, "/api/coupons/**").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/coupons/**").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/coupons/validate/**").permitAll()
                 .requestMatchers("/api/regions/**").permitAll()
                 .anyRequest().authenticated()
             )
+            
+            // Authentication
             .authenticationProvider(authenticationProvider)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
             
@@ -102,9 +114,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));  // For testing only
-        configuration.setAllowedMethods(Arrays.asList("*"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-XSRF-TOKEN", "Cookie"));
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(Duration.ofHours(1));
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

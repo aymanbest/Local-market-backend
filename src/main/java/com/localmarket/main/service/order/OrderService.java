@@ -30,7 +30,6 @@ import com.localmarket.main.entity.payment.Payment;
 import com.localmarket.main.dto.payment.PaymentInfo;
 import com.localmarket.main.dto.order.OrderRequest;
 import com.localmarket.main.dto.order.OrderItemRequest;
-import com.localmarket.main.dto.auth.AuthResponse;
 import com.localmarket.main.dto.auth.RegisterRequest;
 import com.localmarket.main.dto.payment.PaymentResponse;
 import com.localmarket.main.service.auth.AuthService;
@@ -43,7 +42,6 @@ import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.service.product.ProductService;
 import com.localmarket.main.service.coupon.CouponService;
-import com.localmarket.main.dto.auth.AuthServiceResult;
 import com.localmarket.main.service.email.EmailService;
 
 @Service
@@ -120,6 +118,8 @@ public class OrderService {
 
     @Transactional
     public List<OrderResponse> createPendingOrder(OrderRequest request, String userEmail) {
+        log.info("Creating pending order. User email: {}", userEmail);
+        
         validateOrderStock(request.getItems());
         
         // Group items by producer
@@ -132,12 +132,29 @@ public class OrderService {
         
         List<OrderResponse> orders = new ArrayList<>();
         
-        // Generate single access token for all orders in this checkout
-        String accessToken = null;
+        // Handle authentication and customer setup
+        String accessToken;
+        User customer = null;
+
+        // If we have userEmail, treat as authenticated user
         if (userEmail != null) {
+            log.info("Processing as authenticated user with email: {}", userEmail);
+            customer = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User not found"));
             accessToken = tokenService.createCheckoutToken(userEmail);
         } else if (request.getGuestEmail() != null) {
+            // Guest user flow
+            log.info("Processing as guest user with email: {}", request.getGuestEmail());
             accessToken = tokenService.createCheckoutToken(request.getGuestEmail());
+            if (request.getAccountCreation() != null && request.getAccountCreation().isCreateAccount()) {
+                RegisterRequest registerRequest = createRegisterRequest(request);
+                authService.register(registerRequest, null);
+                customer = userRepository.findByEmail(request.getGuestEmail())
+                    .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User creation failed"));
+            }
+        } else {
+            log.error("No user email or guest email provided for unauthenticated request");
+            throw new ApiException(ErrorType.VALIDATION_FAILED, "Guest email is required for guest orders");
         }
         
         // Create separate order for each producer
@@ -145,17 +162,8 @@ public class OrderService {
             Order order = new Order();
             
             // Set customer info using the same access token
-            if (userEmail != null) {
-                User customer = userRepository.findByEmail(userEmail)
-                    .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "User not found"));
+            if (customer != null) {
                 setupCustomerOrder(order, customer, accessToken);
-            } else if (request.getAccountCreation() != null && request.getAccountCreation().isCreateAccount()) {
-                RegisterRequest registerRequest = createRegisterRequest(request);
-                AuthServiceResult authResult = authService.register(registerRequest, null);
-                User newCustomer = userRepository.findByEmail(request.getGuestEmail())
-                    .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User creation failed"));
-                setupCustomerOrder(order, newCustomer, accessToken);
-
             } else {
                 setupGuestOrder(order, request, accessToken);
             }
@@ -178,7 +186,8 @@ public class OrderService {
                     order.getTotalPrice()
                 );
                 order.setTotalPrice(order.getTotalPrice().subtract(discount));
-                couponService.applyCoupon(request.getCouponCode());
+                couponService.applyCoupon(request.getCouponCode(), order.getCustomer() != null ? 
+                    order.getCustomer().getUserId() : null);
             }
             
             // Save order and reserve stock
@@ -199,7 +208,6 @@ public class OrderService {
                 .orderId(order.getOrderId())
                 .accessToken(accessToken)
                 .build());
-
         }
         
         return orders;
@@ -216,11 +224,16 @@ public class OrderService {
     }
 
     private void setupGuestOrder(Order order, OrderRequest request, String accessToken) {
-        if (request.getGuestEmail() == null || request.getGuestEmail().trim().isEmpty()) {
+        // Skip guest email validation if user is authenticated (userEmail is not null)
+        if (request.getGuestEmail() == null && order.getCustomer() == null) {
             throw new ApiException(ErrorType.VALIDATION_FAILED, "Guest email is required for guest orders");
         }
+        
+        if (order.getCustomer() == null) {
+            order.setGuestEmail(request.getGuestEmail());
+        }
+        
         order.setAccessToken(accessToken);
-        order.setGuestEmail(request.getGuestEmail());
         order.setExpiresAt(LocalDateTime.now().plusHours(24));
     }
 

@@ -183,3 +183,13 @@ CREATE TABLE Coupon (
     INDEX idx_code (code),
     INDEX idx_valid_dates (validFrom, validUntil)
 );
+
+CREATE TABLE UserCouponUsage (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    coupon_id BIGINT NOT NULL,
+    used_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES User(userId) ON DELETE CASCADE,
+    FOREIGN KEY (coupon_id) REFERENCES Coupon(couponId) ON DELETE CASCADE,
+    INDEX idx_user_coupon (user_id, coupon_id)
+);

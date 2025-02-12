@@ -1,7 +1,9 @@
 package com.localmarket.main.service.coupon;
 
 import com.localmarket.main.entity.coupon.Coupon;
+import com.localmarket.main.entity.coupon.UserCouponUsage;
 import com.localmarket.main.repository.coupon.CouponRepository;
+import com.localmarket.main.repository.coupon.UserCouponUsageRepository;
 import com.localmarket.main.dto.coupon.CouponRequest;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
@@ -12,6 +14,7 @@ import com.localmarket.main.entity.coupon.DiscountType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import com.localmarket.main.dto.coupon.CouponStatsResponse;
 import com.localmarket.main.dto.coupon.CouponValidationResponse;
@@ -20,6 +23,26 @@ import com.localmarket.main.dto.coupon.CouponValidationResponse;
 @RequiredArgsConstructor
 public class CouponService {
     private final CouponRepository couponRepository;
+    private final UserCouponUsageRepository userCouponUsageRepository;
+    private static final String WELCOME_COUPON_CODE = "WELCOME10";
+
+    @Transactional
+    public void initializeWelcomeCoupon() {
+        if (!couponRepository.findByCode(WELCOME_COUPON_CODE).isPresent()) {
+            Coupon welcomeCoupon = new Coupon();
+            welcomeCoupon.setCode(WELCOME_COUPON_CODE);
+            welcomeCoupon.setDescription("10% off for new users");
+            welcomeCoupon.setDiscountType(DiscountType.PERCENTAGE);
+            welcomeCoupon.setDiscountValue(new BigDecimal("10.00"));
+            welcomeCoupon.setMinimumPurchaseAmount(new BigDecimal("0.00"));
+            welcomeCoupon.setValidFrom(LocalDateTime.now());
+            welcomeCoupon.setValidUntil(LocalDateTime.now().plusYears(1));
+            welcomeCoupon.setIsActive(true);
+            welcomeCoupon.setTimesUsed(0);
+            
+            couponRepository.save(welcomeCoupon);
+        }
+    }
 
     @Transactional
     public Coupon createCoupon(CouponRequest request) {
@@ -69,8 +92,20 @@ public class CouponService {
     }
 
     @Transactional
-    public void applyCoupon(String couponCode) {
+    public void applyCoupon(String couponCode, Long userId) {
         Coupon coupon = validateAndGetCoupon(couponCode);
+        
+        if (userCouponUsageRepository.existsByUserIdAndCoupon_Code(userId, couponCode)) {
+            throw new ApiException(ErrorType.VALIDATION_FAILED, "You have already used this coupon");
+        }
+
+        UserCouponUsage usage = UserCouponUsage.builder()
+            .userId(userId)
+            .coupon(coupon)
+            .build();
+        
+        userCouponUsageRepository.save(usage);
+        
         coupon.setTimesUsed(coupon.getTimesUsed() + 1);
         couponRepository.save(coupon);
     }
@@ -161,9 +196,16 @@ public class CouponService {
             .collect(Collectors.toList());
     }
 
-    public CouponValidationResponse validateCoupon(String code, BigDecimal cartTotal) {
+    public CouponValidationResponse validateCoupon(String code, BigDecimal cartTotal, Long userId) {
         try {
             Coupon coupon = validateAndGetCoupon(code);
+            
+            if (userCouponUsageRepository.existsByUserIdAndCoupon_Code(userId, code)) {
+                return CouponValidationResponse.builder()
+                    .valid(false)
+                    .message("You have already used this coupon")
+                    .build();
+            }
             
             if (cartTotal.compareTo(coupon.getMinimumPurchaseAmount()) < 0) {
                 return CouponValidationResponse.builder()
@@ -197,6 +239,13 @@ public class CouponService {
                 .message(e.getMessage())
                 .build();
         }
+    }
+
+    public Optional<Coupon> checkUserWelcomeCoupon(Long userId) {
+        if (userCouponUsageRepository.existsByUserIdAndCoupon_Code(userId, WELCOME_COUPON_CODE)) {
+            return Optional.empty();
+        }
+        return couponRepository.findByCode(WELCOME_COUPON_CODE);
     }
 
     @Transactional

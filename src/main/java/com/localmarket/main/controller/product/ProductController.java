@@ -1,10 +1,9 @@
 package com.localmarket.main.controller.product;
 
-import com.localmarket.main.entity.product.Product;
+
 import com.localmarket.main.dto.product.ProductRequest;
 import com.localmarket.main.service.product.ProductService;
 import com.localmarket.main.security.ProducerOnly;
-import com.localmarket.main.service.auth.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import com.localmarket.main.dto.product.ProducerProductsResponse;
@@ -37,10 +36,8 @@ import com.localmarket.main.entity.product.ProductStatus;
 import com.localmarket.main.security.AdminOnly;
 import com.localmarket.main.dto.product.ProductDeclineRequest;
 import com.localmarket.main.dto.product.MyProductResponse;
-import com.localmarket.main.util.CookieUtil;
-import jakarta.servlet.http.HttpServletRequest;
-
-
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.localmarket.main.security.CustomUserDetails;
 
 @RestController
 @RequestMapping("/api/products")
@@ -48,9 +45,7 @@ import jakarta.servlet.http.HttpServletRequest;
 @Tag(name = "Products", description = "Product management APIs")
 public class ProductController {
     private final ProductService productService;
-    private final JwtService jwtService;
     private final FileStorageService fileStorageService;
-    private final CookieUtil cookieUtil;
 
     @Value("${app.upload.dir}")
     private String uploadDir;
@@ -72,7 +67,7 @@ public class ProductController {
             @RequestPart(value = "categoryIds", required = true) String categoryIdsString,
             @RequestPart(value = "imageUrl", required = false) String imageUrl,
             @RequestPart(value = "image", required = false) MultipartFile[] images,
-            HttpServletRequest requestco) {
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         
         MultipartFile image = null;
         if (images != null && images.length > 0) {
@@ -103,11 +98,8 @@ public class ProductController {
                 .categoryIds(categoryIds)
                 .imageUrl(imageUrl)
                 .build();
-                
-        String jwt = cookieUtil.getJwtFromRequest(requestco);
-        Long producerId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(productService.createProduct(request, image, producerId));
 
+        return ResponseEntity.ok(productService.createProduct(request, image, userDetails.getId()));
     }
 
     @Operation(summary = "Get product by ID", description = "Retrieve product details")
@@ -140,12 +132,11 @@ public class ProductController {
             @RequestPart(value = "categoryIds", required = true) String categoryIdsString,
             @RequestPart(value = "imageUrl", required = false) String imageUrl,
             @RequestPart(value = "image", required = false) MultipartFile[] images,
-            HttpServletRequest requestco) {
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         
         MultipartFile image = null;
         if (images != null && images.length > 0) {
             if (images.length > 1) {
-
                 throw new ApiException(ErrorType.INVALID_FILE, "Only one image file is allowed");
             }
             image = images[0];
@@ -173,10 +164,7 @@ public class ProductController {
                 .imageUrl(imageUrl)
                 .build();
 
-        String jwt = cookieUtil.getJwtFromRequest(requestco);
-        Long producerId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(productService.updateProduct(id, request, image, producerId));
-
+        return ResponseEntity.ok(productService.updateProduct(id, request, image, userDetails.getId()));
     }
 
     @Operation(summary = "Delete product", description = "Delete existing product (Producer only)")
@@ -190,13 +178,10 @@ public class ProductController {
     @ProducerOnly
     public ResponseEntity<Void> deleteProduct(
             @PathVariable Long id,
-            HttpServletRequest request) {
-        String jwt = cookieUtil.getJwtFromRequest(request);
-        Long producerId = jwtService.extractUserId(jwt);
-        productService.deleteProduct(id, producerId);
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        productService.deleteProduct(id, userDetails.getId());
         return ResponseEntity.noContent().build();
     }
-
 
     @Operation(summary = "Get all products", description = "Retrieve all products")
     @ApiResponses(value = {
@@ -283,12 +268,9 @@ public class ProductController {
     @GetMapping("/my-pending")
     @ProducerOnly
     public ResponseEntity<List<MyProductResponse>> getMyPendingProducts(
-            HttpServletRequest request) {
-        String jwt = cookieUtil.getJwtFromRequest(request);
-        Long producerId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(productService.getProducerPendingAndDeclinedProducts(producerId));
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(productService.getProducerPendingAndDeclinedProducts(userDetails.getId()));
     }
-
 
     @Operation(summary = "Get my products", description = "Get all products for the authenticated producer")
     @SecurityRequirement(name = "cookie")
@@ -299,10 +281,7 @@ public class ProductController {
     @GetMapping("/my-products")
     @ProducerOnly
     public ResponseEntity<List<MyProductResponse>> getMyProducts(
-            HttpServletRequest request) {
-        String jwt = cookieUtil.getJwtFromRequest(request);
-        Long producerId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(productService.getProducerProducts(producerId));
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(productService.getProducerProducts(userDetails.getId()));
     }
-
 } 

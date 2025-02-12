@@ -2,7 +2,6 @@ package com.localmarket.main.controller.order;
 
 import com.localmarket.main.dto.order.OrderRequest;
 import com.localmarket.main.entity.order.Order;
-import com.localmarket.main.service.auth.JwtService;
 import com.localmarket.main.service.order.OrderService;
 import com.localmarket.main.dto.payment.PaymentInfo;
 import lombok.RequiredArgsConstructor;
@@ -25,13 +24,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import com.localmarket.main.dto.error.ErrorResponse;
 import com.localmarket.main.security.ProducerOnly;
 import io.swagger.v3.oas.annotations.Parameter;
-import jakarta.servlet.http.HttpServletRequest;
-import com.localmarket.main.util.CookieUtil;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import com.localmarket.main.service.pdf.PdfGeneratorService;
 import org.springframework.core.io.Resource;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.localmarket.main.security.CustomUserDetails;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -39,9 +40,8 @@ import org.springframework.core.io.Resource;
 @Tag(name = "Orders", description = "Order management APIs")
 public class OrderController {
     private final OrderService orderService;
-    private final JwtService jwtService;
-    private final CookieUtil cookieUtil;
     private final PdfGeneratorService pdfGeneratorService;
+    private static final Logger log = LoggerFactory.getLogger(OrderController.class);
 
     @Operation(summary = "Create pending order", description = "Creates a pending order awaiting payment")
     @ApiResponses(value = {
@@ -51,16 +51,18 @@ public class OrderController {
     @PostMapping("/checkout")
     public ResponseEntity<List<OrderResponse>> createOrder(
             @Valid @RequestBody OrderRequest request,
-            HttpServletRequest requestco) {
-        String userEmail = null;
-        try {
-            String jwt = cookieUtil.getJwtFromRequest(requestco);
-            if (jwt != null) {
-                userEmail = jwtService.extractUsername(jwt);
-            }
-        } catch (Exception e) {
-            // Continue as guest if no valid token
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        log.info("Creating order. User authenticated: {}, User details: {}", 
+            userDetails != null, 
+            userDetails != null ? userDetails.getEmail() : "null");
+            
+        String userEmail = userDetails != null ? userDetails.getEmail() : null;
+        
+        // If user is authenticated, we don't need guest email
+        if (userDetails != null) {
+            request.setGuestEmail(null);
         }
+        
         return ResponseEntity.ok(orderService.createPendingOrder(request, userEmail));
     }
 
@@ -82,7 +84,7 @@ public class OrderController {
     @PreAuthorize("permitAll()")
     @GetMapping
     public ResponseEntity<List<Order>> getOrders(
-            HttpServletRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(value = "accessToken", required = false) String accessToken,
             @RequestParam(value = "showall", required = false) String showall) {
 
@@ -90,10 +92,8 @@ public class OrderController {
             return ResponseEntity.ok(orderService.getOrdersByAccessToken(accessToken));
         }
 
-        String jwt = cookieUtil.getJwtFromRequest(request);
-        if (jwt != null && "true".equals(showall)) {
-            Long userId = jwtService.extractUserId(jwt);
-            return ResponseEntity.ok(orderService.getUserOrders(userId));
+        if (userDetails != null && "true".equals(showall)) {
+            return ResponseEntity.ok(orderService.getUserOrders(userDetails.getId()));
         }
 
         throw new ApiException(ErrorType.ACCESS_DENIED, "Authentication required");
@@ -102,21 +102,17 @@ public class OrderController {
     @Operation(summary = "Get my orders by status", description = "Retrieve all orders for authenticated user by status")
     @GetMapping("/my-orders/status/{status}")
     public ResponseEntity<List<Order>> getMyOrdersByStatus(
-            HttpServletRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable OrderStatus status) {
-        String jwt = cookieUtil.getJwtFromRequest(request);
-        Long userId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(orderService.getUserOrdersByStatus(userId, status));
+        return ResponseEntity.ok(orderService.getUserOrdersByStatus(userDetails.getId(), status));
     }
 
     @Operation(summary = "Get my order by ID", description = "Retrieve specific order for authenticated user")
     @GetMapping("/my-orders/{orderId}")
     public ResponseEntity<Order> getMyOrder(
-            HttpServletRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long orderId) {
-        String jwt = cookieUtil.getJwtFromRequest(request);
-        Long userId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(orderService.getUserOrder(orderId, userId));
+        return ResponseEntity.ok(orderService.getUserOrder(orderId, userDetails.getId()));
     }
 
     @Operation(summary = "Update order status", description = "Update order status (Producer only). Valid status transitions:\n\n"
@@ -139,13 +135,12 @@ public class OrderController {
     @ProducerOnly
     public ResponseEntity<Order> updateOrderStatus(
             @PathVariable Long orderId,
-            @Parameter(description = "New status. Must follow valid transition rules", schema = @Schema(allowableValues = {
+            @Parameter(description = "New status. Must follow valid transition rules", 
+                schema = @Schema(allowableValues = {
                     "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"
             })) @RequestParam OrderStatus status,
-            HttpServletRequest request) {
-        String jwt = cookieUtil.getJwtFromRequest(request);
-        Long producerId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(orderService.updateOrderStatus(orderId, status, producerId));
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(orderService.updateOrderStatus(orderId, status, userDetails.getId()));
     }
 
     @Operation(summary = "Get producer orders", description = "Get all orders containing producer's products")
@@ -157,10 +152,8 @@ public class OrderController {
     @GetMapping("/producer-orders")
     @ProducerOnly
     public ResponseEntity<List<Order>> getProducerOrders(
-            HttpServletRequest request) {
-        String jwt = cookieUtil.getJwtFromRequest(request);
-        Long producerId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(orderService.getProducerOrders(producerId));
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(orderService.getProducerOrders(userDetails.getId()));
     }
 
     @Operation(summary = "Get producer orders by status", description = "Get all orders containing producer's products filtered by status")
@@ -172,11 +165,9 @@ public class OrderController {
     @GetMapping("/producer-orders/status/{status}")
     @ProducerOnly
     public ResponseEntity<List<Order>> getProducerOrdersByStatus(
-            HttpServletRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable OrderStatus status) {
-        String jwt = cookieUtil.getJwtFromRequest(request);
-        Long producerId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(orderService.getProducerOrdersByStatus(producerId, status));
+        return ResponseEntity.ok(orderService.getProducerOrdersByStatus(userDetails.getId(), status));
     }
 
     @Operation(summary = "Get orders by access token", description = "Retrieve all orders associated with an access token")
@@ -191,18 +182,16 @@ public class OrderController {
     @GetMapping("/receipt")
     public ResponseEntity<Resource> getOrderReceipt(
             @RequestParam(value = "accessToken", required = false) String accessToken,
-            HttpServletRequest request) {
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         
         List<Order> orders;
         if (accessToken != null) {
             orders = orderService.getOrdersByAccessToken(accessToken);
         } else {
-            String jwt = cookieUtil.getJwtFromRequest(request);
-            if (jwt == null) {
+            if (userDetails == null) {
                 throw new ApiException(ErrorType.ACCESS_DENIED, "Authentication required");
             }
-            Long userId = jwtService.extractUserId(jwt);
-            orders = orderService.getUserOrders(userId);
+            orders = orderService.getUserOrders(userDetails.getId());
         }
 
         if (orders.isEmpty()) {

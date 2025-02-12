@@ -7,34 +7,32 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import com.localmarket.main.service.auth.JwtService;
 import com.localmarket.main.repository.user.UserRepository;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import java.io.IOException;
-import java.util.Collections;
-
-import com.localmarket.main.dto.error.ErrorResponse;
 import com.localmarket.main.entity.user.User;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.LocalDateTime;
-
 import com.localmarket.main.repository.token.TokenRepository;
 import com.localmarket.main.exception.ApiException;
+import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.util.CookieUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.io.IOException;
+import java.util.Collections;
+import com.localmarket.main.entity.user.Role;
+import com.localmarket.main.repository.producer.ProducerApplicationRepository;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserRepository userRepository;
-    private final ObjectMapper objectMapper;
     private final TokenRepository tokenRepository;
     private final CookieUtil cookieUtil;
+    private final ProducerApplicationRepository applicationRepository;
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     @Override
     protected void doFilterInternal(
@@ -42,58 +40,74 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
-        if (isPublicEndpoint(request)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        String jwt = cookieUtil.getJwtFromCookies(request);
-        
-        if (jwt == null) {
-            handleUnauthorizedResponse(response, request, "Missing authentication token");
-            return;
-        }
-
         try {
-            // Verify token is still valid in TokenRepository
-            if (!tokenRepository.isTokenValid(jwt)) {
-                handleUnauthorizedResponse(response, request, "Token has been invalidated");
+            // For public endpoints, proceed without any authentication
+            if (isPublicEndpoint(request)) {
+                filterChain.doFilter(request, response);
                 return;
             }
 
-            String userEmail = jwtService.extractUsername(jwt);
-            String role = jwtService.extractRole(jwt);
-            Long userId = jwtService.extractUserId(jwt);
-            Integer tokenVersion = jwtService.extractTokenVersion(jwt);
-
-            // Double check token version matches current user version
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
-            if (!tokenVersion.equals(user.getTokenVersion())) {
-                handleUnauthorizedResponse(response, request, "Token has been invalidated");
-                return;
+            // For protected endpoints, require valid JWT
+            String jwt = cookieUtil.getJwtFromCookies(request);
+            if (jwt == null) {
+                throw new ApiException(ErrorType.INVALID_TOKEN, "Missing authentication token");
             }
-
-            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = new org.springframework.security.core.userdetails.User(
-                        userEmail,
-                        "", // No need for password as we're using token-based auth
-                        Collections.singletonList(new SimpleGrantedAuthority(role)));
-
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities());
-
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
-
+            
+            authenticateUser(jwt);
             filterChain.doFilter(request, response);
+            
         } catch (ApiException e) {
-            handleUnauthorizedResponse(response, request, e.getMessage());
-            return;
+            log.warn("Authentication failed: {}", e.getMessage());
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write(e.getMessage());
+        }
+    }
+
+    private void authenticateUser(String jwt) {
+        // Verify token is still valid in TokenRepository
+        if (!tokenRepository.isTokenValid(jwt)) {
+            throw new ApiException(ErrorType.INVALID_TOKEN, "Token has been invalidated");
+        }
+
+        String userEmail = jwtService.extractUsername(jwt);
+        String role = jwtService.extractRole(jwt);
+        Long userId = jwtService.extractUserId(jwt);
+        Integer tokenVersion = jwtService.extractTokenVersion(jwt);
+
+        // Double check token version matches current user version
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User not found"));
+
+        if (!tokenVersion.equals(user.getTokenVersion())) {
+            throw new ApiException(ErrorType.INVALID_TOKEN, "Token has been invalidated");
+        }
+
+        String applicationStatus = user.getRole() == Role.CUSTOMER ?
+            applicationRepository.findByCustomer(user)
+                .map(app -> app.getStatus().name())
+                .orElse("NO_APPLICATION") :
+            null;
+
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            CustomUserDetails userDetails = CustomUserDetails.builder()
+                .id(userId)
+                .email(userEmail)
+                .username(user.getUsername())
+                .firstname(user.getFirstname())
+                .lastname(user.getLastname())
+                .role(user.getRole())
+                .tokenVersion(tokenVersion)
+                .password("")
+                .authorities(Collections.singletonList(new SimpleGrantedAuthority(role)))
+                .applicationStatus(applicationStatus)
+                .build();
+
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                userDetails.getAuthorities());
+
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         }
     }
 
@@ -110,66 +124,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return true;
         }
 
-        // WebSocket endpoints
-        if (path.startsWith("/ws") || path.startsWith("/websocket/")) {
+        // WebSocket handshake endpoint
+        if (path.equals("/ws") && "GET".equals(method)) {
             return true;
         }
 
-        // Auth endpoints
+        // Auth endpoints except /me and /logout
         if (path.startsWith("/api/auth/")) {
-            return true;
+            return !path.equals("/api/auth/me") && !path.equals("/api/auth/logout");
         }
 
-        // Regions endpoint
-        if (path.startsWith("/api/regions")) {
-            return true;
-        }
-
-        // Public GET endpoints for products
-        if ("GET".equals(method) && path.startsWith("/api/products")) {
-            return !path.contains("/my-products") && 
-                   !path.contains("/my-pending") && 
-                   !path.contains("/pending");
-        }
-
-        // Other public GET endpoints
+        // Public GET endpoints
         if ("GET".equals(method)) {
-            return path.startsWith("/api/categories") ||
-                    (path.startsWith("/api/orders/") && accessToken != null) ||
-                    (path.equals("/api/orders") && accessToken != null);
+            return path.startsWith("/api/regions") ||
+                   path.startsWith("/api/categories") ||
+                   (path.startsWith("/api/products") && !path.contains("/my-products") && 
+                    !path.contains("/my-pending") && !path.contains("/pending")) ||
+                   (path.startsWith("/api/reviews/product/") && !path.contains("/pending") && 
+                    !path.contains("/eligibility")) ||
+                   ((path.startsWith("/api/orders/") || path.equals("/api/orders")) && 
+                    accessToken != null);
         }
 
-        // Allow guest orders
+        // Allow guest checkout
         if ("POST".equals(method)) {
             return path.equals("/api/orders/checkout") ||
-                    (path.equals("/api/orders/pay") && accessToken != null) ||
-                    path.startsWith("/api/orders/bundle/");
-        }
-
-        // Public GET endpoints for reviews
-        if ("GET".equals(method) && path.startsWith("/api/reviews")) {
-            return path.startsWith("/api/reviews/product/") && 
-                   !path.contains("/pending") &&
-                   !path.contains("/eligibility");
+                   (path.equals("/api/orders/pay") && accessToken != null) ||
+                   path.startsWith("/api/orders/bundle/");
         }
 
         return false;
-    }
-
-    private void handleUnauthorizedResponse(
-            HttpServletResponse response,
-            HttpServletRequest request,
-            String message) throws IOException {
-        response.setContentType("application/json");
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-
-        ErrorResponse error = ErrorResponse.builder()
-                .status(HttpServletResponse.SC_UNAUTHORIZED)
-                .message(message)
-                .path(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
-
-        response.getWriter().write(objectMapper.writeValueAsString(error));
     }
 }

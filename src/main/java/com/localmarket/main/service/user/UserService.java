@@ -13,7 +13,6 @@ import com.localmarket.main.repository.user.UserRepository;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.dto.auth.RegisterRequest;
-import com.localmarket.main.dto.user.FilterUsersResponse;
 import com.localmarket.main.dto.user.GetAllUsersResponse;
 
 import lombok.RequiredArgsConstructor;

@@ -22,6 +22,8 @@ import jakarta.mail.MessagingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.HashMap;
+import com.localmarket.main.websocket.NotificationWebSocketHandler;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +33,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final TokenRepository tokenRepository;
     private final EmailService emailService;
+    private final NotificationWebSocketHandler webSocketHandler;
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     public AuthServiceResult register(RegisterRequest request, String jwt) {
@@ -42,17 +45,10 @@ public class AuthService {
 
         // Check if admin is trying to assign a role
         if (request.getRole() != null && request.getRole() != Role.CUSTOMER) {
-            if (jwt == null) {
+            if (jwt == null || !"ADMIN".equals(jwtService.extractRole(jwt))) {
                 throw new ApiException(ErrorType.UNAUTHORIZED_ROLE_ASSIGNMENT, 
                     "Admin authorization required to assign non-customer roles");
             }
-
-            String role = jwtService.extractRole(jwt);
-            if (!"ADMIN".equals(role)) {
-                throw new ApiException(ErrorType.UNAUTHORIZED_ROLE_ASSIGNMENT, 
-                    "Only admins can assign non-customer roles");
-            }
-
             roleToAssign = request.getRole();
         }
 
@@ -119,7 +115,7 @@ public class AuthService {
     }
 
     @Transactional
-    public void logout(String token) {
+    public void logout(String token, String userEmail) {
         Long userId = jwtService.extractUserId(token);
         
         User user = userRepository.findById(userId)
@@ -129,5 +125,15 @@ public class AuthService {
         user.setTokenVersion((user.getTokenVersion() + 1) % 10);
         userRepository.save(user);
         tokenRepository.invalidateToken(token);
+
+        // Close any active WebSocket sessions for this user
+        try {
+            webSocketHandler.closeUserSessions(userEmail);
+        } catch (Exception e) {
+            log.warn("Failed to close WebSocket session for user {}: {}", userEmail, e.getMessage());
+        }
+
+        // Clear the SecurityContext
+        SecurityContextHolder.clearContext();
     }
 }

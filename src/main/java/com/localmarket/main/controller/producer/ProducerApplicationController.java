@@ -5,12 +5,13 @@ import com.localmarket.main.dto.producer.ProducerApplicationResponse;
 import com.localmarket.main.dto.producer.ApplicationDeclineRequest;
 
 import com.localmarket.main.service.producer.ProducerApplicationService;
-import com.localmarket.main.service.auth.JwtService;
 import com.localmarket.main.security.AdminOnly;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.localmarket.main.security.CustomUserDetails;
 import com.localmarket.main.entity.producer.ApplicationStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -21,8 +22,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.localmarket.main.dto.error.ErrorResponse;
 import java.util.List;
-import jakarta.servlet.http.HttpServletRequest;
-import com.localmarket.main.util.CookieUtil;
 
 @RestController
 @RequestMapping("/api/producer-applications")
@@ -31,8 +30,6 @@ import com.localmarket.main.util.CookieUtil;
 
 public class ProducerApplicationController {
     private final ProducerApplicationService applicationService;
-    private final JwtService jwtService;
-    private final CookieUtil cookieUtil;
 
     @Operation(summary = "Submit producer application", description = "Submit application to become a producer")
     @SecurityRequirement(name = "cookie")
@@ -45,12 +42,9 @@ public class ProducerApplicationController {
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<ProducerApplicationResponse> submitApplication(
             @RequestBody ProducerApplicationRequest request,
-            HttpServletRequest requestco) {
-        String jwt = cookieUtil.getJwtFromRequest(requestco);
-        Long customerId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(applicationService.submitApplication(request, customerId));
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(applicationService.submitApplication(request, userDetails.getId()));
     }
-
 
     @Operation(summary = "Get all applications", description = "Get all producer applications (Admin only)")
     @SecurityRequirement(name = "cookie")
@@ -116,10 +110,8 @@ public class ProducerApplicationController {
     @GetMapping("/my-application")
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<ProducerApplicationResponse> getMyApplication(
-        HttpServletRequest request) {
-        String jwt = cookieUtil.getJwtFromRequest(request);
-        Long customerId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(applicationService.getCustomerApplication(customerId));
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(applicationService.getCustomerApplication(userDetails.getId()));
     }
 
     
@@ -133,10 +125,8 @@ public class ProducerApplicationController {
     @GetMapping("/status")
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public ResponseEntity<String> checkApplicationStatus(
-            HttpServletRequest request) {
-        String jwt = cookieUtil.getJwtFromRequest(request);
-        Long customerId = jwtService.extractUserId(jwt);
-        return ResponseEntity.ok(applicationService.checkApplicationStatus(customerId));
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(applicationService.checkApplicationStatus(userDetails.getId()));
     }
 
 } 

@@ -13,7 +13,6 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.io.IOException;
 import com.itextpdf.html2pdf.ConverterProperties;
 import com.itextpdf.html2pdf.HtmlConverter;
 

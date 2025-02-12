@@ -26,7 +26,7 @@ public class TokenRepository {
     
     public void storeToken(String token, Long userId) {
         // Get existing token before storing new one
-        String existingToken = userActiveTokens.get(userId);
+        userActiveTokens.get(userId);
         
         // Store new token and update active token
         tokenStore.put(token, new TokenInfo(userId, LocalDateTime.now().plusHours(24)));
