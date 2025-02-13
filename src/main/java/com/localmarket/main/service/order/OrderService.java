@@ -13,7 +13,9 @@ import java.util.HashMap;
 import jakarta.mail.MessagingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
 
 import com.localmarket.main.repository.order.OrderRepository;
 import com.localmarket.main.repository.product.ProductRepository;
@@ -422,13 +424,75 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<Order> getProducerOrders(Long producerId) {
-        return orderRepository.findByItemsProductProducerUserId(producerId);
+    public Page<Order> getProducerOrders(Long producerId, Pageable pageable) {
+        List<Order> orders = orderRepository.findByItemsProductProducerUserId(producerId);
+        
+        // Sort orders
+        List<Order> sortedOrders = orders.stream()
+            .sorted((o1, o2) -> {
+                if (pageable.getSort().isEmpty()) {
+                    return 0;
+                }
+                String sortBy = pageable.getSort().iterator().next().getProperty();
+                boolean isAsc = pageable.getSort().iterator().next().isAscending();
+                
+                int comparison = switch(sortBy) {
+                    case "orderDate" -> o1.getOrderDate().compareTo(o2.getOrderDate());
+                    case "status" -> o1.getStatus().compareTo(o2.getStatus());
+                    case "totalPrice" -> o1.getTotalPrice().compareTo(o2.getTotalPrice());
+                    default -> 0;
+                };
+                return isAsc ? comparison : -comparison;
+            })
+            .collect(Collectors.toList());
+            
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), sortedOrders.size());
+        
+        if (start >= sortedOrders.size()) {
+            return new PageImpl<>(List.of(), pageable, sortedOrders.size());
+        }
+        
+        List<Order> paginatedOrders = sortedOrders.subList(start, end);
+        
+        return new PageImpl<>(paginatedOrders, pageable, sortedOrders.size());
     }
 
     @Transactional(readOnly = true)
-    public List<Order> getProducerOrdersByStatus(Long producerId, OrderStatus status) {
-        return orderRepository.findByItemsProductProducerUserIdAndStatus(producerId, status);
+    public Page<Order> getProducerOrdersByStatus(Long producerId, OrderStatus status, Pageable pageable) {
+        List<Order> orders = orderRepository.findByItemsProductProducerUserIdAndStatus(producerId, status);
+        
+        // Sort orders
+        List<Order> sortedOrders = orders.stream()
+            .sorted((o1, o2) -> {
+                if (pageable.getSort().isEmpty()) {
+                    return 0;
+                }
+                String sortBy = pageable.getSort().iterator().next().getProperty();
+                boolean isAsc = pageable.getSort().iterator().next().isAscending();
+                
+                int comparison = switch(sortBy) {
+                    case "orderDate" -> o1.getOrderDate().compareTo(o2.getOrderDate());
+                    case "status" -> o1.getStatus().compareTo(o2.getStatus());
+                    case "totalPrice" -> o1.getTotalPrice().compareTo(o2.getTotalPrice());
+                    default -> 0;
+                };
+                return isAsc ? comparison : -comparison;
+            })
+            .collect(Collectors.toList());
+            
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), sortedOrders.size());
+        
+        if (start >= sortedOrders.size()) {
+            return new PageImpl<>(List.of(), pageable, sortedOrders.size());
+        }
+        
+        List<Order> paginatedOrders = sortedOrders.subList(start, end);
+        
+        return new PageImpl<>(paginatedOrders, pageable, sortedOrders.size());
     }
 
     private void updateOrderPayment(Order order, PaymentResponse paymentResponse) {
@@ -540,5 +604,40 @@ public class OrderService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public Page<Order> getUserOrdersPaginated(Long userId, Pageable pageable) {
+        List<Order> orders = orderRepository.findByCustomerUserId(userId);
+        
+        // Sort orders
+        List<Order> sortedOrders = orders.stream()
+            .sorted((o1, o2) -> {
+                if (pageable.getSort().isEmpty()) {
+                    return 0;
+                }
+                String sortBy = pageable.getSort().iterator().next().getProperty();
+                boolean isAsc = pageable.getSort().iterator().next().isAscending();
+                
+                int comparison = switch(sortBy) {
+                    case "orderDate" -> o1.getOrderDate().compareTo(o2.getOrderDate());
+                    case "status" -> o1.getStatus().compareTo(o2.getStatus());
+                    case "totalPrice" -> o1.getTotalPrice().compareTo(o2.getTotalPrice());
+                    default -> 0;
+                };
+                return isAsc ? comparison : -comparison;
+            })
+            .collect(Collectors.toList());
+            
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), sortedOrders.size());
+        
+        if (start >= sortedOrders.size()) {
+            return new PageImpl<>(List.of(), pageable, sortedOrders.size());
+        }
+        
+        List<Order> paginatedOrders = sortedOrders.subList(start, end);
+        
+        return new PageImpl<>(paginatedOrders, pageable, sortedOrders.size());
+    }
 
 } 

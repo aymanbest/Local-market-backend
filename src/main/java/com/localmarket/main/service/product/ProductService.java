@@ -77,7 +77,7 @@ public class ProductService {
             // Handle image: prefer uploaded file over URL
             if (image != null && !image.isEmpty()) {
                 String filename = fileStorageService.storeFile(image);
-                product.setImageUrl("/api/products/images/" + filename);
+                product.setImageUrl(filename);
             } else if (request.getImageUrl() != null && !request.getImageUrl().trim().isEmpty()) {
                 product.setImageUrl(request.getImageUrl().trim());
             }
@@ -364,6 +364,59 @@ public class ProductService {
             .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public Page<ProducerProductsResponse> getProductsByStatus(ProductStatus status, Pageable pageable) {
+        List<Product> products = productRepository.findByStatus(status);
+        
+        // Sort products
+        List<Product> sortedProducts = products.stream()
+            .sorted((p1, p2) -> {
+                if (pageable.getSort().isEmpty()) {
+                    return 0;
+                }
+                String sortBy = pageable.getSort().iterator().next().getProperty();
+                boolean isAsc = pageable.getSort().iterator().next().isAscending();
+                
+                int comparison = switch(sortBy) {
+                    case "price" -> p1.getPrice().compareTo(p2.getPrice());
+                    case "name" -> p1.getName().compareTo(p2.getName());
+                    case "createdAt" -> p1.getCreatedAt().compareTo(p2.getCreatedAt());
+                    default -> 0;
+                };
+                return isAsc ? comparison : -comparison;
+            })
+            .collect(Collectors.toList());
+        
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), sortedProducts.size());
+        
+        if (start >= sortedProducts.size()) {
+            return new PageImpl<>(List.of(), pageable, sortedProducts.size());
+        }
+        
+        List<Product> paginatedProducts = sortedProducts.subList(start, end);
+        
+        // Group by producer
+        Map<User, List<Product>> groupedProducts = paginatedProducts.stream()
+            .collect(Collectors.groupingBy(Product::getProducer));
+
+        List<ProducerProductsResponse> responses = groupedProducts.entrySet().stream()
+            .map(entry -> new ProducerProductsResponse(
+                entry.getKey().getUserId(),
+                entry.getKey().getUsername(),
+                entry.getKey().getFirstname(),
+                entry.getKey().getLastname(),
+                entry.getKey().getEmail(),
+                entry.getValue().stream()
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList())
+            ))
+            .collect(Collectors.toList());
+            
+        return new PageImpl<>(responses, pageable, sortedProducts.size());
+    }
+
     public List<ProductResponse> getProducerProductsByStatus(Long producerId, ProductStatus status) {
         return productRepository.findByProducerUserIdAndStatus(producerId, status)
             .stream()
@@ -416,21 +469,93 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public List<MyProductResponse> getProducerProducts(Long producerId) {
-        return productRepository.findByProducerUserId(producerId)
-            .stream()
-            .map(this::convertToMyProductDTO)
+    public Page<MyProductResponse> getProducerProducts(Long producerId, Pageable pageable) {
+        List<Product> products = productRepository.findByProducerUserId(producerId);
+        
+        // Sort products
+        List<Product> sortedProducts = products.stream()
+            .sorted((p1, p2) -> {
+                if (pageable.getSort().isEmpty()) {
+                    return 0;
+                }
+                String sortBy = pageable.getSort().iterator().next().getProperty();
+                boolean isAsc = pageable.getSort().iterator().next().isAscending();
+                
+                int comparison = switch(sortBy) {
+                    case "createdAt" -> p1.getCreatedAt().compareTo(p2.getCreatedAt());
+                    case "name" -> p1.getName().compareTo(p2.getName());
+                    case "price" -> p1.getPrice().compareTo(p2.getPrice());
+                    case "quantity" -> Integer.compare(p1.getQuantity(), p2.getQuantity());
+                    case "status" -> p1.getStatus().compareTo(p2.getStatus());
+                    default -> 0;
+                };
+                return isAsc ? comparison : -comparison;
+            })
             .collect(Collectors.toList());
+            
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), sortedProducts.size());
+        
+        if (start >= sortedProducts.size()) {
+            return new PageImpl<>(List.of(), pageable, sortedProducts.size());
+        }
+        
+        List<Product> paginatedProducts = sortedProducts.subList(start, end);
+        
+        return new PageImpl<>(
+            paginatedProducts.stream()
+                .map(this::convertToMyProductDTO)
+                .collect(Collectors.toList()),
+            pageable,
+            sortedProducts.size()
+        );
     }
 
     @Transactional(readOnly = true)
-    public List<MyProductResponse> getProducerPendingAndDeclinedProducts(Long producerId) {
-        return productRepository.findByProducerUserIdAndStatusIn(
+    public Page<MyProductResponse> getProducerPendingAndDeclinedProducts(Long producerId, Pageable pageable) {
+        List<Product> products = productRepository.findByProducerUserIdAndStatusIn(
                 producerId, 
-                List.of(ProductStatus.PENDING, ProductStatus.DECLINED))
-            .stream()
-            .map(this::convertToMyProductDTO)
+                List.of(ProductStatus.PENDING, ProductStatus.DECLINED));
+                
+        // Sort products
+        List<Product> sortedProducts = products.stream()
+            .sorted((p1, p2) -> {
+                if (pageable.getSort().isEmpty()) {
+                    return 0;
+                }
+                String sortBy = pageable.getSort().iterator().next().getProperty();
+                boolean isAsc = pageable.getSort().iterator().next().isAscending();
+                
+                int comparison = switch(sortBy) {
+                    case "createdAt" -> p1.getCreatedAt().compareTo(p2.getCreatedAt());
+                    case "name" -> p1.getName().compareTo(p2.getName());
+                    case "price" -> p1.getPrice().compareTo(p2.getPrice());
+                    case "quantity" -> Integer.compare(p1.getQuantity(), p2.getQuantity());
+                    case "status" -> p1.getStatus().compareTo(p2.getStatus());
+                    default -> 0;
+                };
+                return isAsc ? comparison : -comparison;
+            })
             .collect(Collectors.toList());
+            
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), sortedProducts.size());
+        
+        if (start >= sortedProducts.size()) {
+            return new PageImpl<>(List.of(), pageable, sortedProducts.size());
+        }
+        
+        List<Product> paginatedProducts = sortedProducts.subList(start, end);
+        
+        return new PageImpl<>(
+            paginatedProducts.stream()
+                .map(this::convertToMyProductDTO)
+                .collect(Collectors.toList()),
+            pageable,
+            sortedProducts.size()
+        );
     }
 
     @Transactional

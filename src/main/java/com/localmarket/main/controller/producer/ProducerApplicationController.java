@@ -22,6 +22,10 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.localmarket.main.dto.error.ErrorResponse;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 @RestController
 @RequestMapping("/api/producer-applications")
@@ -54,8 +58,14 @@ public class ProducerApplicationController {
     })
     @GetMapping
     @AdminOnly
-    public ResponseEntity<List<ProducerApplicationResponse>> getAllApplications() {
-        return ResponseEntity.ok(applicationService.getAllApplications());
+    public ResponseEntity<Page<ProducerApplicationResponse>> getAllApplications(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        return ResponseEntity.ok(applicationService.getAllApplications(pageable));
     }
 
     @Operation(summary = "Get pending applications", description = "Get all pending producer applications (Admin only)")
@@ -66,8 +76,14 @@ public class ProducerApplicationController {
     })
     @GetMapping("/pending")
     @AdminOnly
-    public ResponseEntity<List<ProducerApplicationResponse>> getPendingApplications() {
-        return ResponseEntity.ok(applicationService.getApplicationsByStatus(ApplicationStatus.PENDING));
+    public ResponseEntity<Page<ProducerApplicationResponse>> getPendingApplications(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        return ResponseEntity.ok(applicationService.getApplicationsByStatus(ApplicationStatus.PENDING, pageable));
     }
 
     @Operation(summary = "Approve application", description = "Approve producer application (Admin only)")

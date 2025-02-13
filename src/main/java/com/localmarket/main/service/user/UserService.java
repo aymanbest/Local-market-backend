@@ -3,6 +3,8 @@ package com.localmarket.main.service.user;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -96,23 +98,21 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public List<GetAllUsersResponse> getUsers(Role role) {
-        List<User> users = (role != null) 
-            ? findUsersByRole(role)
-            : getAllUsers();
+    public Page<GetAllUsersResponse> getUsers(Role role, Pageable pageable) {
+        Page<User> users = (role != null) 
+            ? userRepository.findByRole(role, pageable)
+            : userRepository.findAll(pageable);
         
-        return users.stream()
-                .map(user -> new GetAllUsersResponse(
-                    user.getUserId(),
-                    user.getUsername(),
-                    user.getEmail(),
-                    user.getFirstname(),
-                    user.getLastname(),
-                    user.getRole(),
-                    user.getCreatedAt(),
-                    user.getLastLogin()
-                ))
-                .collect(Collectors.toList());
+        return users.map(user -> new GetAllUsersResponse(
+            user.getUserId(),
+            user.getUsername(),
+            user.getEmail(),
+            user.getFirstname(),
+            user.getLastname(),
+            user.getRole(),
+            user.getCreatedAt(),
+            user.getLastLogin()
+        ));
     }
 
     @Transactional

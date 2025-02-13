@@ -207,11 +207,45 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
-    public List<ReviewResponse> getPendingReviews() {
-        return reviewRepository.findByStatus(ReviewStatus.PENDING)
-            .stream()
-            .map(this::convertToDTO)
+    public Page<ReviewResponse> getPendingReviews(Pageable pageable) {
+        List<Review> reviews = reviewRepository.findByStatus(ReviewStatus.PENDING);
+        
+        // Sort reviews by the requested field
+        List<Review> sortedReviews = reviews.stream()
+            .sorted((r1, r2) -> {
+                if (pageable.getSort().isEmpty()) {
+                    return 0;
+                }
+                String sortBy = pageable.getSort().iterator().next().getProperty();
+                boolean isAsc = pageable.getSort().iterator().next().isAscending();
+                
+                int comparison = switch(sortBy) {
+                    case "rating" -> Integer.compare(r1.getRating(), r2.getRating());
+                    case "createdAt" -> r1.getCreatedAt().compareTo(r2.getCreatedAt());
+                    case "productName" -> r1.getProduct().getName().compareTo(r2.getProduct().getName());
+                    default -> 0;
+                };
+                return isAsc ? comparison : -comparison;
+            })
             .collect(Collectors.toList());
+            
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), sortedReviews.size());
+        
+        if (start >= sortedReviews.size()) {
+            return new PageImpl<>(List.of(), pageable, sortedReviews.size());
+        }
+        
+        List<Review> paginatedReviews = sortedReviews.subList(start, end);
+        
+        return new PageImpl<>(
+            paginatedReviews.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList()),
+            pageable,
+            sortedReviews.size()
+        );
     }
 
     private ReviewResponse convertToDTO(Review review) {

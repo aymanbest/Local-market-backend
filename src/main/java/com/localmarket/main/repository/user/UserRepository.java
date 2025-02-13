@@ -1,6 +1,8 @@
 package com.localmarket.main.repository.user;
 
 import com.localmarket.main.entity.user.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -15,6 +17,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findById(Long id); 
     void deleteById(Long id);  
     Optional<User> findByEmail(String email);
+    Page<User> findByRole(Role role, Pageable pageable);
     List<User> findByRole(Role role);
     long countByCreatedAtBefore(LocalDateTime date);
     long countByRoleAndCreatedAtBetween(Role role, LocalDateTime start, LocalDateTime end);

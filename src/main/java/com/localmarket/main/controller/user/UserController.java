@@ -14,6 +14,10 @@ import lombok.RequiredArgsConstructor;
 import java.util.List;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.localmarket.main.dto.user.PasswordChangeRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 @RestController
 @RequestMapping("/api/users")
@@ -24,9 +28,15 @@ public class UserController {
 
     @GetMapping
     @AdminOnly
-    public List<GetAllUsersResponse> getUsers(
-            @RequestParam(required = false) Role role) {
-        return userService.getUsers(role);
+    public ResponseEntity<Page<GetAllUsersResponse>> getUsers(
+            @RequestParam(required = false) Role role,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        return ResponseEntity.ok(userService.getUsers(role, pageable));
     }
 
     @GetMapping("/{id}")

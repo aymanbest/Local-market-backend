@@ -92,7 +92,13 @@ public class ReviewController {
     @Operation(summary = "Get pending reviews", description = "Get all pending reviews (Admin only)")
     @SecurityRequirement(name = "cookie")
     @AdminOnly
-    public ResponseEntity<List<ReviewResponse>> getPendingReviews() {
-        return ResponseEntity.ok(reviewService.getPendingReviews());
+    public ResponseEntity<Page<ReviewResponse>> getPendingReviews(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        return ResponseEntity.ok(reviewService.getPendingReviews(pageable));
     }
 } 

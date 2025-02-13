@@ -224,16 +224,10 @@ public class ProductController {
     })
     @GetMapping("/images/{filename}")
     public ResponseEntity<Resource> getImage(@PathVariable String filename) throws IOException {
-        Path imagePath = fileStorageService.getUploadPath().resolve(filename);
-        Resource resource = new UrlResource(imagePath.toUri());
-        
-        if (resource.exists()) {
-            return ResponseEntity.ok()
-                .contentType(MediaType.IMAGE_JPEG)
-                .body(resource);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        Resource resource = fileStorageService.loadFileAsResource(filename);
+        return ResponseEntity.ok()
+            .contentType(MediaType.IMAGE_JPEG)
+            .body(resource);
     }
 
     @Operation(summary = "Get pending products", description = "Get all pending products (Admin only)")
@@ -244,8 +238,14 @@ public class ProductController {
     })
     @GetMapping("/pending")
     @AdminOnly
-    public ResponseEntity<List<ProducerProductsResponse>> getPendingProducts() {
-        return ResponseEntity.ok(productService.getProductsByStatus(ProductStatus.PENDING));
+    public ResponseEntity<Page<ProducerProductsResponse>> getPendingProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        return ResponseEntity.ok(productService.getProductsByStatus(ProductStatus.PENDING, pageable));
     }
 
     @Operation(summary = "Approve product", description = "Approve a pending product (Admin only)")
@@ -276,17 +276,23 @@ public class ProductController {
         return ResponseEntity.ok(productService.updateProductStatus(id, ProductStatus.DECLINED, request.getReason()));
     }
 
+    @GetMapping("/my-pending")
     @Operation(summary = "Get my pending and declined products", description = "Get producer's pending and declined products")
     @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Products found"),
         @ApiResponse(responseCode = "403", description = "Not authorized as producer")
     })
-    @GetMapping("/my-pending")
     @ProducerOnly
-    public ResponseEntity<List<MyProductResponse>> getMyPendingProducts(
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(productService.getProducerPendingAndDeclinedProducts(userDetails.getId()));
+    public ResponseEntity<Page<MyProductResponse>> getMyPendingProducts(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        return ResponseEntity.ok(productService.getProducerPendingAndDeclinedProducts(userDetails.getId(), pageable));
     }
 
     @Operation(summary = "Get my products", description = "Get all products for the authenticated producer")
@@ -297,8 +303,14 @@ public class ProductController {
     })
     @GetMapping("/my-products")
     @ProducerOnly
-    public ResponseEntity<List<MyProductResponse>> getMyProducts(
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(productService.getProducerProducts(userDetails.getId()));
+    public ResponseEntity<Page<MyProductResponse>> getMyProducts(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        return ResponseEntity.ok(productService.getProducerProducts(userDetails.getId(), pageable));
     }
 } 

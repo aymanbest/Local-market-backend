@@ -18,6 +18,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import com.localmarket.main.dto.coupon.CouponStatsResponse;
 import com.localmarket.main.dto.coupon.CouponValidationResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
 
 @Service
 @RequiredArgsConstructor
@@ -171,11 +174,40 @@ public class CouponService {
         coupon.setIsActive(request.getIsActive());
     }
 
-    public List<CouponStatsResponse> getAllCouponsWithStats() {
+    @Transactional(readOnly = true)
+    public Page<CouponStatsResponse> getAllCouponsWithStats(Pageable pageable) {
         List<Coupon> coupons = couponRepository.findAll();
         LocalDateTime now = LocalDateTime.now();
         
-        return coupons.stream()
+        // Sort coupons
+        List<Coupon> sortedCoupons = coupons.stream()
+            .sorted((c1, c2) -> {
+                if (pageable.getSort().isEmpty()) {
+                    return 0;
+                }
+                String sortBy = pageable.getSort().iterator().next().getProperty();
+                boolean isAsc = pageable.getSort().iterator().next().isAscending();
+                
+                int comparison = switch(sortBy) {
+                    case "code" -> c1.getCode().compareTo(c2.getCode());
+                    case "isActive" -> Boolean.compare(c1.getIsActive(), c2.getIsActive());
+                    default -> 0;
+                };
+                return isAsc ? comparison : -comparison;
+            })
+            .collect(Collectors.toList());
+            
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), sortedCoupons.size());
+        
+        if (start >= sortedCoupons.size()) {
+            return new PageImpl<>(List.of(), pageable, sortedCoupons.size());
+        }
+        
+        List<Coupon> paginatedCoupons = sortedCoupons.subList(start, end);
+        
+        List<CouponStatsResponse> responses = paginatedCoupons.stream()
             .map(coupon -> CouponStatsResponse.builder()
                 .couponId(coupon.getCouponId())
                 .code(coupon.getCode())
@@ -194,6 +226,8 @@ public class CouponService {
                     Math.max(0, coupon.getUsageLimit() - coupon.getTimesUsed()) : null)
                 .build())
             .collect(Collectors.toList());
+        
+        return new PageImpl<>(responses, pageable, sortedCoupons.size());
     }
 
     public CouponValidationResponse validateCoupon(String code, BigDecimal cartTotal, Long userId) {

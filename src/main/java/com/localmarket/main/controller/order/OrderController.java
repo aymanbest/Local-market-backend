@@ -33,6 +33,11 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.localmarket.main.security.CustomUserDetails;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -83,17 +88,25 @@ public class OrderController {
     @SecurityRequirement(name = "cookie")
     @PreAuthorize("permitAll()")
     @GetMapping
-    public ResponseEntity<List<Order>> getOrders(
+    public ResponseEntity<Page<Order>> getOrders(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(value = "accessToken", required = false) String accessToken,
-            @RequestParam(value = "showall", required = false) String showall) {
+            @RequestParam(value = "showall", required = false) String showall,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "orderDate") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
 
         if (accessToken != null) {
-            return ResponseEntity.ok(orderService.getOrdersByAccessToken(accessToken));
+            List<Order> orders = orderService.getOrdersByAccessToken(accessToken);
+            return ResponseEntity.ok(new PageImpl<>(orders, pageable, orders.size()));
         }
 
         if (userDetails != null && "true".equals(showall)) {
-            return ResponseEntity.ok(orderService.getUserOrders(userDetails.getId()));
+            return ResponseEntity.ok(orderService.getUserOrdersPaginated(userDetails.getId(), pageable));
         }
 
         throw new ApiException(ErrorType.ACCESS_DENIED, "Authentication required");
@@ -151,9 +164,15 @@ public class OrderController {
     })
     @GetMapping("/producer-orders")
     @ProducerOnly
-    public ResponseEntity<List<Order>> getProducerOrders(
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(orderService.getProducerOrders(userDetails.getId()));
+    public ResponseEntity<Page<Order>> getProducerOrders(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "orderDate") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        return ResponseEntity.ok(orderService.getProducerOrders(userDetails.getId(), pageable));
     }
 
     @Operation(summary = "Get producer orders by status", description = "Get all orders containing producer's products filtered by status")
@@ -164,10 +183,16 @@ public class OrderController {
     })
     @GetMapping("/producer-orders/status/{status}")
     @ProducerOnly
-    public ResponseEntity<List<Order>> getProducerOrdersByStatus(
+    public ResponseEntity<Page<Order>> getProducerOrdersByStatus(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable OrderStatus status) {
-        return ResponseEntity.ok(orderService.getProducerOrdersByStatus(userDetails.getId(), status));
+            @PathVariable OrderStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "orderDate") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+        return ResponseEntity.ok(orderService.getProducerOrdersByStatus(userDetails.getId(), status, pageable));
     }
 
     @Operation(summary = "Get orders by access token", description = "Retrieve all orders associated with an access token")

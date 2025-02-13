@@ -29,6 +29,9 @@ import jakarta.mail.MessagingException;
 import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
 
 
 @Service
@@ -182,16 +185,87 @@ public class ProducerApplicationService {
         return mapToDTO(applicationRepository.save(application));
     }
 
-    public List<ProducerApplicationResponse> getAllApplications() {
-        return applicationRepository.findAll().stream()
+    @Transactional(readOnly = true)
+    public Page<ProducerApplicationResponse> getAllApplications(Pageable pageable) {
+        List<ProducerApplication> applications = applicationRepository.findAll();
+        
+        // Sort applications
+        List<ProducerApplication> sortedApplications = applications.stream()
+            .sorted((a1, a2) -> {
+                if (pageable.getSort().isEmpty()) {
+                    return 0;
+                }
+                String sortBy = pageable.getSort().iterator().next().getProperty();
+                boolean isAsc = pageable.getSort().iterator().next().isAscending();
+                
+                int comparison = switch(sortBy) {
+                    case "createdAt" -> a1.getCreatedAt().compareTo(a2.getCreatedAt());
+                    case "status" -> a1.getStatus().compareTo(a2.getStatus());
+                    case "businessName" -> a1.getBusinessName().compareTo(a2.getBusinessName());
+                    default -> 0;
+                };
+                return isAsc ? comparison : -comparison;
+            })
+            .collect(Collectors.toList());
+            
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), sortedApplications.size());
+        
+        if (start >= sortedApplications.size()) {
+            return new PageImpl<>(List.of(), pageable, sortedApplications.size());
+        }
+        
+        List<ProducerApplication> paginatedApplications = sortedApplications.subList(start, end);
+        
+        return new PageImpl<>(
+            paginatedApplications.stream()
                 .map(this::mapToDTO)
-                .toList();
+                .collect(Collectors.toList()),
+            pageable,
+            sortedApplications.size()
+        );
     }
 
-    public List<ProducerApplicationResponse> getApplicationsByStatus(ApplicationStatus status) {
-        return applicationRepository.findByStatus(status).stream()
+    @Transactional(readOnly = true)
+    public Page<ProducerApplicationResponse> getApplicationsByStatus(ApplicationStatus status, Pageable pageable) {
+        List<ProducerApplication> applications = applicationRepository.findByStatus(status);
+        
+        // Sort applications
+        List<ProducerApplication> sortedApplications = applications.stream()
+            .sorted((a1, a2) -> {
+                if (pageable.getSort().isEmpty()) {
+                    return 0;
+                }
+                String sortBy = pageable.getSort().iterator().next().getProperty();
+                boolean isAsc = pageable.getSort().iterator().next().isAscending();
+                
+                int comparison = switch(sortBy) {
+                    case "createdAt" -> a1.getCreatedAt().compareTo(a2.getCreatedAt());
+                    case "businessName" -> a1.getBusinessName().compareTo(a2.getBusinessName());
+                    default -> 0;
+                };
+                return isAsc ? comparison : -comparison;
+            })
+            .collect(Collectors.toList());
+            
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), sortedApplications.size());
+        
+        if (start >= sortedApplications.size()) {
+            return new PageImpl<>(List.of(), pageable, sortedApplications.size());
+        }
+        
+        List<ProducerApplication> paginatedApplications = sortedApplications.subList(start, end);
+        
+        return new PageImpl<>(
+            paginatedApplications.stream()
                 .map(this::mapToDTO)
-                .toList();
+                .collect(Collectors.toList()),
+            pageable,
+            sortedApplications.size()
+        );
     }
 
     public ProducerApplicationResponse getCustomerApplication(Long customerId) {
