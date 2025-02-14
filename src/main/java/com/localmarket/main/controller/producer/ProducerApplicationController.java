@@ -26,6 +26,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import com.localmarket.main.dto.producer.ApplicationStatusResponse;
 
 @RestController
 @RequestMapping("/api/producer-applications")
@@ -134,13 +135,13 @@ public class ProducerApplicationController {
     @Operation(summary = "Check application status", description = "Check my producer application status")
     @SecurityRequirement(name = "cookie")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Application status retrieved successfully", content = @Content(schema = @Schema(implementation = String.class))),
+        @ApiResponse(responseCode = "200", description = "Application status retrieved successfully", content = @Content(schema = @Schema(implementation = ApplicationStatusResponse.class))),
         @ApiResponse(responseCode = "404", description = "Application not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "403", description = "Not authorized as customer", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/status")
     @PreAuthorize("hasAuthority('CUSTOMER')")
-    public ResponseEntity<String> checkApplicationStatus(
+    public ResponseEntity<ApplicationStatusResponse> checkApplicationStatus(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(applicationService.checkApplicationStatus(userDetails.getId()));
     }

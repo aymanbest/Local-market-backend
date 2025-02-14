@@ -21,6 +21,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/coupons")
@@ -94,9 +95,8 @@ public class CouponController {
     @Operation(summary = "Check welcome coupon", description = "Check if the user is eligible for the welcome coupon")
     @SecurityRequirement(name = "cookie")
     public ResponseEntity<Coupon> checkWelcomeCoupon(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        return couponService.checkUserWelcomeCoupon(userDetails.getId())
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+        Optional<Coupon> welcomeCoupon = couponService.checkUserWelcomeCoupon(userDetails.getId());
+        return ResponseEntity.ok(welcomeCoupon.orElse(null));
     }
 
     @PatchMapping("/{couponId}/status")

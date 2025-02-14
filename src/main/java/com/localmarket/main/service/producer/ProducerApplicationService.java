@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageImpl;
+import com.localmarket.main.dto.producer.ApplicationStatusResponse;
 
 
 @Service
@@ -276,16 +277,31 @@ public class ProducerApplicationService {
         return mapToDTO(application);
     }
 
-    public String checkApplicationStatus(Long customerId) {
+    public ApplicationStatusResponse checkApplicationStatus(Long customerId) {
         User customer = userRepository.findById(customerId)
             .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Customer not found"));
             
         Optional<ProducerApplication> application = applicationRepository.findByCustomer(customer);
         
         if (application.isEmpty()) {
-            return "NO_APPLICATION";
+            return ApplicationStatusResponse.builder()
+                .status("NO_APPLICATION")
+                .build();
         }
         
-        return application.get().getStatus().name();
+        ProducerApplication app = application.get();
+        ApplicationStatusResponse.ApplicationStatusResponseBuilder responseBuilder = ApplicationStatusResponse.builder()
+            .status(app.getStatus().name())
+            .submittedAt(app.getCreatedAt());
+            
+        // Add processed time and decline reason for processed applications
+        if (app.getStatus() != ApplicationStatus.PENDING) {
+            responseBuilder.processedAt(app.getUpdatedAt());
+            if (app.getStatus() == ApplicationStatus.DECLINED) {
+                responseBuilder.declineReason(app.getDeclineReason());
+            }
+        }
+        
+        return responseBuilder.build();
     }
 }
