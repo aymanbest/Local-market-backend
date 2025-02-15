@@ -195,8 +195,13 @@ public class ProductService {
     public Page<ProducerProductsResponse> getAllProductsGroupedByProducer(Pageable pageable) {
         List<Product> allProducts = productRepository.findAllWithCategories();
         
+        // Filter for APPROVED products only
+        List<Product> approvedProducts = allProducts.stream()
+            .filter(product -> product.getStatus() == ProductStatus.APPROVED)
+            .collect(Collectors.toList());
+        
         // Sort all products first
-        List<Product> sortedProducts = allProducts.stream()
+        List<Product> sortedProducts = approvedProducts.stream()
             .sorted((p1, p2) -> {
                 if (pageable.getSort().isEmpty()) {
                     return 0;
@@ -253,6 +258,7 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Optional<ProductResponse> getProductByIdWithCategories(Long id) {
         return productRepository.findByIdWithCategories(id)
+            .filter(product -> product.getStatus() == ProductStatus.APPROVED)
             .map(this::convertToDTO);
     }
 
@@ -265,8 +271,13 @@ public class ProductService {
         
         List<Product> products = productRepository.findByCategoriesCategoryId(categoryId);
         
+        // Filter for APPROVED products only
+        List<Product> approvedProducts = products.stream()
+            .filter(product -> product.getStatus() == ProductStatus.APPROVED)
+            .collect(Collectors.toList());
+        
         // Sort products by the requested field
-        List<Product> sortedProducts = products.stream()
+        List<Product> sortedProducts = approvedProducts.stream()
             .sorted((p1, p2) -> {
                 if (pageable.getSort().isEmpty()) {
                     return 0;
