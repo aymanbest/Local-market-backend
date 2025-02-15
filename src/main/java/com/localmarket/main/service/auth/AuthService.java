@@ -21,9 +21,11 @@ import com.localmarket.main.service.email.EmailService;
 import jakarta.mail.MessagingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.Map;
 import java.util.HashMap;
 import com.localmarket.main.websocket.NotificationWebSocketHandler;
 import org.springframework.security.core.context.SecurityContextHolder;
+import com.localmarket.main.service.auth.ResetCodeService;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +36,7 @@ public class AuthService {
     private final TokenRepository tokenRepository;
     private final EmailService emailService;
     private final NotificationWebSocketHandler webSocketHandler;
+    private final ResetCodeService resetCodeService;
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     public AuthServiceResult register(RegisterRequest request, String jwt) {
@@ -135,5 +138,54 @@ public class AuthService {
 
         // Clear the SecurityContext
         SecurityContextHolder.clearContext();
+    }
+
+    public void requestPasswordReset(String email) {
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, 
+                "No account found with this email"));
+
+        // Generate reset code
+        String resetCode = resetCodeService.generateCode(email);
+        
+        // Send email with reset code
+        try {
+            Map<String, Object> templateVariables = new HashMap<String, Object>();
+            templateVariables.put("resetCode", resetCode);
+            
+            emailService.sendHtmlEmail(
+                email,
+                "Password Reset Code",
+                user.getFirstname(),
+                "password-reset-email",
+                null,
+                templateVariables
+            );
+        } catch (MessagingException e) {
+            throw new ApiException(ErrorType.EMAIL_SENDING_FAILED, 
+                "Failed to send reset code email");
+        }
+    }
+
+    public void verifyAndResetPassword(String email, String code, String newPassword) {
+        if (!resetCodeService.verifyCode(email, code)) {
+            throw new ApiException(ErrorType.INVALID_TOKEN, 
+                "Invalid or expired reset code");
+        }
+
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, 
+                "User not found"));
+
+        // Validate new password
+        if (newPassword == null || newPassword.trim().length() < 6) {
+            throw new ApiException(ErrorType.INVALID_PASSWORD, 
+                "New password must be at least 6 characters long");
+        }
+
+        // Update password and invalidate existing tokens
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setTokenVersion((user.getTokenVersion() + 1) % 10);
+        userRepository.save(user);
     }
 }

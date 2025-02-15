@@ -14,6 +14,7 @@ import com.localmarket.main.repository.user.UserRepository;
 import com.localmarket.main.util.CookieUtil;
 import com.localmarket.main.repository.token.TokenRepository;
 import com.localmarket.main.repository.producer.ProducerApplicationRepository;
+import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
 @EnableWebSocket
@@ -25,11 +26,13 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final CookieUtil cookieUtil;
     private final TokenRepository tokenRepository;
     private final ProducerApplicationRepository applicationRepository;
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(webSocketHandler, "/ws")
-            .setAllowedOrigins("http://localhost:5173")
+            .setAllowedOrigins(frontendUrl)
             .addInterceptors(securityInterceptor());
     }
 

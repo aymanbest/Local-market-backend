@@ -12,13 +12,15 @@ import jakarta.mail.internet.MimeMessage;
 
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
-
 import java.util.Map;
-
+import org.springframework.beans.factory.annotation.Value;
 
 
 @Service
 public class EmailService {
+
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
 
     @Autowired
     private JavaMailSender emailSender;
@@ -37,6 +39,7 @@ public class EmailService {
         Context context = new Context();
         context.setVariable("name", name);
         context.setVariable("subject", subject);
+        context.setVariable("frontendUrl", frontendUrl);
         
         if (templateVariables != null) {
             templateVariables.forEach(context::setVariable);

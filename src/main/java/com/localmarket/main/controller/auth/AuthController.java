@@ -27,6 +27,7 @@ import com.localmarket.main.dto.error.ErrorResponse;
 import com.localmarket.main.util.CookieUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import com.localmarket.main.dto.auth.PasswordResetVerifyRequest;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -125,5 +126,29 @@ public class AuthController {
                 .role(userDetails.getRole().name())
                 .applicationStatus(userDetails.getApplicationStatus())
                 .build());
+    }
+
+    @PostMapping("/password-reset-request")
+    public ResponseEntity<AuthResponse> requestPasswordReset(
+            @RequestBody PasswordResetVerifyRequest request) {
+        authService.requestPasswordReset(request.getEmail());
+        return ResponseEntity.ok(AuthResponse.builder()
+            .status(200)
+            .message("Password reset code sent to your email")
+            .build());
+    }
+
+    @PostMapping("/password-reset-verify")
+    public ResponseEntity<AuthResponse> verifyAndResetPassword(
+            @RequestBody PasswordResetVerifyRequest request) {
+        authService.verifyAndResetPassword(
+            request.getEmail(), 
+            request.getCode(), 
+            request.getNewPassword()
+        );
+        return ResponseEntity.ok(AuthResponse.builder()
+            .status(200)
+            .message("Password has been reset successfully")
+            .build());
     }
 } 

@@ -21,6 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import java.time.Duration;
+import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
 @EnableWebSecurity
@@ -32,6 +33,9 @@ public class SecurityConfig {
     private final String PRODUCER = Role.PRODUCER.name();
     private final String ADMIN = Role.ADMIN.name();
     private final String CUSTOMER = Role.CUSTOMER.name();
+
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -48,8 +52,8 @@ public class SecurityConfig {
                 .csrfTokenRequestHandler(requestHandler)
                 .ignoringRequestMatchers(
                     "/api/auth/**",
-                    "/api/orders/checkout",
-                    "/api/orders/pay",
+                    "/api/orders/checkout", // they might! work in the frontend even when removed from here
+                    "/api/orders/pay", // they might! work in the frontend even when removed from here
                     "/api/orders/bundle/**",
                     "/ws/**"  // Ignore CSRF for WebSocket
                 ))
@@ -152,7 +156,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));  // For testing only
+        configuration.setAllowedOrigins(Arrays.asList(frontendUrl));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-XSRF-TOKEN", "Cookie"));
         configuration.setAllowCredentials(true);
