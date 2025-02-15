@@ -424,8 +424,17 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Order> getProducerOrders(Long producerId, Pageable pageable) {
+    public Page<Order> getProducerOrders(Long producerId, String customerEmail, Pageable pageable) {
         List<Order> orders = orderRepository.findByItemsProductProducerUserId(producerId);
+        
+        // Filter by customer email if provided
+        if (customerEmail != null && !customerEmail.isEmpty()) {
+            orders = orders.stream()
+                .filter(order -> order.getCustomer() != null && 
+                               order.getCustomer().getEmail().toLowerCase()
+                                   .contains(customerEmail.toLowerCase()))
+                .collect(Collectors.toList());
+        }
         
         // Sort orders
         List<Order> sortedOrders = orders.stream()
@@ -460,8 +469,17 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Order> getProducerOrdersByStatus(Long producerId, OrderStatus status, Pageable pageable) {
+    public Page<Order> getProducerOrdersByStatus(Long producerId, OrderStatus status, String customerEmail, Pageable pageable) {
         List<Order> orders = orderRepository.findByItemsProductProducerUserIdAndStatus(producerId, status);
+        
+        // Filter by customer email if provided
+        if (customerEmail != null && !customerEmail.isEmpty()) {
+            orders = orders.stream()
+                .filter(order -> order.getCustomer() != null && 
+                               order.getCustomer().getEmail().toLowerCase()
+                                   .contains(customerEmail.toLowerCase()))
+                .collect(Collectors.toList());
+        }
         
         // Sort orders
         List<Order> sortedOrders = orders.stream()

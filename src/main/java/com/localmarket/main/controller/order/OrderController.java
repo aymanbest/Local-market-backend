@@ -169,10 +169,11 @@ public class OrderController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "orderDate") String sortBy,
-            @RequestParam(defaultValue = "desc") String direction) {
+            @RequestParam(defaultValue = "desc") String direction,
+            @RequestParam(required = false) String customerEmail) {
         Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
-        return ResponseEntity.ok(orderService.getProducerOrders(userDetails.getId(), pageable));
+        return ResponseEntity.ok(orderService.getProducerOrders(userDetails.getId(), customerEmail, pageable));
     }
 
     @Operation(summary = "Get producer orders by status", description = "Get all orders containing producer's products filtered by status")
@@ -189,10 +190,11 @@ public class OrderController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "orderDate") String sortBy,
-            @RequestParam(defaultValue = "desc") String direction) {
+            @RequestParam(defaultValue = "desc") String direction,
+            @RequestParam(required = false) String customerEmail) {
         Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
-        return ResponseEntity.ok(orderService.getProducerOrdersByStatus(userDetails.getId(), status, pageable));
+        return ResponseEntity.ok(orderService.getProducerOrdersByStatus(userDetails.getId(), status, customerEmail, pageable));
     }
 
     @Operation(summary = "Get orders by access token", description = "Retrieve all orders associated with an access token")
