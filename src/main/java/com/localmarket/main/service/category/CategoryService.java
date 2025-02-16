@@ -10,8 +10,9 @@ import com.localmarket.main.dto.category.CategoryResponse;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import org.springframework.dao.DataIntegrityViolationException;
-
+import com.localmarket.main.entity.product.ProductStatus;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,8 +38,18 @@ public class CategoryService {
     }
 
     @Transactional(readOnly = true)
-    public List<Category> getAllCategories() {
-        return categoryRepository.findAll();
+    public List<CategoryResponse> getAllCategories() {
+        List<Category> categories = categoryRepository.findAllWithProducts();
+        return categories.stream()
+            .map(category -> CategoryResponse.builder()
+                .categoryId(category.getCategoryId())
+                .name(category.getName())
+                .productCount(category.getProducts().stream()
+                    .filter(product -> product.getStatus() == ProductStatus.APPROVED)
+                    .collect(Collectors.toSet())
+                    .size())
+                .build())
+            .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)

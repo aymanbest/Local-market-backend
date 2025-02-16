@@ -20,4 +20,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findByNameIgnoreCase(String name);
 
     Optional<Category> findByName(String name);
+
+    @Query("SELECT COUNT(p) FROM Category c JOIN c.products p WHERE c.categoryId = :categoryId AND p.status = 'APPROVED'")
+    int countApprovedProducts(@Param("categoryId") Long categoryId);
 } 

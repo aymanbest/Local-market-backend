@@ -17,6 +17,7 @@ import com.localmarket.main.entity.product.Product;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Column;
+import jakarta.persistence.Transient;
 @Entity
 @Data
 @Table(name = "Category")
@@ -37,7 +38,6 @@ public class Category {
     private Set<Product> products = new HashSet<>();
     
     @JsonProperty("productCount")
-    public int getProductCount() {
-        return products.size();
-    }
+    @Transient
+    private Integer productCount = 0;
 } 

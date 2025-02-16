@@ -139,7 +139,15 @@ public class ProductService {
         return convertToDTO(productRepository.save(product));
     }
 
+    @Transactional
+    public void deleteProductAsAdmin(Long id) {
+        Product product = productRepository.findById(id)
+            .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
+        productRepository.delete(product);
+    }
+
     @ProducerOnly
+    @Transactional
     public void deleteProduct(Long id, Long producerId) {
         Product product = productRepository.findById(id)
             .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));

@@ -104,6 +104,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/products/{id}").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/products").hasAuthority(PRODUCER)
                 .requestMatchers(HttpMethod.PUT, "/api/products/**").hasAuthority(PRODUCER)
+                .requestMatchers(HttpMethod.DELETE, "/api/products/admin/**").hasAuthority(ADMIN)
                 .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAuthority(PRODUCER)
                 .requestMatchers(HttpMethod.GET, "/api/products/my-products").hasAuthority(PRODUCER)
                 .requestMatchers(HttpMethod.GET, "/api/products/my-pending").hasAuthority(PRODUCER)

@@ -187,6 +187,20 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Delete product", description = "Delete existing product (Admin only)")
+    @SecurityRequirement(name = "cookie")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Product deleted successfully"),
+        @ApiResponse(responseCode = "403", description = "Not authorized to delete this product", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Product not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @DeleteMapping("/admin/{id}")
+    @AdminOnly
+    public ResponseEntity<Void> deleteProductAsAdmin(@PathVariable Long id) {
+        productService.deleteProductAsAdmin(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "Get all products", description = "Retrieve all products with pagination")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Products found", content = @Content(schema = @Schema(implementation = ProducerProductsResponse.class)))
