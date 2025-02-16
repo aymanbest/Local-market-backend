@@ -82,8 +82,14 @@ public class CategoryController {
     })
     @DeleteMapping("/{id}")
     @AdminOnly
-    public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
-        categoryService.deleteCategory(id);
+    public ResponseEntity<Void> deleteCategory(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean purge) {
+        if (purge) {
+            categoryService.deleteCategoryWithProducts(id);
+        } else {
+            categoryService.deleteCategory(id);
+        }
         return ResponseEntity.noContent().build();
     }
 } 

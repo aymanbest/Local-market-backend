@@ -13,11 +13,16 @@ import org.springframework.dao.DataIntegrityViolationException;
 import com.localmarket.main.entity.product.ProductStatus;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.ArrayList;
+import com.localmarket.main.entity.product.Product;
+import com.localmarket.main.repository.product.ProductRepository;
 
 @Service
 @RequiredArgsConstructor
 public class CategoryService {
     private final CategoryRepository categoryRepository;
+    private final ProductRepository productRepository;
 
 
     public CategoryResponse createCategory(CategoryRequest request) {
@@ -69,13 +74,53 @@ public class CategoryService {
     }
 
     public void deleteCategory(Long id) {
-        Category category = categoryRepository.findById(id)
+        Category category = categoryRepository.findByIdWithProducts(id)
             .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Category not found"));
             
-        if (!category.getProducts().isEmpty()) {
-            throw new ApiException(ErrorType.RESOURCE_IN_USE, "Cannot delete category with existing products");
+        // Check if category has any approved or pending products
+        boolean hasActiveProducts = category.getProducts().stream()
+            .anyMatch(product -> product.getStatus() == ProductStatus.APPROVED || 
+                                product.getStatus() == ProductStatus.PENDING);
+            
+        if (hasActiveProducts) {
+            throw new ApiException(ErrorType.RESOURCE_IN_USE, 
+                "Cannot delete category with existing approved or pending products");
         }
 
+        categoryRepository.deleteById(id);
+    }
+
+    public void deleteCategoryWithProducts(Long id) {
+        Category category = categoryRepository.findByIdWithProducts(id)
+            .orElseThrow(() -> new ApiException(ErrorType.RESOURCE_NOT_FOUND, "Category not found"));
+        
+        // Get all products that have this category
+        Set<Product> productsToCheck = category.getProducts();
+        
+        // Separate products into those to delete and those to update
+        List<Product> productsToDelete = new ArrayList<>();
+        List<Product> productsToUpdate = new ArrayList<>();
+        
+        for (Product product : productsToCheck) {
+            if (product.getCategories().size() <= 1) {
+                // If this is the only category, mark for deletion regardless of status
+                productsToDelete.add(product);
+            } else {
+                // If product has other categories, mark for update
+                productsToUpdate.add(product);
+            }
+        }
+        
+        // Remove the category from products that have multiple categories
+        for (Product product : productsToUpdate) {
+            product.getCategories().remove(category);
+            productRepository.save(product);
+        }
+        
+        // Delete products that only had this category
+        productRepository.deleteAll(productsToDelete);
+        
+        // Finally delete the category
         categoryRepository.deleteById(id);
     }
 
