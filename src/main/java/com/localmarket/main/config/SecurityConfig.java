@@ -52,10 +52,10 @@ public class SecurityConfig {
                 .csrfTokenRequestHandler(requestHandler)
                 .ignoringRequestMatchers(
                     "/api/auth/**",
-                    "/api/orders/checkout", // they might! work in the frontend even when removed from here
-                    "/api/orders/pay", // they might! work in the frontend even when removed from here
+                    "/api/orders/checkout",
+                    "/api/orders/pay",
                     "/api/orders/bundle/**",
-                    "/ws/**"  // Ignore CSRF for WebSocket
+                    "/ws/**"
                 ))
             
             // Session management
@@ -121,6 +121,16 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/reviews/pending").hasAuthority(ADMIN)
                 .requestMatchers(HttpMethod.POST, "/api/reviews/{reviewId}/approve").hasAuthority(ADMIN)
                 .requestMatchers(HttpMethod.POST, "/api/reviews/{reviewId}/decline").hasAuthority(ADMIN)
+                
+                // Support System
+                .requestMatchers("/api/support/tickets/producer/**").hasAuthority(PRODUCER)
+                .requestMatchers("/api/support/tickets/admin/**").hasAuthority(ADMIN)
+                .requestMatchers("/api/support/tickets/unassigned").hasAuthority(ADMIN)
+                .requestMatchers(HttpMethod.POST, "/api/support/tickets").hasAuthority(PRODUCER)
+                .requestMatchers(HttpMethod.POST, "/api/support/tickets/{ticketId}/assign").hasAuthority(ADMIN)
+                .requestMatchers(HttpMethod.POST, "/api/support/tickets/{ticketId}/forward").hasAuthority(ADMIN)
+                .requestMatchers(HttpMethod.POST, "/api/support/tickets/{ticketId}/close").hasAuthority(ADMIN)
+                .requestMatchers("/api/support/tickets/{ticketId}/messages/**").hasAnyAuthority(ADMIN, PRODUCER)
                 
                 // Regions
                 .requestMatchers("/api/regions/**").permitAll()

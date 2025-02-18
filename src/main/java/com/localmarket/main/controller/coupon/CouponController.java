@@ -20,7 +20,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Optional;
 
 @RestController

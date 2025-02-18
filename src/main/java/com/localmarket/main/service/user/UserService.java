@@ -41,6 +41,13 @@ public class UserService {
                 "User with id " + id + " not found"));
     }
 
+    // by Username
+    public User getUserByUsername(String username) {
+        return userRepository.findByUsername(username)
+            .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, 
+                "User with username " + username + " not found"));
+    }
+
     // Delete 
     @Transactional
     public void deleteUser(Long id) {

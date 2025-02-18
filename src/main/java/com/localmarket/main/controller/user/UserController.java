@@ -11,7 +11,6 @@ import com.localmarket.main.security.AdminOnly;
 import com.localmarket.main.service.user.UserService;
 import com.localmarket.main.dto.auth.RegisterRequest;
 import lombok.RequiredArgsConstructor;
-import java.util.List;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.localmarket.main.dto.user.PasswordChangeRequest;
 import org.springframework.data.domain.Page;

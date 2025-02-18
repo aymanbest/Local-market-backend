@@ -17,6 +17,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findById(Long id); 
     void deleteById(Long id);  
     Optional<User> findByEmail(String email);
+    Optional<User> findByUsername(String username);
     Page<User> findByRole(Role role, Pageable pageable);
     List<User> findByRole(Role role);
     long countByCreatedAtBefore(LocalDateTime date);
