@@ -18,6 +18,8 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.core.io.Resource;
+import com.localmarket.main.exception.ApiException;
+import com.localmarket.main.exception.ErrorType;
 
 @RestController
 @RequestMapping("/api/analytics")
@@ -43,7 +45,12 @@ public class AdminAnalyticsController {
     public ResponseEntity<TransactionAnalyticsResponse> getTransactionAnalytics(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return ResponseEntity.ok(analyticsService.getTransactionAnalytics(startDate, endDate));
+        try {
+            return ResponseEntity.ok(analyticsService.getTransactionAnalytics(startDate, endDate));
+        } catch (Exception e) {
+            throw new ApiException(ErrorType.INTERNAL_SERVER_ERROR, 
+                "Error retrieving transaction analytics: " + e.getMessage());
+        }
     }
 
     @Operation(summary = "Get business metrics", description = "Get business performance metrics")

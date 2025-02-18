@@ -26,6 +26,10 @@ import com.localmarket.main.entity.category.Category;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.localmarket.main.service.export.CSVExportService;
 import com.localmarket.main.service.export.PDFExportService;
+import java.util.HashMap;
+import java.math.RoundingMode;
+import java.time.LocalTime;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -64,26 +68,44 @@ public class AnalyticsService {
     }
 
     public TransactionAnalyticsResponse getTransactionAnalytics(LocalDate startDate, LocalDate endDate) {
-        LocalDateTime start = startDate != null ? startDate.atStartOfDay() 
-            : LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0);
-        LocalDateTime end = endDate != null ? endDate.atTime(23, 59, 59) 
-            : LocalDateTime.now();
-
-        List<Order> orders = orderRepository.findByOrderDateBetween(start, end);
+        List<Order> orders = getOrdersInDateRange(startDate, endDate);
         
-        BigDecimal totalVolume = orders.stream()
+        // Handle empty orders list
+        if (orders == null || orders.isEmpty()) {
+            return TransactionAnalyticsResponse.builder()
+                .totalTransactions(0)
+                .totalRevenue(BigDecimal.ZERO)
+                .averageOrderValue(BigDecimal.ZERO)
+                .transactionsByStatus(new HashMap<>())
+                .revenueByDay(new HashMap<>())
+                .transactions(new ArrayList<>())
+                .build();
+        }
+
+        Map<OrderStatus, Long> transactionsByStatus = orders.stream()
+            .collect(Collectors.groupingBy(Order::getStatus, Collectors.counting()));
+
+        BigDecimal totalRevenue = orders.stream()
             .map(Order::getTotalPrice)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
-            
-        long completedCount = orders.stream()
-            .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
-            .count();
-            
-        long pendingCount = orders.stream()
-            .filter(o -> o.getStatus() == OrderStatus.PENDING_PAYMENT)
-            .count();
+
+        BigDecimal averageOrderValue = orders.isEmpty() ? 
+            BigDecimal.ZERO : 
+            totalRevenue.divide(BigDecimal.valueOf(orders.size()), 2, RoundingMode.HALF_UP);
+
+        Map<LocalDate, BigDecimal> revenueByDay = orders.stream()
+            .filter(order -> order.getOrderDate() != null)
+            .collect(Collectors.groupingBy(
+                (Order order) -> order.getOrderDate().toLocalDate(),
+                HashMap::new,
+                Collectors.mapping(
+                    Order::getTotalPrice,
+                    Collectors.reducing(BigDecimal.ZERO, BigDecimal::add)
+                )
+            ));
 
         List<TransactionDetails> transactions = orders.stream()
+            .filter(order -> !order.getItems().isEmpty())
             .map(order -> TransactionDetails.builder()
                 .orderId(order.getOrderId())
                 .transactionId(order.getPayment() != null ? order.getPayment().getTransactionId() : null)
@@ -98,11 +120,27 @@ public class AnalyticsService {
             .collect(Collectors.toList());
 
         return TransactionAnalyticsResponse.builder()
-            .totalTransactionVolume(totalVolume)
-            .completedTransactions(completedCount)
-            .pendingTransactions(pendingCount)
+            .totalTransactions(orders.size())
+            .totalRevenue(totalRevenue)
+            .averageOrderValue(averageOrderValue)
+            .transactionsByStatus(transactionsByStatus)
             .transactions(transactions)
+            .revenueByDay(revenueByDay)
             .build();
+    }
+
+    private List<Order> getOrdersInDateRange(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null) {
+            startDate = LocalDate.now().minusMonths(1);
+        }
+        if (endDate == null) {
+            endDate = LocalDate.now();
+        }
+        
+        return orderRepository.findByOrderDateBetween(
+            startDate.atStartOfDay(),
+            endDate.atTime(LocalTime.MAX)
+        );
     }
 
     public BusinessMetricsResponse getBusinessMetrics(LocalDate startDate, LocalDate endDate) {
@@ -227,11 +265,11 @@ public class AnalyticsService {
             .periodStart(userAnalytics.getPeriodStart())
             .periodEnd(userAnalytics.getPeriodEnd())
             // Transaction Analytics
-            .totalTransactionVolume(transactionAnalytics.getTotalTransactionVolume())
-            .completedTransactions(transactionAnalytics.getCompletedTransactions())
-            .pendingTransactions(transactionAnalytics.getPendingTransactions())
-            .totalTransactions(transactionAnalytics.getCompletedTransactions() + 
-                             transactionAnalytics.getPendingTransactions())
+            .totalTransactions(transactionAnalytics.getTotalTransactions())
+            .totalRevenue(transactionAnalytics.getTotalRevenue())
+            .averageOrderValue(transactionAnalytics.getAverageOrderValue())
+            .transactionsByStatus(transactionAnalytics.getTransactionsByStatus())
+            .revenueByDay(transactionAnalytics.getRevenueByDay())
             // Business Metrics
             .totalRevenue(businessMetrics.getTotalRevenue())
             .revenueGrowthRate(businessMetrics.getRevenueGrowthRate())

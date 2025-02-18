@@ -5,9 +5,15 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import java.util.Map;
+import com.localmarket.main.entity.order.OrderStatus;
+import java.time.LocalDate;
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class CombinedAnalyticsResponse {
     // User Analytics
     private long totalUsers;
@@ -35,4 +41,7 @@ public class CombinedAnalyticsResponse {
     private List<CategorySalesMetric> salesByCategory;
     private List<MonthlyRevenue> revenueByMonth;
     private List<ProducerPerformance> topProducers;
+    private BigDecimal averageOrderValue;
+    private Map<OrderStatus, Long> transactionsByStatus;
+    private Map<LocalDate, BigDecimal> revenueByDay;
 } 

@@ -31,6 +31,7 @@ import java.util.Map;
 import java.math.RoundingMode;
 import java.util.HashMap;
 import com.localmarket.main.entity.product.ProductStatus;
+import com.localmarket.main.service.coupon.CouponService;
 @Component
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
@@ -41,6 +42,7 @@ public class DataSeeder implements CommandLineRunner {
     private final PaymentRepository paymentRepository;
     private final PasswordEncoder passwordEncoder;
     private final Random random = new Random();
+    private final CouponService couponService;
 
     private static final LocalDateTime[] DECEMBER_DATES = new LocalDateTime[31];
     private static final LocalDateTime[] JANUARY_DATES = new LocalDateTime[31];
@@ -67,6 +69,9 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        // Initialize welcome coupon regardless of existing data
+        couponService.initializeWelcomeCoupon();
+        
         if (userRepository.count() > 1) { // Skip if data exists (besides admin)
             return;
         }
