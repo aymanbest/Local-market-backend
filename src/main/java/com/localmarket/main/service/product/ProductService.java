@@ -617,6 +617,7 @@ public class ProductService {
                         "totalStock", totalStock
                     ))
                     .timestamp(LocalDateTime.now())
+                    .read(false)
                     .build();
                 
                 producerNotificationService.sendToUser(
@@ -637,6 +638,7 @@ public class ProductService {
                         "totalStock", totalStock
                     ))
                     .timestamp(LocalDateTime.now())
+                    .read(false)
                     .build();
                 
                 producerNotificationService.sendToUser(
@@ -658,6 +660,7 @@ public class ProductService {
                         "totalStock", totalStock
                     ))
                     .timestamp(LocalDateTime.now())
+                    .read(false)
                     .build();
                 
                 producerNotificationService.sendToUser(
@@ -696,6 +699,7 @@ public class ProductService {
                     "orderId", order.getOrderId()
                 ))
                 .timestamp(LocalDateTime.now())
+                .read(false)
                 .build();
             
             producerNotificationService.sendToUser(

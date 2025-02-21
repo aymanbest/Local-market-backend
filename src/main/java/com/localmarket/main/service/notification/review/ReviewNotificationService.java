@@ -22,6 +22,7 @@ public class ReviewNotificationService {
                 review.getStatus().toString().toLowerCase()))
             .data(review)
             .timestamp(LocalDateTime.now())
+            .read(false)
             .build();
 
         webSocketService.sendToUser(review.getCustomer().getEmail(), notification);

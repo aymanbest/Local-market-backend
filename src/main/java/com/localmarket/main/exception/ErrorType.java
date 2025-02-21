@@ -7,6 +7,7 @@ public enum ErrorType {
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND),
     DUPLICATE_RESOURCE(HttpStatus.CONFLICT),
     RESOURCE_IN_USE(HttpStatus.CONFLICT),
+    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR),
     
     // Authentication/Authorization errors
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED),

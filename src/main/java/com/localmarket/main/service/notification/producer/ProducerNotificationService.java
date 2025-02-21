@@ -38,9 +38,9 @@ public class ProducerNotificationService {
             .message("New order received")
             .data(order)
             .timestamp(LocalDateTime.now())
+            .read(false)
             .build();
 
-        
         webSocketService.sendToUser(producer.getEmail(), notification);
     }
 
@@ -53,6 +53,7 @@ public class ProducerNotificationService {
             .message(approved ? "Product approved" : "Product rejected: " + reason)
             .data(product)
             .timestamp(LocalDateTime.now())
+            .read(false)
             .build();
 
         webSocketService.sendToUser(producer.getEmail(), notification);
@@ -67,6 +68,7 @@ public class ProducerNotificationService {
             .message("Low stock alert for " + product.getName())
             .data(product)
             .timestamp(LocalDateTime.now())
+            .read(false)
             .build();
 
         webSocketService.sendToUser(producer.getEmail(), notification);

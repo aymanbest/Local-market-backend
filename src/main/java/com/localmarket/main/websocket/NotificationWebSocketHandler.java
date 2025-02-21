@@ -19,6 +19,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import jakarta.annotation.PostConstruct;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import java.util.List;
+import java.time.LocalDateTime;
+import com.localmarket.main.entity.notification.StoredNotification;
+import com.localmarket.main.repository.notification.StoredNotificationRepository;
+import com.localmarket.main.dto.notification.NotificationResponse;
+import com.localmarket.main.service.notification.NotificationStorageService;
 
 @Component
 @RequiredArgsConstructor
@@ -26,6 +32,8 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     private static final Logger log = LoggerFactory.getLogger(NotificationWebSocketHandler.class);
     private final ObjectMapper objectMapper;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private final StoredNotificationRepository storedNotificationRepository;
+    private final NotificationStorageService notificationStorageService;
 
     private static final ConcurrentHashMap<String, WebSocketSession> userSessions = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Set<String>> roleSessions = new ConcurrentHashMap<>();
@@ -71,11 +79,36 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
             roleSessions.computeIfAbsent(userDetails.getRole().name(), k -> new ConcurrentSkipListSet<>())
                     .add(userDetails.getEmail());
 
+            // Send stored notifications
+            sendStoredNotifications(userDetails.getEmail(), session);
+
             log.info("WebSocket connection established for user: {} with role: {}", 
                 userDetails.getEmail(), userDetails.getRole());
         } catch (Exception e) {
             log.error("Failed to establish WebSocket connection: {}", e.getMessage());
             closeSession(session, "Authentication failed");
+        }
+    }
+
+    private void sendStoredNotifications(String email, WebSocketSession session) {
+        List<StoredNotification> notifications = storedNotificationRepository
+            .findByRecipientEmailAndReadFalseAndExpiresAtGreaterThan(email, LocalDateTime.now());
+            
+        for (StoredNotification notification : notifications) {
+            try {
+                NotificationResponse response = NotificationResponse.builder()
+                    .id(notification.getId())
+                    .type(notification.getType())
+                    .message(notification.getMessage())
+                    .data(objectMapper.readValue(notification.getData(), Object.class))
+                    .timestamp(notification.getTimestamp())
+                    .read(notification.isRead())
+                    .build();
+                    
+                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
+            } catch (Exception e) {
+                log.error("Failed to send stored notification: {}", e.getMessage());
+            }
         }
     }
 
@@ -117,16 +150,18 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
         return null;
     }
 
-    public void sendNotification(String email, Object notification) {
+    public boolean sendNotification(String email, Object notification) {
         WebSocketSession session = userSessions.get(email);
         if (session != null && session.isOpen()) {
             try {
                 String message = objectMapper.writeValueAsString(notification);
                 session.sendMessage(new TextMessage(message));
+                return true;
             } catch (IOException e) {
                 log.error("Error sending notification to user: {}", email, e);
             }
         }
+        return false;
     }
 
     public void sendToRole(String role, Object notification) {

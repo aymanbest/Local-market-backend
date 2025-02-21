@@ -21,6 +21,7 @@ public class CustomerNotificationService {
                 order.getOrderId(), order.getStatus()))
             .data(order)
             .timestamp(LocalDateTime.now())
+            .read(false)
             .build();
 
         if (order.getCustomer() != null) {
@@ -36,6 +37,7 @@ public class CustomerNotificationService {
             .message(updateMessage)
             .data(order)
             .timestamp(LocalDateTime.now())
+            .read(false)
             .build();
 
         if (order.getCustomer() != null) {
