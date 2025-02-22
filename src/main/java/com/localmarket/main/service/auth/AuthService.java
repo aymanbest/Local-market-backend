@@ -77,7 +77,7 @@ public class AuthService {
                 null,
                 new HashMap<>()
             );
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Failed to send welcome email to {}: {}", savedUser.getEmail(), e.getMessage());
         }
         
@@ -161,7 +161,7 @@ public class AuthService {
                 null,
                 templateVariables
             );
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             throw new ApiException(ErrorType.EMAIL_SENDING_FAILED, 
                 "Failed to send reset code email");
         }

@@ -141,7 +141,7 @@ public class ProducerApplicationService {
                     null,
                     new HashMap<>()
                 );
-            } catch (MessagingException e) {
+            } catch (Exception e) {
                 log.error("Failed to send producer accepted email to {}: {}", application.getCustomer().getEmail(), e.getMessage());
             }
 

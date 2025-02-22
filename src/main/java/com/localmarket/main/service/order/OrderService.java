@@ -617,7 +617,7 @@ public class OrderService {
                 null,
                 templateModel
             );
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Failed to send order confirmation email: {}", e.getMessage());
         }
     }
