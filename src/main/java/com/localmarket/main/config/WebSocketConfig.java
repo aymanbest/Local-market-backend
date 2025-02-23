@@ -9,11 +9,8 @@ import org.springframework.web.socket.server.standard.ServletServerContainerFact
 import lombok.RequiredArgsConstructor;
 import com.localmarket.main.websocket.NotificationWebSocketHandler;
 import com.localmarket.main.websocket.CustomHandshakeInterceptor;
-import com.localmarket.main.service.auth.JwtService;
-import com.localmarket.main.repository.user.UserRepository;
 import com.localmarket.main.util.CookieUtil;
 import com.localmarket.main.repository.token.TokenRepository;
-import com.localmarket.main.repository.producer.ProducerApplicationRepository;
 import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
@@ -21,11 +18,8 @@ import org.springframework.beans.factory.annotation.Value;
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketConfigurer {
     private final NotificationWebSocketHandler webSocketHandler;
-    private final JwtService jwtService;
-    private final UserRepository userRepository;
     private final CookieUtil cookieUtil;
     private final TokenRepository tokenRepository;
-    private final ProducerApplicationRepository applicationRepository;
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
@@ -47,6 +41,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     @Bean
     public CustomHandshakeInterceptor securityInterceptor() {
-        return new CustomHandshakeInterceptor(jwtService, userRepository, cookieUtil, tokenRepository, applicationRepository);
+        return new CustomHandshakeInterceptor(cookieUtil, tokenRepository);
     }
 } 
