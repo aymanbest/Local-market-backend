@@ -9,7 +9,9 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Repository;
 
+@Repository
 public interface ReviewRepository extends JpaRepository<Review, Long> {
     List<Review> findByCustomerUserId(Long customerId);
     
@@ -17,13 +19,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     
     List<Review> findByProductProductId(Long productId);
     
-    @Query("""
-        SELECT COUNT(r) > 0 FROM Review r 
-        WHERE r.product.productId = :productId 
-        AND r.customer.userId = :customerId
-    """)
-    boolean existsByProductAndCustomer(@Param("productId") Long productId, 
-                                     @Param("customerId") Long customerId);
+    @Query("SELECT COUNT(r) > 0 FROM Review r WHERE r.product.productId = :productId AND r.customer.userId = :customerId")
+    boolean existsByProductAndCustomer(@Param("productId") Long productId, @Param("customerId") Long customerId);
 
     List<Review> findByStatus(ReviewStatus status);
 } 

@@ -1,6 +1,7 @@
 package com.localmarket.main.repository.order;
 
 import com.localmarket.main.entity.order.Order;
+import com.localmarket.main.entity.order.OrderItem;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -128,4 +129,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT o FROM Order o WHERE o.accessToken = :accessToken")
     List<Order> findAllByAccessToken(@Param("accessToken") String accessToken);
+
+    // Find all orders with a specific status
+    List<Order> findByStatus(OrderStatus status);
+    
+    // Find the most recent order date for a customer and product
+    @Query("SELECT MAX(o.orderDate) FROM Order o JOIN o.items i WHERE o.customer.userId = :customerId AND i.product.productId = :productId AND o.status = 'DELIVERED'")
+    LocalDateTime findMostRecentOrderDateForCustomerAndProduct(@Param("customerId") Long customerId, @Param("productId") Long productId);
+
+    // Find all order items for a specific order
+    @Query("SELECT oi FROM OrderItem oi WHERE oi.order.orderId = :orderId")
+    List<OrderItem> findOrderItemsByOrderId(@Param("orderId") Long orderId);
 }
