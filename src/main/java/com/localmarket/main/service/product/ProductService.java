@@ -200,16 +200,25 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ProducerProductsResponse> getAllProductsGroupedByProducer(Pageable pageable) {
+    public Page<ProducerProductsResponse> getAllProductsGroupedByProducer(Pageable pageable, String searchTerm) {
         List<Product> allProducts = productRepository.findAllWithCategories();
         
-        // Filter for APPROVED products only
-        List<Product> approvedProducts = allProducts.stream()
+        // Filter for APPROVED products only and apply search if term provided
+        List<Product> filteredProducts = allProducts.stream()
             .filter(product -> product.getStatus() == ProductStatus.APPROVED)
+            .filter(product -> {
+                if (searchTerm == null || searchTerm.trim().isEmpty()) {
+                    return true;
+                }
+                String search = searchTerm.toLowerCase();
+                return product.getName().toLowerCase().contains(search) ||
+                       (product.getDescription() != null && 
+                        product.getDescription().toLowerCase().contains(search));
+            })
             .collect(Collectors.toList());
         
         // Sort all products first
-        List<Product> sortedProducts = approvedProducts.stream()
+        List<Product> sortedProducts = filteredProducts.stream()
             .sorted((p1, p2) -> {
                 if (pageable.getSort().isEmpty()) {
                     return 0;
@@ -237,16 +246,14 @@ public class ProductService {
             return new PageImpl<>(List.of(), pageable, sortedProducts.size());
         }
         
-        // Get the paginated subset
         List<Product> paginatedProducts = sortedProducts.subList(start, end);
-
-        // Group the paginated products by producer and maintain the sort order within each group
+        
+        // Group by producer and convert to response
         Map<User, List<Product>> groupedProducts = new LinkedHashMap<>();
         for (Product product : paginatedProducts) {
             groupedProducts.computeIfAbsent(product.getProducer(), k -> new ArrayList<>()).add(product);
         }
 
-        // Convert to response objects while maintaining order
         List<ProducerProductsResponse> responses = groupedProducts.entrySet().stream()
             .map(entry -> new ProducerProductsResponse(
                 entry.getKey().getUserId(),

@@ -201,7 +201,7 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Get all products", description = "Retrieve all products with pagination")
+    @Operation(summary = "Get all products", description = "Retrieve all products with pagination and optional search")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Products found", content = @Content(schema = @Schema(implementation = ProducerProductsResponse.class)))
     })
@@ -210,10 +210,11 @@ public class ProductController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String direction) {
+            @RequestParam(defaultValue = "desc") String direction,
+            @RequestParam(required = false) String search) {
         Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
-        return ResponseEntity.ok(productService.getAllProductsGroupedByProducer(pageable));
+        return ResponseEntity.ok(productService.getAllProductsGroupedByProducer(pageable, search));
     }
 
     @Operation(summary = "Get products by category", description = "Retrieve products by category with pagination")
