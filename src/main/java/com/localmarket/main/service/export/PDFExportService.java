@@ -34,33 +34,10 @@ public class PDFExportService {
         Document document = new Document(pdf);
         
         try {
-            // Company Header
-            document.add(new Paragraph("LOCALMARKET")
-                .setFontSize(15)
-                .setBold()
-                .setFontColor(HEADER_COLOR)
-                .setTextAlignment(TextAlignment.CENTER));
-            
-            // Analytics Report Title
-            document.add(new Paragraph("Analytics Report")
-                .setFontSize(10)
-                .setFontColor(SUBHEADER_COLOR)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setMarginTop(10));
-            
-            // Period
-            String formattedPeriod = String.format("Period: %s to %s",
-                analytics.getPeriodStart().format(DATE_FORMATTER),
-                analytics.getPeriodEnd().format(DATE_FORMATTER));
-            
-            document.add(new Paragraph(formattedPeriod)
-                .setFontSize(12)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setMarginBottom(20));
-            
-            addSection(document, "User Analytics", analytics);
-            addSection(document, "Transaction Analytics", analytics);
-            addSection(document, "Business Metrics", analytics);
+            addHeader(document, analytics);
+            addUserAnalytics(document, analytics);
+            addTransactionAnalytics(document, analytics);
+            addBusinessMetrics(document, analytics);
             
             document.close();
             return baos.toByteArray();
@@ -69,6 +46,46 @@ public class PDFExportService {
         }
     }
     
+    private void addHeader(Document document, CombinedAnalyticsResponse analytics) {
+        document.add(new Paragraph("LOCALMARKET")
+            .setFontSize(15)
+            .setBold()
+            .setFontColor(HEADER_COLOR)
+            .setTextAlignment(TextAlignment.CENTER));
+        
+        document.add(new Paragraph("Analytics Report")
+            .setFontSize(10)
+            .setFontColor(SUBHEADER_COLOR)
+            .setTextAlignment(TextAlignment.CENTER)
+            .setMarginTop(10));
+        
+        String period = String.format("Period: %s to %s",
+            analytics.getPeriodStart().format(DATE_FORMATTER),
+            analytics.getPeriodEnd().format(DATE_FORMATTER));
+        
+        document.add(new Paragraph(period)
+            .setFontSize(12)
+            .setTextAlignment(TextAlignment.CENTER)
+            .setMarginBottom(20));
+    }
+
+    private void addUserAnalytics(Document document, CombinedAnalyticsResponse analytics) {
+        addSection(document, "User Analytics", analytics);
+    }
+
+    private void addTransactionAnalytics(Document document, CombinedAnalyticsResponse analytics) {
+        Table table = createSectionTable("Transaction Analytics");
+        
+        addTableRow(table, "Total Transactions", String.valueOf(analytics.getTotalTransactions()));
+        addTableRow(table, "Average Order Value", analytics.getAverageOrderValue().toString());
+        
+        document.add(table);
+    }
+
+    private void addBusinessMetrics(Document document, CombinedAnalyticsResponse analytics) {
+        addSection(document, "Business Metrics", analytics);
+    }
+
     private void addSection(Document document, String title, CombinedAnalyticsResponse analytics) {
         // Section Title with background
         Table headerTable = new Table(1).useAllAvailableWidth();
@@ -101,7 +118,7 @@ public class PDFExportService {
                 break;
                 
             case "Transaction Analytics":
-                addTableRow(table, "Total Volume", analytics.getTotalTransactionVolume().toString());
+                addTableRow(table, "Total Volume", String.valueOf(analytics.getTotalTransactionVolume()));
                 addTableRow(table, "Completed Transactions", String.valueOf(analytics.getCompletedTransactions()));
                 addTableRow(table, "Pending Transactions", String.valueOf(analytics.getPendingTransactions()));
                 addTableRow(table, "Total Transactions", String.valueOf(analytics.getTotalTransactions()));
@@ -135,5 +152,27 @@ public class PDFExportService {
             
         table.addCell(labelCell);
         table.addCell(valueCell);
+    }
+
+    private Table createSectionTable(String title) {
+        // Create table with 2 columns
+        float[] columnWidths = {150f, 100f};
+        Table table = new Table(UnitValue.createPointArray(columnWidths))
+            .setMarginBottom(15)
+            .setMarginTop(5);
+        
+        // Add title cell spanning both columns
+        Cell titleCell = new Cell(1, 2)
+            .add(new Paragraph(title))
+            .setFontSize(12)
+            .setBold()
+            .setFontColor(ColorConstants.WHITE)
+            .setBackgroundColor(HEADER_COLOR)
+            .setPadding(5)
+            .setTextAlignment(TextAlignment.CENTER);
+        
+        table.addCell(titleCell);
+        
+        return table;
     }
 } 

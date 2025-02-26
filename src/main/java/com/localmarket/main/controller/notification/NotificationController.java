@@ -12,10 +12,12 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import com.localmarket.main.service.notification.WebSocketService;
 import com.localmarket.main.dto.notification.NotificationResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
+@Tag(name = "Notifications", description = "Notification management APIs")
 public class NotificationController {
     private final WebSocketService webSocketService;
 

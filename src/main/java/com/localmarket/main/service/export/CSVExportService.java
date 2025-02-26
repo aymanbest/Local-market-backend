@@ -35,8 +35,8 @@ public class CSVExportService {
             
             // Transaction Analytics Section
             csvWriter.writeNext(new String[] {"Transaction Analytics"});
-            csvWriter.writeNext(new String[] {"Total Volume", analytics.getTotalTransactionVolume().toString()});
             csvWriter.writeNext(new String[] {"Total Transactions", String.valueOf(analytics.getTotalTransactions())});
+            csvWriter.writeNext(new String[] {"Average Order Value", analytics.getAverageOrderValue().toString()});
             csvWriter.writeNext(new String[] {});
             
             // Business Metrics Section

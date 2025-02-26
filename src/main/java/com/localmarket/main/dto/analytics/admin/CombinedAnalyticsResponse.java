@@ -25,7 +25,7 @@ public class CombinedAnalyticsResponse {
     private LocalDateTime periodEnd;
 
     // Transaction Analytics
-    private BigDecimal totalTransactionVolume;
+    private BigDecimal totalTransactionVolume = BigDecimal.ZERO;
     private long completedTransactions;
     private long pendingTransactions;
     private long totalTransactions;
