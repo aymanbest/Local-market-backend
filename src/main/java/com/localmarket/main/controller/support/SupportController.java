@@ -201,7 +201,6 @@ public class SupportController {
         if (newAdmin.getRole() != Role.ADMIN) {
             throw new RuntimeException("Target user is not an admin");
         }
-        User user = userService.getUserByUsername(userDetails.getUsername());
         return ResponseEntity.ok(supportService.forwardTicket(ticketId, newAdmin));
     }
 

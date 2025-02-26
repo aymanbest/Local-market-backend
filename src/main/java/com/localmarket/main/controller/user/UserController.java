@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import com.localmarket.main.dto.user.UsersPageResponse;
 
 @RestController
 @RequestMapping("/api/users")
@@ -27,7 +28,7 @@ public class UserController {
 
     @GetMapping
     @AdminOnly
-    public ResponseEntity<Page<GetAllUsersResponse>> getUsers(
+    public ResponseEntity<UsersPageResponse> getUsers(
             @RequestParam(required = false) Role role,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,

@@ -27,7 +27,7 @@ public class TicketMessage {
     @Column(nullable = false)
     private LocalDateTime sentAt;
 
-    private boolean isInternalNote;
+    private boolean isInternalNote = false;
 
     @PrePersist
     protected void onCreate() {

@@ -17,6 +17,10 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Arrays;
+import java.time.LocalDateTime;
+import java.util.Map;
+import com.localmarket.main.service.notification.WebSocketService;
+import com.localmarket.main.dto.notification.NotificationResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +28,7 @@ import java.util.Arrays;
 public class SupportService {
     private final TicketRepository ticketRepository;
     private final TicketMessageRepository messageRepository;
+    private final WebSocketService webSocketService;
 
     @Transactional
     public TicketResponse createTicket(CreateTicketRequest request, User producer) {
@@ -91,12 +96,33 @@ public class SupportService {
         Ticket ticket = ticketRepository.findById(ticketId)
             .orElseThrow(() -> new RuntimeException("Ticket not found"));
 
+        // Only allow admins to set internal notes, force false for producers
+        boolean isInternalNote = sender.getRole() == Role.ADMIN ? request.isInternalNote() : false;
+
         TicketMessage message = new TicketMessage();
         message.setTicket(ticket);
         message.setSender(sender);
         message.setContent(request.getMessage());
-        message.setInternalNote(request.isInternalNote());
+        message.setInternalNote(isInternalNote);
         messageRepository.save(message);
+
+        // Send notification if admin replies and it's not an internal note
+        if (sender.getRole() == Role.ADMIN && !isInternalNote) {
+            NotificationResponse notification = NotificationResponse.builder()
+                .type("TICKET_REPLY")
+                .message("Admin replied to your ticket: " + ticket.getSubject())
+                .data(Map.of(
+                    "ticketId", ticket.getTicketId(),
+                    "subject", ticket.getSubject(),
+                    "message", request.getMessage(),
+                    "adminName", sender.getUsername()
+                ))
+                .timestamp(LocalDateTime.now())
+                .read(false)
+                .build();
+
+            webSocketService.sendToUser(ticket.getCreatedBy().getEmail(), notification);
+        }
 
         // Update ticket status if needed
         if (ticket.getStatus() == TicketStatus.PENDING_PRODUCER && !sender.getRole().name().equals("ADMIN")) {

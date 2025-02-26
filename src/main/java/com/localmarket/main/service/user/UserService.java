@@ -16,6 +16,7 @@ import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.dto.auth.RegisterRequest;
 import com.localmarket.main.dto.user.GetAllUsersResponse;
+import com.localmarket.main.dto.user.UsersPageResponse;
 
 import lombok.RequiredArgsConstructor;
 
@@ -105,12 +106,12 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public Page<GetAllUsersResponse> getUsers(Role role, Pageable pageable) {
+    public UsersPageResponse getUsers(Role role, Pageable pageable) {
         Page<User> users = (role != null) 
             ? userRepository.findByRole(role, pageable)
             : userRepository.findAll(pageable);
         
-        return users.map(user -> new GetAllUsersResponse(
+        Page<GetAllUsersResponse> userResponses = users.map(user -> new GetAllUsersResponse(
             user.getUserId(),
             user.getUsername(),
             user.getEmail(),
@@ -120,6 +121,18 @@ public class UserService {
             user.getCreatedAt(),
             user.getLastLogin()
         ));
+
+        // Get counts for different types of accounts
+        long totalActiveAccounts = userRepository.count();
+        long totalProducerAccounts = userRepository.countByRole(Role.PRODUCER);
+        long totalAdminAccounts = userRepository.countByRole(Role.ADMIN);
+
+        return new UsersPageResponse(
+            userResponses,
+            totalActiveAccounts,
+            totalProducerAccounts,
+            totalAdminAccounts
+        );
     }
 
     @Transactional
@@ -133,9 +146,28 @@ public class UserService {
         }
 
         // Validate new password
-        if (newPassword == null || newPassword.trim().length() < 6) {
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new ApiException(ErrorType.INVALID_PASSWORD, "Password cannot be empty");
+        }
+
+        // Password strength validation
+        int strengthScore = 0;
+        
+        // Check length >= 8
+        if (newPassword.length() >= 8) strengthScore++;
+        // Check for uppercase
+        if (newPassword.matches(".*[A-Z].*")) strengthScore++;
+        // Check for lowercase
+        if (newPassword.matches(".*[a-z].*")) strengthScore++;
+        // Check for numbers
+        if (newPassword.matches(".*[0-9].*")) strengthScore++;
+        // Check for special characters
+        if (newPassword.matches(".*[!@#$%^&*(),.?\":{}|<>].*")) strengthScore++;
+
+        if (strengthScore < 3) {
             throw new ApiException(ErrorType.INVALID_PASSWORD, 
-                "New password must be at least 6 characters long");
+                "Password is not strong enough. Password must meet at least 3 of the following criteria: " +
+                "8+ characters, uppercase letter, lowercase letter, number, special character");
         }
 
         // Update password and increment token version to invalidate existing tokens

@@ -24,4 +24,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByRoleAndCreatedAtBetween(Role role, LocalDateTime start, LocalDateTime end);
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
     long countByLastLoginBetween(LocalDateTime start, LocalDateTime end);
+    long countByRole(Role role);
 } 
