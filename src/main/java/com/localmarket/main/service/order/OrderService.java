@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.beans.factory.annotation.Value;
 
 import com.localmarket.main.repository.order.OrderRepository;
 import com.localmarket.main.repository.product.ProductRepository;
@@ -63,8 +64,9 @@ public class OrderService {
     private final CouponService couponService;
     private final EmailService emailService;
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
-
-
+    
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
 
     public List<Order> getUserOrders(Long userId) {
         return orderRepository.findByCustomerUserId(userId);
@@ -159,6 +161,8 @@ public class OrderService {
             }
         }
         
+        List<Order> createdOrders = new ArrayList<>();
+        
         // Create separate order for each producer
         for (Map.Entry<Long, List<OrderItemRequest>> entry : itemsByProducer.entrySet()) {
             Order order = new Order();
@@ -208,14 +212,22 @@ public class OrderService {
             
             // Notify producer
             producerNotificationService.notifyNewOrder(entry.getKey(), order);
-
-            sendOrderConfirmationEmail(order);
+            
+            createdOrders.add(order);
             
             orders.add(OrderResponse.builder()
                 .order(order)
                 .orderId(order.getOrderId())
                 .accessToken(accessToken)
                 .build());
+        }
+        
+        // Send a single confirmation email for all orders if there are multiple orders
+        if (createdOrders.size() > 1) {
+            sendBundleOrderConfirmationEmail(createdOrders, accessToken);
+        } else if (createdOrders.size() == 1) {
+            // Send individual confirmation for a single order
+            sendOrderConfirmationEmail(createdOrders.get(0));
         }
         
         return orders;
@@ -514,10 +526,33 @@ public class OrderService {
     }
 
     private void updateOrderPayment(Order order, PaymentResponse paymentResponse) {
-        Payment payment = paymentRepository.findById(paymentResponse.getPaymentId())
+        // Get the original payment
+        Payment originalPayment = paymentRepository.findById(paymentResponse.getPaymentId())
             .orElseThrow(() -> new ApiException(ErrorType.PAYMENT_NOT_FOUND, "Payment not found"));
-        payment.setOrderId(order.getOrderId());
-        order.setPayment(payment);
+        
+        // For multiple orders, create a copy of the payment for each order
+        if (order.getOrderId() != null) {
+            // Check if this is not the first order associated with the payment
+            if (originalPayment.getOrderId() != null && !originalPayment.getOrderId().equals(order.getOrderId())) {
+                // Create a new payment entry for this order
+                Payment paymentCopy = new Payment();
+                paymentCopy.setAmount(originalPayment.getAmount());
+                paymentCopy.setPaymentMethod(originalPayment.getPaymentMethod());
+                paymentCopy.setPaymentStatus(originalPayment.getPaymentStatus());
+                paymentCopy.setTransactionId(originalPayment.getTransactionId() + "-" + order.getOrderId());
+                paymentCopy.setCreatedAt(LocalDateTime.now());
+                paymentCopy.setOrderId(order.getOrderId());
+                
+                // Save the copy and associate it with this order
+                Payment savedPayment = paymentRepository.save(paymentCopy);
+                order.setPayment(savedPayment);
+                return;
+            }
+        }
+        
+        // For the first order or if there's only one order
+        originalPayment.setOrderId(order.getOrderId());
+        order.setPayment(originalPayment);
     }
 
     public Order getGuestOrders(String accessToken) {
@@ -588,7 +623,8 @@ public class OrderService {
             .map(item -> Map.of(
                 "productName", item.getProduct().getName(),
                 "quantity", item.getQuantity(),
-                "price", item.getProduct().getPrice()
+                "price", item.getProduct().getPrice(),
+                "imageUrl", getFullImageUrl(item.getProduct().getImageUrl())
             ))
             .collect(Collectors.toList()));
         
@@ -607,6 +643,15 @@ public class OrderService {
         templateModel.put("discount", discount);
         templateModel.put("total", finalTotal);
         templateModel.put("shippingAddress", order.getShippingAddress());
+        templateModel.put("isBundle", false);
+        
+        // Add bundle link if there's an access token
+        if (order.getAccessToken() != null) {
+            templateModel.put("bundleLink", frontendUrl + "/orders/bundle/" + order.getAccessToken());
+            templateModel.put("hasBundle", true);
+        } else {
+            templateModel.put("hasBundle", false);
+        }
 
         try {
             emailService.sendHtmlEmail(
@@ -620,6 +665,22 @@ public class OrderService {
         } catch (Exception e) {
             log.error("Failed to send order confirmation email: {}", e.getMessage());
         }
+    }
+    
+    private String getFullImageUrl(String imageUrl) {
+        if (imageUrl == null || imageUrl.isEmpty()) {
+            return "https://placehold.co/600x400?text=No+Image";
+        }
+        if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+            return imageUrl;
+        }
+        
+        // Extract the base URL from the frontend URL (remove the path part)
+        String baseUrl = frontendUrl.replaceAll("(https?://[^/]+).*", "$1");
+        // Replace frontend port (typically 3000, 5173, etc.) with backend port (8080)
+        String backendUrl = baseUrl.replace(":5173", ":8080").replace(":3000", ":8080");
+        
+        return backendUrl + imageUrl;
     }
 
     @Transactional(readOnly = true)
@@ -656,6 +717,69 @@ public class OrderService {
         List<Order> paginatedOrders = sortedOrders.subList(start, end);
         
         return new PageImpl<>(paginatedOrders, pageable, sortedOrders.size());
+    }
+
+    private void sendBundleOrderConfirmationEmail(List<Order> orders, String accessToken) {
+        if (orders == null || orders.isEmpty()) {
+            return;
+        }
+        
+        // Use the first order to get customer information
+        Order firstOrder = orders.get(0);
+        String recipientEmail = firstOrder.getCustomer() != null ? 
+            firstOrder.getCustomer().getEmail() : firstOrder.getGuestEmail();
+        String recipientName = firstOrder.getCustomer() != null ? 
+            firstOrder.getCustomer().getFirstname() : "Valued Customer";
+
+        Map<String, Object> templateModel = new HashMap<>();
+        templateModel.put("name", recipientName);
+        
+        // Create a list of all items from all orders
+        List<Map<String, Object>> allItems = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        
+        for (Order order : orders) {
+            for (OrderItem item : order.getItems()) {
+                allItems.add(Map.of(
+                    "productName", item.getProduct().getName(),
+                    "quantity", item.getQuantity(),
+                    "price", item.getProduct().getPrice(),
+                    "imageUrl", getFullImageUrl(item.getProduct().getImageUrl()),
+                    "producerName", item.getProduct().getProducer().getUsername()
+                ));
+            }
+            totalAmount = totalAmount.add(order.getTotalPrice());
+        }
+        
+        templateModel.put("items", allItems);
+        templateModel.put("subtotal", totalAmount);
+        templateModel.put("shipping", BigDecimal.ZERO);
+        templateModel.put("discount", BigDecimal.ZERO);
+        templateModel.put("total", totalAmount);
+        templateModel.put("shippingAddress", firstOrder.getShippingAddress());
+        templateModel.put("bundleLink", frontendUrl + "/orders/bundle/" + accessToken);
+        templateModel.put("hasBundle", true);
+        templateModel.put("isBundle", true);
+        templateModel.put("orderCount", orders.size());
+        
+        // Add list of order IDs
+        List<Long> orderIds = orders.stream()
+            .map(Order::getOrderId)
+            .collect(Collectors.toList());
+        templateModel.put("orderIds", orderIds);
+
+        try {
+            emailService.sendHtmlEmail(
+                recipientEmail,
+                "Order Confirmation - LocalMarket",
+                recipientName,
+                "receipt_email",
+                null,
+                templateModel
+            );
+        } catch (Exception e) {
+            log.error("Failed to send bundle order confirmation email: {}", e.getMessage());
+        }
     }
 
 } 

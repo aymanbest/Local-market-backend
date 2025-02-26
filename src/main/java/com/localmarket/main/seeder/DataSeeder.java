@@ -190,7 +190,7 @@ public class DataSeeder implements CommandLineRunner {
                 ProductInfo productInfo = productsForCategory.get(random.nextInt(productsForCategory.size()));
                 
                 Product product = new Product();
-                product.setName(productInfo.getName() + " by " + producer.getFirstname());
+                product.setName(productInfo.getName());
                 product.setDescription(productInfo.getDescription());
                 product.setPrice(BigDecimal.valueOf(productInfo.getMinPrice() + 
                                 random.nextDouble() * (productInfo.getMaxPrice() - productInfo.getMinPrice()))

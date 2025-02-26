@@ -11,39 +11,61 @@
         <p>Thank you for your order! Here's a summary of your purchase:</p>
         
         <div style="margin:20px 0;padding:20px;background-color:#f8f9fa;border-radius:5px;">
-            <h3>Order Details</h3>
-            <p>Order #<span th:text="${orderId}"></span></p>
+            <h3 th:if="${!isBundle}">Order Details</h3>
+            <h3 th:if="${isBundle}">Bundle Order Details</h3>
+            
+            <div th:if="${!isBundle}">
+                <p>Order #<span th:text="${orderId}"></span></p>
+            </div>
+            
+            <div th:if="${isBundle}" style="margin-bottom:15px;">
+                <p>You have <span th:text="${orderCount}"></span> orders from different producers:</p>
+                <ul style="padding-left:20px;">
+                    <li th:each="id : ${orderIds}">Order #<span th:text="${id}"></span></li>
+                </ul>
+            </div>
             
             <table style="width:100%;border-collapse:collapse;margin:20px 0;">
                 <thead>
                     <tr style="border-bottom:2px solid #dee2e6;">
+                        <th style="text-align:left;padding:10px;width:60px;">Image</th>
                         <th style="text-align:left;padding:10px;">Item</th>
+                        <th th:if="${isBundle}" style="text-align:left;padding:10px;">Producer</th>
                         <th style="text-align:right;padding:10px;">Quantity</th>
                         <th style="text-align:right;padding:10px;">Price</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr th:each="item : ${items}" style="border-bottom:1px solid #dee2e6;">
+                        <td style="padding:10px;width:60px;">
+                            <img th:if="${item.imageUrl != null and item.imageUrl != ''}" 
+                                 th:src="${item.imageUrl}" 
+                                 style="width:50px;height:50px;object-fit:cover;border-radius:4px;" 
+                                 alt="Product Image"/>
+                            <div th:if="${item.imageUrl == null or item.imageUrl == ''}" 
+                                 style="width:50px;height:50px;background-color:#e9ecef;border-radius:4px;"></div>
+                        </td>
                         <td style="padding:10px;" th:text="${item.productName}"></td>
+                        <td th:if="${isBundle}" style="padding:10px;" th:text="${item.producerName}"></td>
                         <td style="text-align:right;padding:10px;" th:text="${item.quantity}"></td>
                         <td style="text-align:right;padding:10px;" th:text="${'$' + item.price}"></td>
                     </tr>
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="2" style="text-align:right;padding:10px;"><strong>Subtotal:</strong></td>
+                        <td th:colspan="${isBundle ? 4 : 3}" style="text-align:right;padding:10px;"><strong>Subtotal:</strong></td>
                         <td style="text-align:right;padding:10px;" th:text="${'$' + subtotal}"></td>
                     </tr>
-                    <tr th:if="${discount != null}">
-                        <td colspan="2" style="text-align:right;padding:10px;"><strong>Discount:</strong></td>
+                    <tr th:if="${discount != null and discount > 0}">
+                        <td th:colspan="${isBundle ? 4 : 3}" style="text-align:right;padding:10px;"><strong>Discount:</strong></td>
                         <td style="text-align:right;padding:10px;" th:text="${'$' + discount}"></td>
                     </tr>
                     <tr>
-                        <td colspan="2" style="text-align:right;padding:10px;"><strong>Shipping:</strong></td>
+                        <td th:colspan="${isBundle ? 4 : 3}" style="text-align:right;padding:10px;"><strong>Shipping:</strong></td>
                         <td style="text-align:right;padding:10px;" th:text="${'$' + shipping}"></td>
                     </tr>
                     <tr>
-                        <td colspan="2" style="text-align:right;padding:10px;"><strong>Total:</strong></td>
+                        <td th:colspan="${isBundle ? 4 : 3}" style="text-align:right;padding:10px;"><strong>Total:</strong></td>
                         <td style="text-align:right;padding:10px;font-weight:bold;" th:text="${'$' + total}"></td>
                     </tr>
                 </tfoot>
@@ -53,6 +75,11 @@
         <div style="margin:20px 0;">
             <h3>Shipping Address</h3>
             <p th:text="${shippingAddress}"></p>
+        </div>
+
+        <div th:if="${hasBundle}" style="margin:20px 0;padding:15px;background-color:#e9f7fe;border-radius:5px;text-align:center;">
+            <p style="margin-bottom:10px;">You have multiple orders from different producers in this purchase.</p>
+            <a th:href="${bundleLink}" style="display:inline-block;padding:10px 20px;background-color:#007bff;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:bold;">View All Your Orders</a>
         </div>
 
         <p>We'll notify you when your order ships.</p>

@@ -577,22 +577,6 @@ public class ProductService {
         );
     }
 
-    @Transactional
-    public void updateProductQuantity(Long productId, int newQuantity) {
-        Product product = productRepository.findById(productId)
-            .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
-            
-        product.setQuantity(newQuantity);
-        
-        if (newQuantity <= LOW_STOCK_THRESHOLD) {
-            producerNotificationService.notifyLowStock(
-                product.getProducer().getUserId(), 
-                product
-            );
-        }
-        
-        productRepository.save(product);
-    }
 
     @Scheduled(fixedRate = 3600000) // Run every hour
     @Transactional
