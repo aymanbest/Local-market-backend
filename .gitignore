@@ -39,3 +39,6 @@ uploads/**
 .env
 *.env
 !.env.example
+
+# Cookie files
+cookies.txt
