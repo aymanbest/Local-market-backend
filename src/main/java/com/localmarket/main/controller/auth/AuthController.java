@@ -50,12 +50,17 @@ public class AuthController {
     public ResponseEntity<AuthResponse> register(
             @RequestBody RegisterRequest request,
             @AuthenticationPrincipal CustomUserDetails admin,
+            HttpServletRequest httpRequest,
             HttpServletResponse response) {
-        String adminJwt = admin != null ? cookieUtil.createJwtFromUserDetails(admin) : null;
+        String adminJwt = cookieUtil.getJwtFromCookies(httpRequest);
         AuthServiceResult result = authService.register(request, adminJwt);
-        response.addHeader(HttpHeaders.SET_COOKIE, 
-            cookieUtil.createJwtCookie(result.getToken()).toString());
-            
+        
+        // Only set cookie if it's a self-registration (not admin creating)
+        if (adminJwt == null || adminJwt.isEmpty()) {
+            response.addHeader(HttpHeaders.SET_COOKIE, 
+                cookieUtil.createJwtCookie(result.getToken()).toString());
+        }
+        
         return ResponseEntity.ok(result.getResponse());
     }
 

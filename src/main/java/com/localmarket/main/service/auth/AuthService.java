@@ -45,6 +45,7 @@ public class AuthService {
         }
 
         Role roleToAssign = Role.CUSTOMER;
+        boolean isAdminCreating = false;
 
         // Check if admin is trying to assign a role
         if (request.getRole() != null && request.getRole() != Role.CUSTOMER) {
@@ -53,6 +54,7 @@ public class AuthService {
                     "Admin authorization required to assign non-customer roles");
             }
             roleToAssign = request.getRole();
+            isAdminCreating = true;
         }
 
         User user = new User();
@@ -81,7 +83,9 @@ public class AuthService {
             log.error("Failed to send welcome email to {}: {}", savedUser.getEmail(), e.getMessage());
         }
         
-        if (roleToAssign == Role.CUSTOMER) {
+        System.err.println("roleToAssign: " + roleToAssign + "email: " + savedUser.getEmail());
+        // Only store token if it's a regular customer registration (not admin creating)
+        if (!isAdminCreating) {
             tokenRepository.storeToken(token, savedUser.getUserId());
         }
         

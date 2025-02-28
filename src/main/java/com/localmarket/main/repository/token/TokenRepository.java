@@ -25,14 +25,19 @@ public class TokenRepository {
     private final Map<Long, String> userActiveTokens = new ConcurrentHashMap<>();
     
     public void storeToken(String token, Long userId) {
-        // Get existing token before storing new one
-        userActiveTokens.get(userId);
-        
-        // Store new token and update active token
+        // Store new token
         tokenStore.put(token, new TokenInfo(userId, LocalDateTime.now().plusHours(24)));
-        userActiveTokens.put(userId, token);
         
-        // Don't remove old token from tokenStore - let it be removed when isTokenValid checks it
+        // Get existing token for this user
+        String existingToken = userActiveTokens.get(userId);
+        
+        // If there was an existing token, remove it from tokenStore
+        if (existingToken != null) {
+            tokenStore.remove(existingToken);
+        }
+        
+        // Update active token
+        userActiveTokens.put(userId, token);
     }
     
     public void invalidateToken(String token) {
