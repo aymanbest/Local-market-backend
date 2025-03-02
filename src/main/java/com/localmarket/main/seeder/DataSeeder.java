@@ -46,6 +46,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import com.localmarket.main.entity.product.ProductStatus;
 import com.localmarket.main.service.coupon.CouponService;
+import java.util.UUID;
+import com.localmarket.main.service.auth.TokenService;
 
 @Slf4j
 @Component
@@ -60,6 +62,7 @@ public class DataSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final Random random = new Random();
     private final CouponService couponService;
+    private final TokenService tokenService;
 
     private static final LocalDateTime[] DECEMBER_DATES = new LocalDateTime[31];
     private static final LocalDateTime[] JANUARY_DATES = new LocalDateTime[31];
@@ -874,6 +877,9 @@ public class DataSeeder implements CommandLineRunner {
             BigDecimal producerRevenue = BigDecimal.ZERO;
 
             for (int i = 0; i < orderCount; i++) {
+                // Generate a unique accessToken for this order using TokenService
+                String accessToken = tokenService.createCheckoutToken(customer.getEmail());
+                
                 Order order = new Order();
                 order.setCustomer(customer);
                 order.setShippingAddress(customer.getFirstname() + "'s Address, " + 
@@ -882,6 +888,10 @@ public class DataSeeder implements CommandLineRunner {
                                    (random.nextInt(900) + 100) + 
                                    (random.nextInt(9000) + 1000));
                 order.setPaymentMethod(PaymentMethod.CARD);
+                // Set the accessToken
+                order.setAccessToken(accessToken);
+                // Set expiration date for the token
+                order.setExpiresAt(LocalDateTime.now().plusDays(7));
 
                 // Randomize order status with realistic distribution
                 int statusRoll = random.nextInt(100);
