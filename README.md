@@ -1,144 +1,85 @@
-# Local Market API Documentation (NEEDS UPDATING)
+# Local Market API
 
-Check out the Swagger UI at http://localhost:8080/swagger-ui/index.html
+## Overview
+Local Market is a platform connecting local producers with customers, enabling direct purchase of locally produced goods. This repository contains the backend API built with Spring Boot.
 
-## Authentication Endpoints
-`/api/auth`
+## Features
+- User authentication and authorization (Customer, Producer, Admin roles)
+- Product management with categories
+- Order processing and management
+- Producer application system
+- Review and rating system
+- Payment processing
+- Coupon and discount management
+- Real-time notifications via WebSockets
+- Analytics for sales and user activity
+- Support ticket system
+- Region-based filtering
 
-| Method | Endpoint    | Description                | Auth Required | Body                                    |
-|--------|------------|----------------------------|---------------|----------------------------------------|
-| POST   | /register  | Register a new user        | No           | `RegisterRequest` (email, password)     |
-| POST   | /login     | Login to get access token  | No           | `AuthRequest` (email, password)         |
-| POST   | /logout    | Logout and blacklist token | Yes          | None                                   |
+## Technology Stack
+- Java 17
+- Spring Boot 3.4.1
+- Spring Security with JWT authentication
+- Spring Data JPA
+- MySQL Database
+- Swagger/OpenAPI for API documentation
+- WebSockets for real-time communication
+- Cloudinary for image storage
 
-## Products Endpoints
-`/api/products`
+## Getting Started
 
-| Method | Endpoint           | Description              | Auth Required | Role     | Request Type        | Body/Parameters    |
-|--------|-------------------|--------------------------|---------------|----------|--------------------|--------------------|
-| POST   | /                 | Create new product       | Yes          | Producer | Multipart Form     | See example below  |
-| GET    | /                 | Get all products         | No           | -        | -                  | None               |
-| GET    | /{id}            | Get product by ID        | No           | -        | -                  | None               |
-| PUT    | /{id}            | Update product           | Yes          | Producer | Multipart Form     | See example below  |
-| DELETE | /{id}            | Delete product           | Yes          | Producer | -                  | None               |
-| GET    | /category/{id}   | Get products by category | No           | -        | -                  | None               |
-| GET    | /images/{filename}| Get product image       | No           | -        | -                  | None               |
+### Prerequisites
+- Java 17 or higher
+- MySQL
+- Maven
 
-### Product Create/Update Request Example
-```http
-POST /api/products
-Content-Type: multipart/form-data
+### Setup
+1. Clone the repository:
+   ```
+   git clone https://github.com/aymanbest/Local-market-backend.git
+   ```
 
-name: "Fresh Apples"
-description: "Organic fresh apples"
-price: "2.99"
-quantity: "100"
-categoryIds: "1,2,3"
-imageUrl: "https://example.com/apple.jpg" (optional)
-image: [file] (optional, but either imageUrl or image must be provided)
+2. Configure environment variables:
+   - Copy `.env.example` to `.env` and update the values
+   - Required variables include database connection, JWT secret, admin credentials, and Cloudinary settings
+
+3. Build the project:
+   ```
+   mvn clean install
+   ```
+
+4. Run the application:
+   ```
+   mvn spring-boot:run
+   ```
+
+### Database Setup
+The database schema is provided in `database.sql`. You can import this file to set up your database structure.
+
+## API Documentation
+The API is documented using Swagger/OpenAPI. Once the application is running, you can access the documentation at:
+
+```
+http://localhost:8080/swagger-ui/index.html
 ```
 
-[Rest of existing documentation remains unchanged...]
+The API is organized into the following main sections:
+- Authentication (/api/auth/*)
+- Users (/api/users/*)
+- Products (/api/products/*)
+- Orders (/api/orders/*)
+- Categories (/api/categories/*)
+- Reviews (/api/reviews/*)
+- Producers (/api/producers/*)
+- Analytics (/api/analytics/*)
+- Support (/api/support/*)
+- Notifications (/api/notifications/*)
 
-## Request/Response Types
+## Security
+The API uses JWT-based authentication with cookies for secure access. Different endpoints require different role permissions.
 
-### ProductRequest
-```json
-{
-  "name": "string",
-  "description": "string",
-  "price": "decimal",
-  "quantity": "integer",
-  "categoryIds": "string (comma-separated)",
-  "imageUrl": "string (optional)"
-}
-```
+## Contributing
+Contributions are welcome! Feel free to submit pull requests or open issues to improve the project.
 
-### ProductResponse
-```json
-{
-  "productId": "long",
-  "name": "string",
-  "description": "string",
-  "price": "decimal",
-  "quantity": "integer",
-  "imageUrl": "string",
-  "categories": [
-    {
-      "categoryId": "long",
-      "name": "string"
-    }
-  ],
-  "producer": {
-    "userId": "long",
-    "username": "string"
-  }
-}
-```
-## Producer Application Endpoints
-`/api/producer-applications`
-
-| Method | Endpoint            | Description                | Auth Required | Role  | Body/Parameters                |
-|--------|-------------------|----------------------------|---------------|-------|-------------------------------|
-| POST   | /                 | Submit producer application| Yes          | User  | `ProducerApplicationRequest`  |
-| GET    | /                 | Get all applications       | Yes          | Admin | None                          |
-| GET    | /pending          | Get pending applications   | Yes          | Admin | None                          |
-| POST   | /{id}/approve     | Approve application        | Yes          | Admin | `approveCC` (optional)        |
-| POST   | /{id}/decline     | Decline application        | Yes          | Admin | `ApplicationDeclineRequest`   |
-
-### ProducerApplicationRequest Example
-```json
-{
-  "businessName": "string",
-  "businessAddress": "string",
-  "businessDescription": "string",
-  "phoneNumber": "string",
-  "categories": "string[] (optional)",
-  "customCategory": "string (optional)",
-  "cityRegion": "string (optional)",
-  "customCityRegion": "string (optional)",
-  "yearsOfExperience": "integer (optional)",
-  "websiteOrSocialLink": "string (optional)"
-}
-```
-
-## Order Endpoints
-`/api/orders`
-
-| Method | Endpoint            | Description           | Auth Required | Role  | Body/Parameters          |
-|--------|-------------------|-----------------------|---------------|-------|------------------------|
-| POST   | /                 | Create order          | No           | Any   | `OrderRequest`         |
-| GET    | /                 | Get all orders        | Yes          | Admin | None                  |
-| GET    | /{id}            | Get order by ID       | Yes          | User  | None                  |
-| GET    | /guest/{id}?accessToken={token}   | Get guest order       | No           | Any   | None                  |
-
-### OrderRequest Example
-```json
-{
-  "items": [{
-    "productId": "long",
-    "quantity": "integer"
-  }],
-  "shippingAddress": "string",
-  "phoneNumber": "string",
-  "guestEmail": "string (optional)",
-  "accessToken": "string (optional)",
-  "accountCreation": {
-    "createAccount": "boolean",
-    "username": "string",
-    "password": "string",
-    "firstname": "string",
-    "lastname": "string"
-  },
-  "payment": {
-    "paymentMethod": "CARD|BITCOIN",
-    "cardNumber": "string (for CARD)",
-    "cardHolderName": "string (for CARD)",
-    "expiryDate": "string (for CARD)",
-    "cvv": "string (for CARD)",
-    "transactionHash": "string (for BITCOIN)",
-    "currency": "string"
-  }
-}
-```
-
+## License
+This project is open source and available under the [MIT License](https://opensource.org/licenses/MIT).
