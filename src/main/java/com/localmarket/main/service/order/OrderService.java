@@ -46,6 +46,7 @@ import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.service.product.ProductService;
 import com.localmarket.main.service.coupon.CouponService;
 import com.localmarket.main.service.email.EmailService;
+import com.localmarket.main.dto.coupon.CouponValidationResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -187,16 +188,24 @@ public class OrderService {
             
             // Apply coupon discount
             if (request.getCouponCode() != null) {
-                BigDecimal discount = couponService.calculateDiscount(
-                    request.getCouponCode(), 
-                    order.getTotalPrice()
+                // Validate coupon first
+                CouponValidationResponse validationResponse = couponService.validateCoupon(
+                    request.getCouponCode(),
+                    order.getTotalPrice(),
+                    order.getCustomer() != null ? order.getCustomer().getUserId() : null
                 );
-                // Format the total price to ensure it has at most 10 digits and 2 decimal places
-                BigDecimal newTotal = order.getTotalPrice().subtract(discount).setScale(2, BigDecimal.ROUND_HALF_UP);
+
+                if (!validationResponse.isValid()) {
+                    throw new ApiException(ErrorType.VALIDATION_FAILED, validationResponse.getMessage());
+                }
+
+                // Apply the validated coupon
+                BigDecimal newTotal = validationResponse.getFinalPrice().setScale(2, BigDecimal.ROUND_HALF_UP);
                 if (newTotal.precision() > 12) { // 10 digits + 2 decimal places
                     throw new ApiException(ErrorType.VALIDATION_FAILED, 
                         "Total price after discount exceeds maximum allowed digits");
                 }
+                
                 order.setTotalPrice(newTotal);
                 couponService.applyCoupon(request.getCouponCode(), order.getCustomer() != null ? 
                     order.getCustomer().getUserId() : null);
