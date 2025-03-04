@@ -28,6 +28,7 @@ import com.localmarket.main.util.CookieUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import com.localmarket.main.dto.auth.PasswordResetVerifyRequest;
+import com.localmarket.main.entity.user.Role;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -55,8 +56,14 @@ public class AuthController {
         String adminJwt = cookieUtil.getJwtFromCookies(httpRequest);
         AuthServiceResult result = authService.register(request, adminJwt);
         
-        // Only set cookie if it's a self-registration (not admin creating)
-        if (adminJwt == null || adminJwt.isEmpty()) {
+        // Set cookie for self-registration if:
+        // 1. No JWT in request, OR
+        // 2. JWT is present but not valid/not from admin (meaning it's a regular user's expired token)
+        boolean isAdminCreating = adminJwt != null && !adminJwt.isEmpty() && 
+                                 admin != null && admin.getRole() == Role.ADMIN;
+        
+        if (!isAdminCreating) {
+            System.out.println("Setting cookie for self-registration");
             response.addHeader(HttpHeaders.SET_COOKIE, 
                 cookieUtil.createJwtCookie(result.getToken()).toString());
         }

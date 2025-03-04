@@ -46,8 +46,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import com.localmarket.main.entity.product.ProductStatus;
 import com.localmarket.main.service.coupon.CouponService;
-import java.util.UUID;
 import com.localmarket.main.service.auth.TokenService;
+import com.localmarket.main.entity.producer.ProducerApplication;
+import com.localmarket.main.repository.producer.ProducerApplicationRepository;
+import com.localmarket.main.entity.producer.ApplicationStatus;
 
 @Slf4j
 @Component
@@ -63,6 +65,7 @@ public class DataSeeder implements CommandLineRunner {
     private final Random random = new Random();
     private final CouponService couponService;
     private final TokenService tokenService;
+    private final ProducerApplicationRepository applicationRepository;
 
     private static final LocalDateTime[] DECEMBER_DATES = new LocalDateTime[31];
     private static final LocalDateTime[] JANUARY_DATES = new LocalDateTime[31];
@@ -113,6 +116,9 @@ public class DataSeeder implements CommandLineRunner {
         
         // Seed Reviews
         seedReviews();
+        
+        // Seed Producer Applications
+        seedProducerApplications(customers, categories);
     }
 
     private List<Category> seedCategories() {
@@ -1217,5 +1223,152 @@ public class DataSeeder implements CommandLineRunner {
         }
         
         return comments.get(random.nextInt(comments.size()));
+    }
+
+    /**
+     * Seeds producer applications with all pending status
+     */
+    private void seedProducerApplications(List<User> customers, List<Category> categories) {
+        log.info("Seeding producer applications...");
+        
+        // Business descriptions
+        String[] businessDescriptions = {
+            "Family-owned farm specializing in organic vegetables and fruits grown using sustainable practices.",
+            "Artisanal bakery creating handcrafted breads and pastries using traditional methods and local ingredients.",
+            "Small-batch honey producer with diverse apiaries located throughout the region's wildflower meadows.",
+            "Craft cheese maker specializing in aged varieties using milk from our own grass-fed cows.",
+            "Sustainable seafood operation focusing on responsibly harvested local fish and shellfish.",
+            "Specialty coffee roaster sourcing fair trade beans and using traditional roasting techniques.",
+            "Urban microgreens farm growing nutrient-dense greens year-round using hydroponic systems.",
+            "Heritage breed poultry farm raising free-range chickens, ducks, and turkeys on pasture.",
+            "Craft brewery producing small-batch ales and lagers using locally sourced ingredients.",
+            "Organic mushroom farm growing specialty varieties using sustainable indoor cultivation methods."
+        };
+        
+        // Business names
+        String[] businessNames = {
+            "Green Valley Organics",
+            "Heritage Harvest Farm",
+            "Wildflower Meadows",
+            "Blue Mountain Dairy",
+            "Coastal Catch Seafood",
+            "Morning Roast Coffee",
+            "Urban Sprouts",
+            "Freedom Range Poultry",
+            "Riverside Brewery",
+            "Forest Floor Mushrooms",
+            "Sunshine Orchard",
+            "Mountain View Meats",
+            "Sweet Meadow Honey",
+            "Artisan Bread Co.",
+            "Fresh Catch Seafood"
+        };
+        
+        // Business addresses
+        String[] businessAddresses = {
+            "123 Farm Road, Rural County",
+            "456 Bakery Lane, Downtown",
+            "789 Meadow Path, Countryside",
+            "101 Dairy Drive, Green Valley",
+            "202 Harbor Way, Coastal Village",
+            "303 Roaster Avenue, City Center",
+            "404 Greenhouse Street, Urban District",
+            "505 Pasture Lane, Rolling Hills",
+            "606 Brewery Road, Riverside",
+            "707 Forest Path, Woodland Area"
+        };
+        
+        // City/Regions
+        String[] cityRegions = {
+            "Greenfield",
+            "Riverside",
+            "Mountain View",
+            "Lakeside",
+            "Coastal Haven",
+            "Meadowlands",
+            "Forestville",
+            "Valley Springs",
+            "Highland",
+            "Brookside"
+        };
+        
+        // Custom categories
+        String[] customCategories = {
+            "Fermented Foods",
+            "Heirloom Varieties",
+            "Medicinal Herbs",
+            "Edible Flowers",
+            "Heritage Grains",
+            "Foraged Items",
+            "Rare Spices",
+            "Seasonal Specialties",
+            "Indigenous Foods",
+            "Craft Vinegars"
+        };
+        
+        // Messages to admin
+        String[] messagesToAdmin = {
+            "I've been farming organically for over a decade and would love to reach more local customers.",
+            "Our family bakery has been operating for three generations, and we're excited to join your platform.",
+            "I'm passionate about sustainable beekeeping and producing high-quality honey products.",
+            "We've won several awards for our artisanal cheeses and want to expand our customer base.",
+            "Our fishing practices focus on sustainability and supporting the local marine ecosystem.",
+            "We source all our coffee beans ethically and roast them in small batches for optimal flavor.",
+            "Our urban farm allows us to provide fresh microgreens to local customers year-round.",
+            "Our poultry is raised humanely with access to pasture and fed an organic diet.",
+            "We brew our beer in small batches using traditional methods and locally sourced ingredients.",
+            "Our mushroom varieties are grown using sustainable practices and no chemical inputs."
+        };
+        
+        int applicationCount = 0;
+        
+        // Create pending applications for all customers
+        for (int i = 0; i < customers.size(); i++) {
+            User customer = customers.get(i);
+            
+            ProducerApplication application = new ProducerApplication();
+            application.setCustomer(customer);
+            application.setBusinessName(businessNames[i % businessNames.length]);
+            application.setBusinessDescription(businessDescriptions[i % businessDescriptions.length]);
+            
+            // Select 2-3 random categories
+            List<Category> shuffledCategories = new ArrayList<>(categories);
+            Collections.shuffle(shuffledCategories);
+            int categoryCount = 2 + random.nextInt(2); // 2 or 3 categories
+            List<Category> selectedCategories = shuffledCategories.subList(0, Math.min(categoryCount, shuffledCategories.size()));
+            
+            application.setCategoryIds(selectedCategories.stream()
+                .map(c -> c.getCategoryId().toString())
+                .collect(Collectors.joining(",")));
+            
+            // 50% chance to have a custom category
+            if (random.nextBoolean()) {
+                application.setCustomCategory(customCategories[i % customCategories.length]);
+            }
+            
+            application.setBusinessAddress(businessAddresses[i % businessAddresses.length]);
+            application.setCityRegion(cityRegions[i % cityRegions.length]);
+            application.setYearsOfExperience(2 + random.nextInt(20)); // 2-21 years experience
+            application.setWebsiteOrSocialLink("https://www." + businessNames[i % businessNames.length].toLowerCase().replace(" ", "") + ".com");
+            application.setMessageToAdmin(messagesToAdmin[i % messagesToAdmin.length]);
+            application.setBusinessPhoneNumber("555-" + (100 + random.nextInt(900)) + "-" + (1000 + random.nextInt(9000)));
+            
+            // Set created date to be between 1-30 days ago
+            LocalDateTime createdAt = LocalDateTime.now().minusDays(1 + random.nextInt(30));
+            application.setCreatedAt(createdAt);
+            
+            // All applications are pending
+            application.setStatus(ApplicationStatus.PENDING);
+            
+            try {
+                ProducerApplication savedApplication = applicationRepository.save(application);
+                applicationCount++;
+                log.debug("Created producer application: ID={}, Status={}", savedApplication.getApplicationId(), savedApplication.getStatus());
+            } catch (Exception e) {
+                log.error("Error creating producer application for {}: {}", customer.getUsername(), e.getMessage());
+            }
+        }
+        
+        log.info("Seeded {} pending producer applications", applicationCount);
     }
 }

@@ -8,10 +8,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 
 import com.localmarket.main.entity.user.Role;
 import com.localmarket.main.entity.user.User;
 import com.localmarket.main.repository.user.UserRepository;
+import com.localmarket.main.repository.order.OrderRepository;
+import com.localmarket.main.repository.review.ReviewRepository;
+import com.localmarket.main.entity.order.Order;
+import com.localmarket.main.entity.review.Review;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.dto.auth.RegisterRequest;
@@ -27,7 +32,12 @@ import lombok.RequiredArgsConstructor;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final OrderRepository orderRepository;
+    private final ReviewRepository reviewRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${app.admin.email}")
+    private String defaultAdminEmail;
 
     
     // all Users
@@ -51,27 +61,42 @@ public class UserService {
 
     // Delete 
     @Transactional
-    public void deleteUser(Long id) {
-        User user = userRepository.findById(id)
-            .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, 
-                "User with id " + id + " not found"));
+    public void deleteUser(Long userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ApiException(ErrorType.USER_NOT_FOUND, "User not found"));
             
         // Prevent deletion of default admin account
-        if (user.getEmail().equals("admin@localmarket.com")) {
+        if (user.getEmail().equals(defaultAdminEmail)) {
             throw new ApiException(ErrorType.OPERATION_NOT_ALLOWED, 
                 "Cannot delete the default admin account");
         }
         
-        // Prevent deletion of the last admin
+        // If trying to delete an admin, check if it's the last one
         if (user.getRole() == Role.ADMIN) {
-            long adminCount = userRepository.findByRole(Role.ADMIN).size();
+            long adminCount = userRepository.countByRole(Role.ADMIN);
             if (adminCount <= 1) {
                 throw new ApiException(ErrorType.OPERATION_NOT_ALLOWED, 
-                    "Cannot delete the last admin user");
+                    "Cannot delete the last admin account");
             }
         }
-        
+
+        // Batch process orders
+        List<Order> orders = orderRepository.findByCustomerUserId(userId);
+        if (!orders.isEmpty()) {
+            orders.forEach(order -> order.setCustomer(null));
+            orderRepository.saveAll(orders);
+        }
+
+        // Batch process reviews
+        List<Review> reviews = reviewRepository.findByCustomerUserId(userId);
+        if (!reviews.isEmpty()) {
+            reviews.forEach(review -> review.setCustomer(null));
+            reviewRepository.saveAll(reviews);
+        }
+
+        // Now safe to delete the user
         userRepository.delete(user);
+        userRepository.flush();
     }
 
     // filter by role

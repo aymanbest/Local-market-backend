@@ -17,8 +17,6 @@ import com.localmarket.main.repository.token.TokenRepository;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.util.CookieUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Collections;
 import com.localmarket.main.entity.user.Role;
@@ -32,7 +30,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final TokenRepository tokenRepository;
     private final CookieUtil cookieUtil;
     private final ProducerApplicationRepository applicationRepository;
-    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     @Override
     protected void doFilterInternal(
@@ -166,7 +163,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                    (path.startsWith("/api/reviews/product/") && !path.contains("/pending") && 
                     !path.contains("/eligibility")) ||
                    ((path.startsWith("/api/orders/") || path.equals("/api/orders")) && 
-                    accessToken != null);
+                    accessToken != null) ||
+                   (path.startsWith("/api/coupons/validate/"));
         }
 
         // Allow guest checkout

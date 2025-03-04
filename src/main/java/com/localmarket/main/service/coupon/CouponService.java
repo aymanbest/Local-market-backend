@@ -98,6 +98,15 @@ public class CouponService {
     public void applyCoupon(String couponCode, Long userId) {
         Coupon coupon = validateAndGetCoupon(couponCode);
         
+        // Skip usage tracking for guest users (userId is null)
+        if (userId == null) {
+            // Only increment global usage counter
+            coupon.setTimesUsed(coupon.getTimesUsed() + 1);
+            couponRepository.save(coupon);
+            return;
+        }
+        
+        // For registered users, check and track usage
         if (userCouponUsageRepository.existsByUserIdAndCoupon_Code(userId, couponCode)) {
             throw new ApiException(ErrorType.VALIDATION_FAILED, "You have already used this coupon");
         }
@@ -108,7 +117,6 @@ public class CouponService {
             .build();
         
         userCouponUsageRepository.save(usage);
-        
         coupon.setTimesUsed(coupon.getTimesUsed() + 1);
         couponRepository.save(coupon);
     }
@@ -234,13 +242,33 @@ public class CouponService {
         try {
             Coupon coupon = validateAndGetCoupon(code);
             
-            if (userCouponUsageRepository.existsByUserIdAndCoupon_Code(userId, code)) {
+            // For WELCOME10 coupon, require authentication
+            if (WELCOME_COUPON_CODE.equals(code)) {
+                if (userId == null) {
+                    return CouponValidationResponse.builder()
+                        .valid(false)
+                        .message("Welcome coupon is only available for registered users")
+                        .build();
+                }
+                
+                // Check if user has already used the welcome coupon
+                if (userCouponUsageRepository.existsByUserIdAndCoupon_Code(userId, code)) {
+                    return CouponValidationResponse.builder()
+                        .valid(false)
+                        .message("Welcome coupon can only be used once")
+                        .build();
+                }
+            }
+            
+            // For other coupons, check usage only if user is authenticated
+            if (userId != null && userCouponUsageRepository.existsByUserIdAndCoupon_Code(userId, code)) {
                 return CouponValidationResponse.builder()
                     .valid(false)
                     .message("You have already used this coupon")
                     .build();
             }
-            
+
+            // Rest of the validation logic remains the same
             if (cartTotal.compareTo(coupon.getMinimumPurchaseAmount()) < 0) {
                 return CouponValidationResponse.builder()
                     .valid(false)
@@ -250,7 +278,7 @@ public class CouponService {
 
             BigDecimal discount = calculateDiscount(code, cartTotal);
             BigDecimal finalPrice = cartTotal.subtract(discount);
-            
+
             String description = coupon.getDiscountType() == DiscountType.PERCENTAGE ?
                 coupon.getDiscountValue() + "% off" :
                 "$" + coupon.getDiscountValue() + " off";
@@ -258,7 +286,7 @@ public class CouponService {
             if (coupon.getMinimumPurchaseAmount() != null) {
                 description += " on orders over $" + coupon.getMinimumPurchaseAmount();
             }
-
+            
             return CouponValidationResponse.builder()
                 .valid(true)
                 .message("Coupon applied successfully")

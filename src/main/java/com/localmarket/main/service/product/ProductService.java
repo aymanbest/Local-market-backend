@@ -47,6 +47,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
 
 
 @Service
@@ -143,7 +144,21 @@ public class ProductService {
     public void deleteProductAsAdmin(Long id) {
         Product product = productRepository.findById(id)
             .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
+        
+        // Remove reviews first
+        List<Review> reviews = reviewRepository.findByProductProductId(id);
+        if (!reviews.isEmpty()) {
+            reviews.forEach(review -> review.setProduct(null));
+            reviewRepository.saveAll(reviews);
+        }
+        
+        // Remove categories
+        product.setCategories(new HashSet<>());
+        productRepository.save(product);
+        
+        // Now safe to delete
         productRepository.delete(product);
+        productRepository.flush();
     }
 
     @ProducerOnly

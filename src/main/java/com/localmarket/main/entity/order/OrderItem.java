@@ -6,6 +6,9 @@ import lombok.ToString;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonIdentityReference;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 
 @Entity
 @Data
@@ -22,6 +25,8 @@ public class OrderItem {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "productId")
+    @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "productId")
+    @JsonIdentityReference(alwaysAsId = true)
     private Product product;
     
     private Integer quantity;

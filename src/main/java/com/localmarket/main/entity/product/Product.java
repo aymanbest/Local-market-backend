@@ -18,12 +18,13 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-
+import com.localmarket.main.entity.review.Review;
+import com.localmarket.main.entity.order.OrderItem;
 
 @Entity
 @Data
 @Table(name = "Product")
-@EqualsAndHashCode(exclude = {"categories"})
+@EqualsAndHashCode(exclude = {"categories", "reviews", "orderItems"})
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Product {
     @Id
@@ -88,6 +89,13 @@ public class Product {
 
     @Column(name = "declineReason")
     private String declineReason;
+    
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Review> reviews = new HashSet<>();
+    
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    private Set<OrderItem> orderItems = new HashSet<>();
     
     @PrePersist
     protected void onCreate() {

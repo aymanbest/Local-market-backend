@@ -20,10 +20,14 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.Valid;
 import com.localmarket.main.entity.payment.PaymentMethod;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import lombok.EqualsAndHashCode;
 
 @Entity
-@Data
 @Table(name = "`Order`")
+@Data
+@EqualsAndHashCode(exclude = {"customer", "items"})
+@ToString(exclude = {"customer", "items"})
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Order {
     @Id
@@ -32,7 +36,7 @@ public class Order {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customerId")
-    @JsonIgnoreProperties({"passwordHash", "role", "createdAt", "updatedAt"})
+    @JsonBackReference
     private User customer;
     
     @Column(name = "guestEmail")
@@ -63,9 +67,8 @@ public class Order {
     
     @Valid
     @NotEmpty(message = "Order must contain at least one item")
-    @ToString.Exclude
-    @JsonManagedReference
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private List<OrderItem> items = new ArrayList<>();
     
     @OneToOne

@@ -7,12 +7,19 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-
 import java.time.LocalDateTime;
-
+import java.util.HashSet;
+import java.util.Set;
+import lombok.ToString;
+import com.localmarket.main.entity.order.Order;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.localmarket.main.entity.review.Review;
+import lombok.EqualsAndHashCode;
 @Entity
+@Table(name = "User")
 @Data
-@Table(name = "`User`")
+@EqualsAndHashCode(exclude = {"orders", "reviews"})
+@ToString(exclude = {"orders", "reviews"})
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "passwordHash", "role", "createdAt", "updatedAt"})
 public class User {
     @Id
@@ -61,6 +68,14 @@ public class User {
     
     @Column(name = "lastLogin")
     private LocalDateTime lastLogin;
+    
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private Set<Order> orders = new HashSet<>();
+    
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private Set<Review> reviews = new HashSet<>();
     
     @PrePersist
     protected void onCreate() {
