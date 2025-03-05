@@ -47,6 +47,7 @@ import com.localmarket.main.service.product.ProductService;
 import com.localmarket.main.service.coupon.CouponService;
 import com.localmarket.main.service.email.EmailService;
 import com.localmarket.main.dto.coupon.CouponValidationResponse;
+import com.localmarket.main.dto.order.OrderItemResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -225,8 +226,16 @@ public class OrderService {
             createdOrders.add(order);
             
             orders.add(OrderResponse.builder()
-                .order(order)
                 .orderId(order.getOrderId())
+                .guestEmail(order.getGuestEmail())
+                .shippingAddress(order.getShippingAddress())
+                .phoneNumber(order.getPhoneNumber())
+                .orderDate(order.getOrderDate())
+                .status(order.getStatus())
+                .totalPrice(order.getTotalPrice())
+                .items(order.getItems().stream()
+                    .map(OrderItemResponse::fromOrderItem)
+                    .collect(Collectors.toList()))
                 .accessToken(accessToken)
                 .build());
         }
@@ -610,13 +619,15 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<Order> getOrderBundle(String accessToken) {
+    public List<OrderResponse> getOrderBundle(String accessToken) {
         List<Order> orders = orderRepository.findAllByAccessToken(accessToken);
         if (orders.isEmpty()) {
             throw new ApiException(ErrorType.ORDER_NOT_FOUND, 
                 "No orders found for this access token bundle");
         }
-        return orders;
+        return orders.stream()
+            .map(OrderResponse::fromOrder)
+            .collect(Collectors.toList());
     }
 
     private void sendOrderConfirmationEmail(Order order) {

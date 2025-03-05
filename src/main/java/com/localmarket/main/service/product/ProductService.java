@@ -145,7 +145,14 @@ public class ProductService {
         Product product = productRepository.findById(id)
             .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, "Product not found"));
         
-        // Remove reviews first
+        // Remove stock reservations first
+        List<StockReservation> stockReservations = stockReservationRepository.findByProduct(product);
+        if (!stockReservations.isEmpty()) {
+            stockReservationRepository.deleteAll(stockReservations);
+            stockReservationRepository.flush();
+        }
+        
+        // Remove reviews
         List<Review> reviews = reviewRepository.findByProductProductId(id);
         if (!reviews.isEmpty()) {
             reviews.forEach(review -> review.setProduct(null));
@@ -171,7 +178,27 @@ public class ProductService {
             throw new ApiException(ErrorType.PRODUCT_ACCESS_DENIED, "You can only delete your own products");
         }
 
+        // Remove stock reservations first
+        List<StockReservation> stockReservations = stockReservationRepository.findByProduct(product);
+        if (!stockReservations.isEmpty()) {
+            stockReservationRepository.deleteAll(stockReservations);
+            stockReservationRepository.flush();
+        }
+        
+        // Remove reviews
+        List<Review> reviews = reviewRepository.findByProductProductId(id);
+        if (!reviews.isEmpty()) {
+            reviews.forEach(review -> review.setProduct(null));
+            reviewRepository.saveAll(reviews);
+        }
+        
+        // Remove categories
+        product.setCategories(new HashSet<>());
+        productRepository.save(product);
+
+        // Now safe to delete
         productRepository.delete(product);
+        productRepository.flush();
     }
 
     private ProductResponse convertToDTO(Product product) {

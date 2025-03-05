@@ -2,6 +2,8 @@ package com.localmarket.main.service.user;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Optional;
+import java.util.HashSet;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +24,12 @@ import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.dto.auth.RegisterRequest;
 import com.localmarket.main.dto.user.GetAllUsersResponse;
 import com.localmarket.main.dto.user.UsersPageResponse;
+import com.localmarket.main.entity.producer.ProducerApplication;
+import com.localmarket.main.repository.producer.ProducerApplicationRepository;
+import com.localmarket.main.entity.product.Product;
+import com.localmarket.main.repository.product.ProductRepository;
+import com.localmarket.main.entity.product.StockReservation;
+import com.localmarket.main.repository.product.StockReservationRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -35,6 +43,9 @@ public class UserService {
     private final OrderRepository orderRepository;
     private final ReviewRepository reviewRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ProducerApplicationRepository producerApplicationRepository;
+    private final ProductRepository productRepository;
+    private final StockReservationRepository stockReservationRepository;
 
     @Value("${app.admin.email}")
     private String defaultAdminEmail;
@@ -78,6 +89,50 @@ public class UserService {
                 throw new ApiException(ErrorType.OPERATION_NOT_ALLOWED, 
                     "Cannot delete the last admin account");
             }
+        }
+
+        // Handle producer applications
+        Optional<ProducerApplication> producerApplication = producerApplicationRepository.findByCustomer(user);
+        if (producerApplication.isPresent()) {
+            producerApplicationRepository.delete(producerApplication.get());
+            producerApplicationRepository.flush();
+        }
+        
+        // Also check for any other applications JUST IN CASE :)
+        List<ProducerApplication> allApplications = producerApplicationRepository.findAll().stream()
+            .filter(app -> app.getCustomer() != null && app.getCustomer().getUserId().equals(userId))
+            .collect(Collectors.toList());
+        if (!allApplications.isEmpty()) {
+            producerApplicationRepository.deleteAll(allApplications);
+            producerApplicationRepository.flush();
+        }
+
+        // Handle products created by this user
+        List<Product> products = productRepository.findByProducerUserId(userId);
+        for (Product product : products) {
+            
+            // Remove stock reservations
+            List<StockReservation> stockReservations = stockReservationRepository.findByProduct(product);
+            if (!stockReservations.isEmpty()) {
+                stockReservationRepository.deleteAll(stockReservations);
+            }
+            
+            // Remove reviews for this product
+            List<Review> productReviews = reviewRepository.findByProductProductId(product.getProductId());
+            if (!productReviews.isEmpty()) {
+                productReviews.forEach(review -> review.setProduct(null));
+                reviewRepository.saveAll(productReviews);
+            }
+            
+            // Remove categories
+            product.setCategories(new HashSet<>());
+            productRepository.save(product);
+        }
+        
+        // Now delete all products
+        if (!products.isEmpty()) {
+            productRepository.deleteAll(products);
+            productRepository.flush();
         }
 
         // Batch process orders

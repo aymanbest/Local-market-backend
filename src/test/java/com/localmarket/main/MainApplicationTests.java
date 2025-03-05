@@ -358,7 +358,7 @@ class MainApplicationTests {
 				registerGuestResult.getResponse().getContentAsString(),
 				OrderResponse.class);
 		String newCustomerToken = response.getAccessToken();
-		Long registerGuestOrderId = response.getOrder().getOrderId();
+		Long registerGuestOrderId = response.getOrderId();
 
 		PaymentInfo newCustomerPayment = createCardPayment("new-customer-transaction");
 		

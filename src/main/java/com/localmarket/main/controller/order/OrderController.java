@@ -57,17 +57,17 @@ public class OrderController {
     public ResponseEntity<List<OrderResponse>> createOrder(
             @Valid @RequestBody OrderRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        log.info("Creating order. User authenticated: {}, User details: {}", 
-            userDetails != null, 
-            userDetails != null ? userDetails.getEmail() : "null");
-            
+        log.info("Creating order. User authenticated: {}, User details: {}",
+                userDetails != null,
+                userDetails != null ? userDetails.getEmail() : "null");
+
         String userEmail = userDetails != null ? userDetails.getEmail() : null;
-        
+
         // If user is authenticated, we don't need guest email
         if (userDetails != null) {
             request.setGuestEmail(null);
         }
-        
+
         return ResponseEntity.ok(orderService.createPendingOrder(request, userEmail));
     }
 
@@ -148,8 +148,7 @@ public class OrderController {
     @ProducerOnly
     public ResponseEntity<Order> updateOrderStatus(
             @PathVariable Long orderId,
-            @Parameter(description = "New status. Must follow valid transition rules", 
-                schema = @Schema(allowableValues = {
+            @Parameter(description = "New status. Must follow valid transition rules", schema = @Schema(allowableValues = {
                     "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED"
             })) @RequestParam OrderStatus status,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -194,13 +193,14 @@ public class OrderController {
             @RequestParam(required = false) String customerEmail) {
         Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
-        return ResponseEntity.ok(orderService.getProducerOrdersByStatus(userDetails.getId(), status, customerEmail, pageable));
+        return ResponseEntity
+                .ok(orderService.getProducerOrdersByStatus(userDetails.getId(), status, customerEmail, pageable));
     }
 
     @Operation(summary = "Get orders by access token", description = "Retrieve all orders associated with an access token")
     @GetMapping("/bundle/{accessToken}")
     @PreAuthorize("permitAll()")
-    public ResponseEntity<List<Order>> getOrderBundle(
+    public ResponseEntity<List<OrderResponse>> getOrderBundle(
             @PathVariable String accessToken) {
         return ResponseEntity.ok(orderService.getOrderBundle(accessToken));
     }
@@ -210,7 +210,7 @@ public class OrderController {
     public ResponseEntity<Resource> getOrderReceipt(
             @RequestParam(value = "accessToken", required = false) String accessToken,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        
+
         List<Order> orders;
         if (accessToken != null) {
             orders = orderService.getOrdersByAccessToken(accessToken);
@@ -229,7 +229,7 @@ public class OrderController {
         ByteArrayResource resource = new ByteArrayResource(pdfContent);
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, 
+                .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=receipt_" + orders.get(0).getOrderId() + ".pdf")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(resource);

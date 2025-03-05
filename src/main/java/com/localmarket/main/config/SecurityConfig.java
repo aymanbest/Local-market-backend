@@ -140,6 +140,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/producer-applications/status").hasAuthority(CUSTOMER)
                 .requestMatchers("/api/producer-applications/**").hasAuthority(ADMIN)
                 // Coupons
+                .requestMatchers(HttpMethod.GET, "/api/coupons/check-welcome").hasAnyAuthority(CUSTOMER , PRODUCER , ADMIN)
                 .requestMatchers(HttpMethod.GET, "/api/coupons/validate/**").permitAll()
                 .requestMatchers("/api/coupons/**").hasAuthority(ADMIN)
                 // Analytics - Admin endpoints

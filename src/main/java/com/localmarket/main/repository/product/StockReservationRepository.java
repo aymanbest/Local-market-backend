@@ -13,4 +13,5 @@ public interface StockReservationRepository extends JpaRepository<StockReservati
     List<StockReservation> findByProductAndExpiresAtGreaterThan(Product product, LocalDateTime now);
     List<StockReservation> findByExpiresAtLessThan(LocalDateTime now);
     void deleteByOrder(Order order);
+    List<StockReservation> findByProduct(Product product);
 } 
