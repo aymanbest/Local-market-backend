@@ -133,135 +133,26 @@ public class SupportService {
 
     @Transactional(readOnly = true)
     public Page<TicketResponse> getUnassignedTickets(Pageable pageable) {
-        List<Ticket> tickets = ticketRepository.findByAssignedToIsNullOrderByCreatedAtDesc();
-        
-        // Sort tickets
-        List<Ticket> sortedTickets = tickets.stream()
-            .sorted((t1, t2) -> {
-                if (pageable.getSort().isEmpty()) {
-                    return 0;
-                }
-                String sortBy = pageable.getSort().iterator().next().getProperty();
-                boolean isAsc = pageable.getSort().iterator().next().isAscending();
-                
-                int comparison = switch(sortBy) {
-                    case "createdAt" -> t1.getCreatedAt().compareTo(t2.getCreatedAt());
-                    case "priority" -> t1.getPriority().compareTo(t2.getPriority());
-                    case "status" -> t1.getStatus().compareTo(t2.getStatus());
-                    case "subject" -> t1.getSubject().compareTo(t2.getSubject());
-                    default -> 0;
-                };
-                return isAsc ? comparison : -comparison;
-            })
-            .collect(Collectors.toList());
-            
-        // Apply pagination
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), sortedTickets.size());
-        
-        if (start >= sortedTickets.size()) {
-            return new PageImpl<>(List.of(), pageable, sortedTickets.size());
-        }
-        
-        List<Ticket> paginatedTickets = sortedTickets.subList(start, end);
-        
-        return new PageImpl<>(
-            paginatedTickets.stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList()),
-            pageable,
-            sortedTickets.size()
-        );
+        Page<Ticket> ticketPage = ticketRepository.findByAssignedToIsNull(pageable);
+        return ticketPage.map(this::mapToDTO);
     }
 
     @Transactional(readOnly = true)
     public Page<TicketResponse> getAdminTickets(User admin, TicketStatus status, Pageable pageable) {
-        List<Ticket> tickets = status != null ? 
-            ticketRepository.findByAssignedToAndStatus(admin, status) :
-            ticketRepository.findByAssignedToOrderByCreatedAtDesc(admin);
+        Page<Ticket> ticketPage = status != null ?
+            ticketRepository.findByAssignedToAndStatus(admin, status, pageable) :
+            ticketRepository.findByAssignedTo(admin, pageable);
         
-        // Sort tickets
-        List<Ticket> sortedTickets = tickets.stream()
-            .sorted((t1, t2) -> {
-                if (pageable.getSort().isEmpty()) {
-                    return 0;
-                }
-                String sortBy = pageable.getSort().iterator().next().getProperty();
-                boolean isAsc = pageable.getSort().iterator().next().isAscending();
-                
-                int comparison = switch(sortBy) {
-                    case "createdAt" -> t1.getCreatedAt().compareTo(t2.getCreatedAt());
-                    case "priority" -> t1.getPriority().compareTo(t2.getPriority());
-                    case "status" -> t1.getStatus().compareTo(t2.getStatus());
-                    case "subject" -> t1.getSubject().compareTo(t2.getSubject());
-                    default -> 0;
-                };
-                return isAsc ? comparison : -comparison;
-            })
-            .collect(Collectors.toList());
-            
-        // Apply pagination
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), sortedTickets.size());
-        
-        if (start >= sortedTickets.size()) {
-            return new PageImpl<>(List.of(), pageable, sortedTickets.size());
-        }
-        
-        List<Ticket> paginatedTickets = sortedTickets.subList(start, end);
-        
-        return new PageImpl<>(
-            paginatedTickets.stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList()),
-            pageable,
-            sortedTickets.size()
-        );
+        return ticketPage.map(this::mapToDTO);
     }
 
     @Transactional(readOnly = true)
     public Page<TicketResponse> getProducerTickets(User producer, TicketStatus status, Pageable pageable) {
-        List<Ticket> tickets = status != null ?
-            ticketRepository.findByCreatedByAndStatus(producer, status) :
-            ticketRepository.findByCreatedByOrderByCreatedAtDesc(producer);
+        Page<Ticket> ticketPage = status != null ?
+            ticketRepository.findByCreatedByAndStatus(producer, status, pageable) :
+            ticketRepository.findByCreatedBy(producer, pageable);
         
-        // Sort tickets
-        List<Ticket> sortedTickets = tickets.stream()
-            .sorted((t1, t2) -> {
-                if (pageable.getSort().isEmpty()) {
-                    return 0;
-                }
-                String sortBy = pageable.getSort().iterator().next().getProperty();
-                boolean isAsc = pageable.getSort().iterator().next().isAscending();
-                
-                int comparison = switch(sortBy) {
-                    case "createdAt" -> t1.getCreatedAt().compareTo(t2.getCreatedAt());
-                    case "priority" -> t1.getPriority().compareTo(t2.getPriority());
-                    case "status" -> t1.getStatus().compareTo(t2.getStatus());
-                    case "subject" -> t1.getSubject().compareTo(t2.getSubject());
-                    default -> 0;
-                };
-                return isAsc ? comparison : -comparison;
-            })
-            .collect(Collectors.toList());
-            
-        // Apply pagination
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), sortedTickets.size());
-        
-        if (start >= sortedTickets.size()) {
-            return new PageImpl<>(List.of(), pageable, sortedTickets.size());
-        }
-        
-        List<Ticket> paginatedTickets = sortedTickets.subList(start, end);
-        
-        return new PageImpl<>(
-            paginatedTickets.stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList()),
-            pageable,
-            sortedTickets.size()
-        );
+        return ticketPage.map(this::mapToDTO);
     }
 
     public List<TicketMessageResponse> getTicketMessages(Long ticketId, User user) {

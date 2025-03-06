@@ -166,7 +166,7 @@ public class OrderController {
     public ResponseEntity<Page<Order>> getProducerOrders(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "6") int size,
             @RequestParam(defaultValue = "orderDate") String sortBy,
             @RequestParam(defaultValue = "desc") String direction,
             @RequestParam(required = false) String customerEmail) {

@@ -96,7 +96,15 @@ public class ProducerApplicationService {
         String[] categories = application.getCategoryIds() == null || application.getCategoryIds().isEmpty() 
             ? new String[0]
             : Arrays.stream(application.getCategoryIds().split(","))
-                .map(id -> categoryRepository.getReferenceById(Long.parseLong(id)).getName())
+                .map(id -> {
+                    try {
+                        return categoryRepository.findById(Long.parseLong(id))
+                            .map(Category::getName)
+                            .orElse("Deleted Category");
+                    } catch (Exception e) {
+                        return "Deleted Category";
+                    }
+                })
                 .toArray(String[]::new);
 
         return ProducerApplicationResponse.builder()
@@ -188,85 +196,14 @@ public class ProducerApplicationService {
 
     @Transactional(readOnly = true)
     public Page<ProducerApplicationResponse> getAllApplications(Pageable pageable) {
-        List<ProducerApplication> applications = applicationRepository.findAll();
-        
-        // Sort applications
-        List<ProducerApplication> sortedApplications = applications.stream()
-            .sorted((a1, a2) -> {
-                if (pageable.getSort().isEmpty()) {
-                    return 0;
-                }
-                String sortBy = pageable.getSort().iterator().next().getProperty();
-                boolean isAsc = pageable.getSort().iterator().next().isAscending();
-                
-                int comparison = switch(sortBy) {
-                    case "createdAt" -> a1.getCreatedAt().compareTo(a2.getCreatedAt());
-                    case "status" -> a1.getStatus().compareTo(a2.getStatus());
-                    case "businessName" -> a1.getBusinessName().compareTo(a2.getBusinessName());
-                    default -> 0;
-                };
-                return isAsc ? comparison : -comparison;
-            })
-            .collect(Collectors.toList());
-            
-        // Apply pagination
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), sortedApplications.size());
-        
-        if (start >= sortedApplications.size()) {
-            return new PageImpl<>(List.of(), pageable, sortedApplications.size());
-        }
-        
-        List<ProducerApplication> paginatedApplications = sortedApplications.subList(start, end);
-        
-        return new PageImpl<>(
-            paginatedApplications.stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList()),
-            pageable,
-            sortedApplications.size()
-        );
+        Page<ProducerApplication> applicationPage = applicationRepository.findAll(pageable);
+        return applicationPage.map(this::mapToDTO);
     }
 
     @Transactional(readOnly = true)
     public Page<ProducerApplicationResponse> getApplicationsByStatus(ApplicationStatus status, Pageable pageable) {
-        List<ProducerApplication> applications = applicationRepository.findByStatus(status);
-        
-        // Sort applications
-        List<ProducerApplication> sortedApplications = applications.stream()
-            .sorted((a1, a2) -> {
-                if (pageable.getSort().isEmpty()) {
-                    return 0;
-                }
-                String sortBy = pageable.getSort().iterator().next().getProperty();
-                boolean isAsc = pageable.getSort().iterator().next().isAscending();
-                
-                int comparison = switch(sortBy) {
-                    case "createdAt" -> a1.getCreatedAt().compareTo(a2.getCreatedAt());
-                    case "businessName" -> a1.getBusinessName().compareTo(a2.getBusinessName());
-                    default -> 0;
-                };
-                return isAsc ? comparison : -comparison;
-            })
-            .collect(Collectors.toList());
-            
-        // Apply pagination
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), sortedApplications.size());
-        
-        if (start >= sortedApplications.size()) {
-            return new PageImpl<>(List.of(), pageable, sortedApplications.size());
-        }
-        
-        List<ProducerApplication> paginatedApplications = sortedApplications.subList(start, end);
-        
-        return new PageImpl<>(
-            paginatedApplications.stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList()),
-            pageable,
-            sortedApplications.size()
-        );
+        Page<ProducerApplication> applicationPage = applicationRepository.findByStatus(status, pageable);
+        return applicationPage.map(this::mapToDTO);
     }
 
     public ProducerApplicationResponse getCustomerApplication(Long customerId) {

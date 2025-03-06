@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.localmarket.main.dto.analytics.producer.ProducerAnalyticsResponse;
+import com.localmarket.main.dto.analytics.producer.OrderStatisticsResponse;
 import com.localmarket.main.entity.order.OrderStatus;
 import com.localmarket.main.security.ProducerOnly;
 import com.localmarket.main.service.analytics.producer.ProducerAnalyticsService;
@@ -69,5 +70,12 @@ public class ProducerAnalyticsController {
     @Operation(summary = "Get total processing orders", description = "Returns the total number of processing orders.")
     public int getTotalProcessingOrders() {
         return producerAnalyticsService.getTotalOrdersByStatus(OrderStatus.PROCESSING);
+    }
+
+    @ProducerOnly
+    @GetMapping("/order-statistics")
+    @Operation(summary = "Get order statistics", description = "Returns statistics about orders including total, pending, processing, and delivered orders.")
+    public OrderStatisticsResponse getOrderStatistics() {
+        return producerAnalyticsService.getOrderStatistics();
     }
 }

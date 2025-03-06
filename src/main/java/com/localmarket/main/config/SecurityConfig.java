@@ -154,6 +154,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/analytics/total-pending-orders").hasAuthority(PRODUCER)
                 .requestMatchers("/api/analytics/total-delivered-orders").hasAuthority(PRODUCER)
                 .requestMatchers("/api/analytics/total-processing-orders").hasAuthority(PRODUCER)
+                .requestMatchers("/api/analytics/order-statistics").hasAuthority(PRODUCER)
                 .anyRequest().authenticated()
             )
             

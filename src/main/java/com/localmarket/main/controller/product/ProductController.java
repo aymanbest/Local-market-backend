@@ -203,26 +203,26 @@ public class ProductController {
 
     @Operation(summary = "Get all products", description = "Retrieve all products with pagination and optional search")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Products found", content = @Content(schema = @Schema(implementation = ProducerProductsResponse.class)))
+        @ApiResponse(responseCode = "200", description = "Products found", content = @Content(schema = @Schema(implementation = ProductResponse.class)))
     })
     @GetMapping
-    public ResponseEntity<Page<ProducerProductsResponse>> getAllProducts(
+    public ResponseEntity<Page<ProductResponse>> getAllProducts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "6") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction,
             @RequestParam(required = false) String search) {
         Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
-        return ResponseEntity.ok(productService.getAllProductsGroupedByProducer(pageable, search));
+        return ResponseEntity.ok(productService.getAllProducts(pageable, search));
     }
 
     @Operation(summary = "Get products by category", description = "Retrieve products by category with pagination")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Products found", content = @Content(schema = @Schema(implementation = ProducerProductsResponse.class)))
+        @ApiResponse(responseCode = "200", description = "Products found", content = @Content(schema = @Schema(implementation = ProductResponse.class)))
     })
     @GetMapping("/category/{categoryId}")
-    public ResponseEntity<Page<ProducerProductsResponse>> getProductsByCategory(
+    public ResponseEntity<Page<ProductResponse>> getProductsByCategory(
             @PathVariable Long categoryId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -230,7 +230,7 @@ public class ProductController {
             @RequestParam(defaultValue = "desc") String direction) {
         Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
-        return ResponseEntity.ok(productService.getProductsByCategory(categoryId, pageable));
+        return ResponseEntity.ok(productService.getProductsByCategoryFlat(categoryId, pageable));
     }
 
     @Operation(summary = "Get product image", description = "Retrieve product image")

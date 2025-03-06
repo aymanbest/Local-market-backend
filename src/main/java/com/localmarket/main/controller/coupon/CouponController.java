@@ -22,6 +22,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -67,17 +68,25 @@ public class CouponController {
         return ResponseEntity.noContent().build();
     }
 
-
-    
     @GetMapping
     @AdminOnly
-    @Operation(summary = "Get all coupons", description = "Get all coupons with usage statistics (Admin only)")
+    @Operation(
+        summary = "Get all coupons", 
+        description = "Get all coupons with usage statistics (Admin only). " +
+                      "Available sort options: validFrom, validUntil, discountValue, timesUsed, code, isActive"
+    )
     @SecurityRequirement(name = "cookie")
     public ResponseEntity<Page<CouponStatsResponse>> getAllCoupons(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "validFrom") String sortBy,
             @RequestParam(defaultValue = "desc") String direction) {
+        // Validate sortBy parameters check for valid fields
+        List<String> validSortFields = List.of("validFrom", "validUntil", "discountValue", "timesUsed", "code", "isActive");
+        if (!validSortFields.contains(sortBy)) {
+            sortBy = "validFrom";
+        }
+        
         Sort.Direction sortDirection = Sort.Direction.fromString(direction.toUpperCase());
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
         return ResponseEntity.ok(couponService.getAllCouponsWithStats(pageable));

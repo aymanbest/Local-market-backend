@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.localmarket.main.dto.analytics.producer.MonthlyData;
 import com.localmarket.main.dto.analytics.producer.ProducerAnalyticsResponse;
+import com.localmarket.main.dto.analytics.producer.OrderStatisticsResponse;
 import com.localmarket.main.entity.order.OrderStatus;
 import com.localmarket.main.repository.order.OrderItemRepository;
 import com.localmarket.main.repository.order.OrderRepository;
@@ -73,6 +74,21 @@ public class ProducerAnalyticsService {
 
     public int getTotalOrdersByStatus(OrderStatus status) {
         return orderRepository.countOrdersByStatus(status);
+    }
+
+    // Method to get all order statistics at once
+    public OrderStatisticsResponse getOrderStatistics() {
+        int totalOrders = getTotalOrders();
+        int pendingOrders = getTotalOrdersByStatus(OrderStatus.PENDING_PAYMENT);
+        int processingOrders = getTotalOrdersByStatus(OrderStatus.PROCESSING);
+        int deliveredOrders = getTotalOrdersByStatus(OrderStatus.DELIVERED);
+        
+        return new OrderStatisticsResponse(
+            totalOrders,
+            pendingOrders,
+            processingOrders,
+            deliveredOrders
+        );
     }
 
     // Mapping method for monthly data

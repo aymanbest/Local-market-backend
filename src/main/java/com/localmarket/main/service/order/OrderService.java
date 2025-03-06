@@ -455,92 +455,26 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public Page<Order> getProducerOrders(Long producerId, String customerEmail, Pageable pageable) {
-        List<Order> orders = orderRepository.findByItemsProductProducerUserId(producerId);
-        
-        // Filter by customer email if provided
         if (customerEmail != null && !customerEmail.isEmpty()) {
-            orders = orders.stream()
-                .filter(order -> order.getCustomer() != null && 
-                               order.getCustomer().getEmail().toLowerCase()
-                                   .contains(customerEmail.toLowerCase()))
-                .collect(Collectors.toList());
+            // Use JPA-level filtering for customer email
+            return orderRepository.findByProducerIdAndCustomerEmailContaining(
+                producerId, customerEmail, pageable);
+        } else {
+            // If no customer email filter, use standard JPA pagination
+            return orderRepository.findByItemsProductProducerUserId(producerId, pageable);
         }
-        
-        // Sort orders
-        List<Order> sortedOrders = orders.stream()
-            .sorted((o1, o2) -> {
-                if (pageable.getSort().isEmpty()) {
-                    return 0;
-                }
-                String sortBy = pageable.getSort().iterator().next().getProperty();
-                boolean isAsc = pageable.getSort().iterator().next().isAscending();
-                
-                int comparison = switch(sortBy) {
-                    case "orderDate" -> o1.getOrderDate().compareTo(o2.getOrderDate());
-                    case "status" -> o1.getStatus().compareTo(o2.getStatus());
-                    case "totalPrice" -> o1.getTotalPrice().compareTo(o2.getTotalPrice());
-                    default -> 0;
-                };
-                return isAsc ? comparison : -comparison;
-            })
-            .collect(Collectors.toList());
-            
-        // Apply pagination
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), sortedOrders.size());
-        
-        if (start >= sortedOrders.size()) {
-            return new PageImpl<>(List.of(), pageable, sortedOrders.size());
-        }
-        
-        List<Order> paginatedOrders = sortedOrders.subList(start, end);
-        
-        return new PageImpl<>(paginatedOrders, pageable, sortedOrders.size());
     }
 
     @Transactional(readOnly = true)
     public Page<Order> getProducerOrdersByStatus(Long producerId, OrderStatus status, String customerEmail, Pageable pageable) {
-        List<Order> orders = orderRepository.findByItemsProductProducerUserIdAndStatus(producerId, status);
-        
-        // Filter by customer email if provided
         if (customerEmail != null && !customerEmail.isEmpty()) {
-            orders = orders.stream()
-                .filter(order -> order.getCustomer() != null && 
-                               order.getCustomer().getEmail().toLowerCase()
-                                   .contains(customerEmail.toLowerCase()))
-                .collect(Collectors.toList());
+            // Use JPA-level filtering for customer email and status
+            return orderRepository.findByProducerIdAndStatusAndCustomerEmailContaining(
+                producerId, status, customerEmail, pageable);
+        } else {
+            // If no customer email filter, use standard JPA pagination
+            return orderRepository.findByItemsProductProducerUserIdAndStatus(producerId, status, pageable);
         }
-        
-        // Sort orders
-        List<Order> sortedOrders = orders.stream()
-            .sorted((o1, o2) -> {
-                if (pageable.getSort().isEmpty()) {
-                    return 0;
-                }
-                String sortBy = pageable.getSort().iterator().next().getProperty();
-                boolean isAsc = pageable.getSort().iterator().next().isAscending();
-                
-                int comparison = switch(sortBy) {
-                    case "orderDate" -> o1.getOrderDate().compareTo(o2.getOrderDate());
-                    case "status" -> o1.getStatus().compareTo(o2.getStatus());
-                    case "totalPrice" -> o1.getTotalPrice().compareTo(o2.getTotalPrice());
-                    default -> 0;
-                };
-                return isAsc ? comparison : -comparison;
-            })
-            .collect(Collectors.toList());
-            
-        // Apply pagination
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), sortedOrders.size());
-        
-        if (start >= sortedOrders.size()) {
-            return new PageImpl<>(List.of(), pageable, sortedOrders.size());
-        }
-        
-        List<Order> paginatedOrders = sortedOrders.subList(start, end);
-        
-        return new PageImpl<>(paginatedOrders, pageable, sortedOrders.size());
     }
 
     private void updateOrderPayment(Order order, PaymentResponse paymentResponse) {
@@ -705,38 +639,7 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public Page<Order> getUserOrdersPaginated(Long userId, Pageable pageable) {
-        List<Order> orders = orderRepository.findByCustomerUserId(userId);
-        
-        // Sort orders
-        List<Order> sortedOrders = orders.stream()
-            .sorted((o1, o2) -> {
-                if (pageable.getSort().isEmpty()) {
-                    return 0;
-                }
-                String sortBy = pageable.getSort().iterator().next().getProperty();
-                boolean isAsc = pageable.getSort().iterator().next().isAscending();
-                
-                int comparison = switch(sortBy) {
-                    case "orderDate" -> o1.getOrderDate().compareTo(o2.getOrderDate());
-                    case "status" -> o1.getStatus().compareTo(o2.getStatus());
-                    case "totalPrice" -> o1.getTotalPrice().compareTo(o2.getTotalPrice());
-                    default -> 0;
-                };
-                return isAsc ? comparison : -comparison;
-            })
-            .collect(Collectors.toList());
-            
-        // Apply pagination
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), sortedOrders.size());
-        
-        if (start >= sortedOrders.size()) {
-            return new PageImpl<>(List.of(), pageable, sortedOrders.size());
-        }
-        
-        List<Order> paginatedOrders = sortedOrders.subList(start, end);
-        
-        return new PageImpl<>(paginatedOrders, pageable, sortedOrders.size());
+        return orderRepository.findByCustomerUserId(userId, pageable);
     }
 
     private void sendBundleOrderConfirmationEmail(List<Order> orders, String accessToken) {

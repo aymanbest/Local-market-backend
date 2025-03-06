@@ -3,6 +3,8 @@ package com.localmarket.main.repository.order;
 import com.localmarket.main.entity.order.Order;
 import com.localmarket.main.entity.order.OrderItem;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,6 +19,7 @@ import java.time.LocalDateTime;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByCustomerUserId(Long userId);
+    Page<Order> findByCustomerUserId(Long userId, Pageable pageable);
 
     List<Order> findByCustomerUserIdAndStatus(Long userId, OrderStatus status);
 
@@ -75,42 +78,74 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     List<Order> findByOrderDateBetween(LocalDateTime start, LocalDateTime end);
 
-    List<Order> findByItemsProductProducerUserId(Long producerId);
-    List<Order> findByItemsProductProducerUserIdAndStatus(Long producerId, OrderStatus status);
+   
 
-        // Count total orders
-        @Query("SELECT COUNT(o) FROM Order o")
-        int countAllOrders();
+    // Find orders by producer ID with pagination
+    @Query(value = """
+            SELECT DISTINCT o FROM Order o JOIN o.items i JOIN i.product p 
+            WHERE p.producer.userId = :producerId
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT o) FROM Order o JOIN o.items i JOIN i.product p 
+            WHERE p.producer.userId = :producerId
+            """)
+    Page<Order> findByItemsProductProducerUserId(@Param("producerId") Long producerId, Pageable pageable);
     
-        // Count orders in a specific period
-        @Query("SELECT COUNT(o) FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate")
-        int countAllOrdersPreviousPeriod(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    // Find orders by producer ID (no pagination)
+    @Query("SELECT DISTINCT o FROM Order o JOIN o.items i JOIN i.product p WHERE p.producer.userId = :producerId")
+    List<Order> findByItemsProductProducerUserId(@Param("producerId") Long producerId);
     
-        // Count total revenue
-        @Query("SELECT SUM(o.totalPrice) FROM Order o")
-        Double calculateTotalRevenue();
+    // Find orders by producer ID and status with pagination
+    @Query(value = """
+            SELECT DISTINCT o FROM Order o JOIN o.items i JOIN i.product p 
+            WHERE p.producer.userId = :producerId AND o.status = :status
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT o) FROM Order o JOIN o.items i JOIN i.product p 
+            WHERE p.producer.userId = :producerId AND o.status = :status
+            """)
+    Page<Order> findByItemsProductProducerUserIdAndStatus(
+        @Param("producerId") Long producerId, 
+        @Param("status") OrderStatus status, 
+        Pageable pageable);
     
-        // Count total revenue in a period
-        @Query("SELECT SUM(o.totalPrice) FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate")
-        Double calculateTotalRevenuePreviousPeriod(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
-    
-        // Count orders by status (e.g., PENDING, DELIVERED, PROCESSING)
-        @Query("SELECT COUNT(o) FROM Order o WHERE o.status = :status")
-        int countOrdersByStatus(@Param("status") OrderStatus status);
-    
-        // Count orders in a specific period and status
-        @Query("SELECT COUNT(o) FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate AND o.status = :status")
-        int countOrdersByStatusInPeriod(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, @Param("status") OrderStatus status);
-    
-        // Revenue trend per month (monthly breakdown for current year)
-        @Query("SELECT MONTH(o.orderDate) AS month, SUM(o.totalPrice) AS revenue FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate GROUP BY MONTH(o.orderDate) ORDER BY month")
-        List<Object[]> calculateRevenueTrend(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
-    
-        // Monthly orders (count per month for current year)
-        @Query("SELECT MONTH(o.orderDate) AS month, COUNT(o) AS totalOrders FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate GROUP BY MONTH(o.orderDate) ORDER BY month")
-        List<Object[]> calculateMonthlyOrders(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
-    
-    
+    // Find orders by producer ID and status (no pagination)
+    @Query("SELECT DISTINCT o FROM Order o JOIN o.items i JOIN i.product p WHERE p.producer.userId = :producerId AND o.status = :status")
+    List<Order> findByItemsProductProducerUserIdAndStatus(@Param("producerId") Long producerId, @Param("status") OrderStatus status);
+
+    // Count total orders
+    @Query("SELECT COUNT(o) FROM Order o")
+    int countAllOrders();
+
+    // Count orders in a specific period
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate")
+    int countAllOrdersPreviousPeriod(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Count total revenue
+    @Query("SELECT SUM(o.totalPrice) FROM Order o")
+    Double calculateTotalRevenue();
+
+    // Count total revenue in a period
+    @Query("SELECT SUM(o.totalPrice) FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate")
+    Double calculateTotalRevenuePreviousPeriod(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Count orders by status (e.g., PENDING, DELIVERED, PROCESSING)
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.status = :status")
+    int countOrdersByStatus(@Param("status") OrderStatus status);
+
+    // Count orders in a specific period and status
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate AND o.status = :status")
+    int countOrdersByStatusInPeriod(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, @Param("status") OrderStatus status);
+
+    // Revenue trend per month (monthly breakdown for current year)
+    @Query("SELECT MONTH(o.orderDate) AS month, SUM(o.totalPrice) AS revenue FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate GROUP BY MONTH(o.orderDate) ORDER BY month")
+    List<Object[]> calculateRevenueTrend(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Monthly orders (count per month for current year)
+    @Query("SELECT MONTH(o.orderDate) AS month, COUNT(o) AS totalOrders FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate GROUP BY MONTH(o.orderDate) ORDER BY month")
+    List<Object[]> calculateMonthlyOrders(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+
     List<Order> findByGuestEmail(String guestEmail);
 
     Optional<Order> findByAccessToken(String accessToken);
@@ -140,4 +175,57 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // Find all order items for a specific order
     @Query("SELECT oi FROM OrderItem oi WHERE oi.order.orderId = :orderId")
     List<OrderItem> findOrderItemsByOrderId(@Param("orderId") Long orderId);
+
+    // Find orders by producer ID and customer email containing (case insensitive)
+    @Query("SELECT DISTINCT o FROM Order o JOIN o.items i JOIN i.product p " +
+           "WHERE p.producer.userId = :producerId AND " +
+           "LOWER(o.customer.email) LIKE LOWER(CONCAT('%', :email, '%'))")
+    List<Order> findByProducerIdAndCustomerEmailContaining(
+        @Param("producerId") Long producerId, 
+        @Param("email") String email);
+    
+    // Find orders by producer ID and customer email containing with pagination
+    @Query(value = """
+            SELECT DISTINCT o FROM Order o JOIN o.items i JOIN i.product p 
+            WHERE p.producer.userId = :producerId AND 
+            LOWER(o.customer.email) LIKE LOWER(CONCAT('%', :email, '%'))
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT o) FROM Order o JOIN o.items i JOIN i.product p 
+            WHERE p.producer.userId = :producerId AND 
+            LOWER(o.customer.email) LIKE LOWER(CONCAT('%', :email, '%'))
+            """)
+    Page<Order> findByProducerIdAndCustomerEmailContaining(
+        @Param("producerId") Long producerId, 
+        @Param("email") String email,
+        Pageable pageable);
+    
+    // Find orders by producer ID, status, and customer email containing
+    @Query("SELECT DISTINCT o FROM Order o JOIN o.items i JOIN i.product p " +
+           "WHERE p.producer.userId = :producerId AND " +
+           "o.status = :status AND " +
+           "LOWER(o.customer.email) LIKE LOWER(CONCAT('%', :email, '%'))")
+    List<Order> findByProducerIdAndStatusAndCustomerEmailContaining(
+        @Param("producerId") Long producerId, 
+        @Param("status") OrderStatus status,
+        @Param("email") String email);
+    
+    // Find orders by producer ID, status, and customer email containing with pagination
+    @Query(value = """
+            SELECT DISTINCT o FROM Order o JOIN o.items i JOIN i.product p 
+            WHERE p.producer.userId = :producerId AND 
+            o.status = :status AND 
+            LOWER(o.customer.email) LIKE LOWER(CONCAT('%', :email, '%'))
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT o) FROM Order o JOIN o.items i JOIN i.product p 
+            WHERE p.producer.userId = :producerId AND 
+            o.status = :status AND 
+            LOWER(o.customer.email) LIKE LOWER(CONCAT('%', :email, '%'))
+            """)
+    Page<Order> findByProducerIdAndStatusAndCustomerEmailContaining(
+        @Param("producerId") Long producerId, 
+        @Param("status") OrderStatus status,
+        @Param("email") String email,
+        Pageable pageable);
 }
