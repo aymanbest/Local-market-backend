@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.Collections;
 import com.localmarket.main.entity.user.Role;
 import com.localmarket.main.repository.producer.ProducerApplicationRepository;
+import org.springframework.security.core.Authentication;
 
 @Component
 @RequiredArgsConstructor
@@ -38,39 +39,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain) throws ServletException, IOException {
 
         try {
-            // Always let authentication endpoints through
             if (isAuthEndpoint(request)) {
                 filterChain.doFilter(request, response);
                 return;
             }
 
             String jwt = cookieUtil.getJwtFromCookies(request);
+            Authentication existingAuth = SecurityContextHolder.getContext().getAuthentication();
             
-            // If JWT is present, try to authenticate
             if (jwt != null) {
-                try {
-                    // Only authenticate if not already authenticated
-                    if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                        authenticateUser(jwt);
-                    }
-                } catch (ApiException e) {
-                    // If authentication fails on a public endpoint, continue without authentication
-                    if (isPublicEndpoint(request)) {
-                        filterChain.doFilter(request, response);
-                        return;
-                    }
-                    // For protected endpoints, throw the error
-                    throw e;
+                // Validate token integrity
+                if (!jwtService.isTokenValid(jwt) || !tokenRepository.isTokenValid(jwt)) {
+                    SecurityContextHolder.clearContext();
+                    existingAuth = null;
+                }
+                
+                // Only authenticate if no valid authentication exists
+                if (existingAuth == null) {
+                    authenticateUser(jwt);
                 }
             }
-            
-            // For public endpoints, proceed without authentication
+
             if (isPublicEndpoint(request)) {
                 filterChain.doFilter(request, response);
                 return;
             }
 
-            // For protected endpoints without valid JWT, return unauthorized
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
                 throw new ApiException(ErrorType.INVALID_TOKEN, "Missing or invalid authentication token");
             }

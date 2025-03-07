@@ -104,7 +104,6 @@ public class AuthService {
     @Transactional
     public AuthServiceResult login(AuthRequest request) {
         try {
-            
             Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                     request.getEmail(),
@@ -114,20 +113,25 @@ public class AuthService {
 
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
             
+            // Update token version and last login
+            Integer newTokenVersion = (userDetails.getTokenVersion() + 1) % 10;
+            userRepository.updateTokenVersionAndLastLogin(
+                userDetails.getId(), 
+                newTokenVersion,
+                LocalDateTime.now()
+            );
+
+            // Create user object just for token generation
             User user = new User();
             user.setUserId(userDetails.getId());
-            user.setTokenVersion((userDetails.getTokenVersion() + 1) % 10);
-            user.setLastLogin(LocalDateTime.now());
+            user.setEmail(userDetails.getEmail());
             user.setRole(userDetails.getRole());
-            
-            userRepository.updateTokenVersionAndLastLogin(
-                user.getUserId(), 
-                user.getTokenVersion(), 
-                user.getLastLogin()
-            );
+            user.setTokenVersion(newTokenVersion);
 
             String token = jwtService.generateToken(user);
             tokenRepository.storeToken(token, user.getUserId());
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
 
             return new AuthServiceResult(
                 AuthResponse.builder()
