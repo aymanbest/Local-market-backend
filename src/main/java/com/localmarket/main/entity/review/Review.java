@@ -46,7 +46,7 @@ public class Review {
     @Max(5)
     private Integer rating;
 
-    @Column(name = "comment", columnDefinition = "LONGTEXT")
+    @Column(name = "comment", columnDefinition = "TEXT")
     private String comment;
 
     @Enumerated(EnumType.STRING)

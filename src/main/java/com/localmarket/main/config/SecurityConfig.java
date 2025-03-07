@@ -34,7 +34,7 @@ public class SecurityConfig {
     private final String ADMIN = Role.ADMIN.name();
     private final String CUSTOMER = Role.CUSTOMER.name();
 
-    @Value("${app.frontend.url}")
+    @Value("${RENDER_EXTERNAL_URL:${app.frontend.url}}")
     private String frontendUrl;
 
     @Bean
@@ -161,7 +161,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(frontendUrl));
+        configuration.setAllowedOrigins(Arrays.asList(
+            frontendUrl,
+            "https://*.onrender.com"  // Allow Render domains
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-XSRF-TOKEN", "Cookie" , "x-auth-check"));
         configuration.setAllowCredentials(true);

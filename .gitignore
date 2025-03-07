@@ -42,3 +42,6 @@ uploads/**
 
 # Cookie files
 cookies.txt
+
+# Render
+render.yaml

@@ -83,3 +83,65 @@ Contributions are welcome! Feel free to submit pull requests or open issues to i
 
 ## License
 This project is open source and available under the [MIT License](https://opensource.org/licenses/MIT).
+
+# Local Market Application
+
+## Running Locally
+
+### Prerequisites
+- Java 17 or higher
+- Maven
+- PostgreSQL (if running with a local database)
+
+### Steps to Run
+
+#### Windows
+1. Make sure you have Java 17 and Maven installed
+2. Run the `run-local.bat` script:
+   ```
+   .\run-local.bat
+   ```
+
+#### Linux/Mac
+1. Make sure you have Java 17 and Maven installed
+2. Make the script executable (if not already):
+   ```
+   chmod +x run-local.sh
+   ```
+3. Run the script:
+   ```
+   ./run-local.sh
+   ```
+
+### Database Configuration
+The application is configured to use a PostgreSQL database. You can modify the database configuration in the `.env` file:
+
+```
+DATABASE_URL=jdbc:postgresql://localhost:5432/localmarket
+DB_USERNAME=postgres
+DB_PASSWORD=your_password
+```
+
+## Troubleshooting
+
+### PostgreSQL Driver Issues
+If you encounter issues with the PostgreSQL driver, make sure the PostgreSQL dependency is included in your pom.xml:
+
+```xml
+<dependency>
+    <groupId>org.postgresql</groupId>
+    <artifactId>postgresql</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+### Database Schema Issues
+If you encounter issues with the database schema, you can try:
+1. Setting `spring.jpa.hibernate.ddl-auto=create` in the `.env` file to recreate the schema
+2. Running the application with a clean database
+
+## API Documentation
+Once the application is running, you can access the API documentation at:
+```
+http://localhost:8080/swagger-ui.html
+```
