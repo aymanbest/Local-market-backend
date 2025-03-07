@@ -45,19 +45,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             String jwt = cookieUtil.getJwtFromCookies(request);
-            Authentication existingAuth = SecurityContextHolder.getContext().getAuthentication();
             
             if (jwt != null) {
-                // Validate token integrity
+                // Always validate token and authenticate
                 if (!jwtService.isTokenValid(jwt) || !tokenRepository.isTokenValid(jwt)) {
                     SecurityContextHolder.clearContext();
-                    existingAuth = null;
+                    throw new ApiException(ErrorType.INVALID_TOKEN, "Invalid token");
                 }
-                
-                // Only authenticate if no valid authentication exists
-                if (existingAuth == null) {
-                    authenticateUser(jwt);
-                }
+                authenticateUser(jwt);
             }
 
             if (isPublicEndpoint(request)) {
@@ -66,12 +61,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                throw new ApiException(ErrorType.INVALID_TOKEN, "Missing or invalid authentication token");
+                throw new ApiException(ErrorType.INVALID_TOKEN, "Missing authentication token");
             }
 
             filterChain.doFilter(request, response);
             
         } catch (ApiException e) {
+            SecurityContextHolder.clearContext();
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write(e.getMessage());
         }
