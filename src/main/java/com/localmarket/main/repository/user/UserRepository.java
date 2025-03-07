@@ -10,19 +10,36 @@ import java.util.List;
 import java.util.Optional;
 import com.localmarket.main.entity.user.Role;
 import java.time.LocalDateTime;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    List<User> findAll();  
-    Optional<User> findById(Long id); 
-    void deleteById(Long id);  
+    List<User> findAll();
+
+    Optional<User> findById(Long id);
+
+    void deleteById(Long id);
+
     Optional<User> findByEmail(String email);
+
     Optional<User> findByUsername(String username);
+
     Page<User> findByRole(Role role, Pageable pageable);
+
     List<User> findByRole(Role role);
+
     long countByCreatedAtBefore(LocalDateTime date);
+
     long countByRoleAndCreatedAtBetween(Role role, LocalDateTime start, LocalDateTime end);
+
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
     long countByLastLoginBetween(LocalDateTime start, LocalDateTime end);
+
     long countByRole(Role role);
-} 
+
+    @Modifying
+    @Query("UPDATE User u SET u.tokenVersion = :tokenVersion, u.lastLogin = :lastLogin WHERE u.userId = :userId")
+    void updateTokenVersionAndLastLogin(Long userId, Integer tokenVersion, LocalDateTime lastLogin);
+}

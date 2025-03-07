@@ -46,7 +46,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             String jwt = cookieUtil.getJwtFromCookies(request);
             
-            // If JWT is present, try to authenticate regardless of endpoint
+            // If JWT is present, try to authenticate
             if (jwt != null) {
                 try {
                     // Only authenticate if not already authenticated

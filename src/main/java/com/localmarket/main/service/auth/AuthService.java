@@ -15,17 +15,19 @@ import org.springframework.transaction.annotation.Transactional;
 import com.localmarket.main.exception.ApiException;
 import com.localmarket.main.exception.ErrorType;
 import com.localmarket.main.repository.token.TokenRepository;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import com.localmarket.main.dto.auth.AuthServiceResult;
 import com.localmarket.main.service.email.EmailService;
-import jakarta.mail.MessagingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.HashMap;
 import com.localmarket.main.websocket.NotificationWebSocketHandler;
 import org.springframework.security.core.context.SecurityContextHolder;
-import com.localmarket.main.service.auth.ResetCodeService;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import com.localmarket.main.security.CustomUserDetails;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +39,7 @@ public class AuthService {
     private final EmailService emailService;
     private final NotificationWebSocketHandler webSocketHandler;
     private final ResetCodeService resetCodeService;
+    private final AuthenticationManager authenticationManager;
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     public AuthServiceResult register(RegisterRequest request, String jwt) {
@@ -98,27 +101,44 @@ public class AuthService {
         );
     }
 
+    @Transactional
     public AuthServiceResult login(AuthRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("Invalid email or password"));
-        
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        try {
+            
+            Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                    request.getEmail(),
+                    request.getPassword()
+                )
+            );
+
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            
+            User user = new User();
+            user.setUserId(userDetails.getId());
+            user.setTokenVersion((userDetails.getTokenVersion() + 1) % 10);
+            user.setLastLogin(LocalDateTime.now());
+            user.setRole(userDetails.getRole());
+            
+            userRepository.updateTokenVersionAndLastLogin(
+                user.getUserId(), 
+                user.getTokenVersion(), 
+                user.getLastLogin()
+            );
+
+            String token = jwtService.generateToken(user);
+            tokenRepository.storeToken(token, user.getUserId());
+
+            return new AuthServiceResult(
+                AuthResponse.builder()
+                    .status(200)
+                    .message("Login successful")
+                    .build(),
+                token
+            );
+        } catch (AuthenticationException e) {
             throw new BadCredentialsException("Invalid email or password");
         }
-
-        user.setTokenVersion((user.getTokenVersion() + 1) % 10);
-        String token = jwtService.generateToken(user);
-        user.setLastLogin(LocalDateTime.now());
-        userRepository.save(user);
-        tokenRepository.storeToken(token, user.getUserId());
-        
-        return new AuthServiceResult(
-            AuthResponse.builder()
-                .status(200)
-                .message("Login successful")
-                .build(),
-            token
-        );
     }
 
     @Transactional
