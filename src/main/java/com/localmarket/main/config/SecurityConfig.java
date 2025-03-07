@@ -62,10 +62,6 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             
-            // Security context
-            .securityContext(context -> context
-                .requireExplicitSave(false))
-            
             // Security headers to prevent attacks xss
             .headers(headers -> headers
                 .contentSecurityPolicy(csp -> csp.policyDirectives(
