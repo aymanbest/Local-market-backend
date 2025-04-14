@@ -294,6 +294,12 @@ public class OrderService {
 
     @Transactional
     public List<Order> processOrdersPayment(PaymentInfo paymentInfo, String accessToken) {
+        // First validate the access token
+        String email = tokenService.validateAccessToken(accessToken);
+        if (email == null) {
+            throw new ApiException(ErrorType.INVALID_TOKEN, "Invalid or expired access token");
+        }
+        
         // Get all orders from the checkout session
         List<Order> orders = orderRepository.findAllByAccessToken(accessToken);
         if (orders.isEmpty()) {
@@ -367,7 +373,11 @@ public class OrderService {
         return order.getExpiresAt() != null && now.isBefore(order.getExpiresAt());
     }
 
-    private void validateOrderStock(List<OrderItemRequest> items) {
+    protected void validateOrderStock(List<OrderItemRequest> items) {
+        if (items == null || items.isEmpty()) {
+            throw new ApiException(ErrorType.VALIDATION_FAILED, "Cart is empty");
+        }
+        
         for (OrderItemRequest item : items) {
             Product product = productRepository.findById(item.getProductId())
                 .orElseThrow(() -> new ApiException(ErrorType.PRODUCT_NOT_FOUND, 
