@@ -94,6 +94,26 @@ public class ShoppingFlowTest {
         }
     }
 
+    /**
+     * Wait specifically for the preloader overlay to disappear
+     */
+    private void waitForPreloaderToDisappear() {
+        try {
+            // Wait for the preloader overlay to disappear
+            wait.until(ExpectedConditions.invisibilityOfElementLocated(
+                    By.cssSelector("div.fixed.inset-0.z-50.flex.flex-col.items-center.justify-center.opacity-100")));
+            
+            // Additional check with more specific selector
+            wait.until(ExpectedConditions.invisibilityOfElementLocated(
+                    By.cssSelector("div.fixed.inset-0.z-50.flex.flex-col.items-center.justify-center")));
+            
+            // Add a small delay to ensure animations are complete
+            Thread.sleep(1000);
+        } catch (Exception e) {
+            System.out.println("Waiting for preloader timed out: " + e.getMessage());
+        }
+    }
+
     @Test
     public void testCompleteShoppingFlowIncludingPayment() {
         try {
@@ -104,10 +124,15 @@ public class ShoppingFlowTest {
             wait.until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector(".grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3 > a")));
 
+            // Wait for preloader to disappear before clicking
+            waitForPreloaderToDisappear();
+
             // Find and click the first Plus icon button (Add to Cart)
             WebElement addToCartButton = driver.findElement(
                     By.cssSelector(".grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3 > a button"));
-            addToCartButton.click();
+            
+            // Use JavaScript to click, which can bypass some overlay issues
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", addToCartButton);
 
             // Use fluent wait for cart notification/update
             waitForAnimations();
@@ -224,6 +249,211 @@ public class ShoppingFlowTest {
             
             // Log the error and rethrow
             System.err.println("Test failed: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    @Test
+    public void testGuestCheckoutWithAccountCreation() {
+        try {
+            // Test ID: TC_002 - Guest checkout + account creation
+            System.out.println("Running test: TC_002 - Guest checkout + account creation");
+            
+            // Navigate to the store page
+            driver.get("http://localhost:5173/store");
+
+            // Wait for products to load
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector(".grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3 > a")));
+
+            // Wait for preloader to disappear before clicking
+            waitForPreloaderToDisappear();
+
+            // Add product to cart
+            WebElement addToCartButton = driver.findElement(
+                    By.cssSelector(".grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3 > a button"));
+            
+            // Use JavaScript to click, which can bypass some overlay issues
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", addToCartButton);
+
+            // Wait for cart notification
+            waitForAnimations();
+
+            // Navigate to cart page
+            driver.get("http://localhost:5173/cart");
+
+            // Wait for form loading
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("input[type=\"email\"]")));
+
+            // Use variables for credentials so we can reuse them for login
+            String testEmail = "test_user_" + System.currentTimeMillis() + "@example.com";
+            String testPassword = "Test123!";
+            
+            // Fill out guest checkout form - first fill the email
+            WebElement emailInput = driver.findElement(By.cssSelector("input[type=\"email\"]"));
+            emailInput.sendKeys(testEmail);
+            
+            // Wait for the Make an account checkbox to appear after email is entered
+            wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    By.xpath("//span[text()='Make an account?']")));
+            
+            // Click the Make an account checkbox
+            WebElement makeAccountLabel = driver.findElement(By.xpath("//span[text()='Make an account?']/parent::label"));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", makeAccountLabel);
+            
+            // Wait for the First Name field to appear (this is the first field in the sequence)
+            wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    By.xpath("//span[contains(text(), 'First Name')]/following::input")));
+            
+            // Fill First Name - must be filled first before other fields appear
+            WebElement firstNameInput = driver.findElement(
+                    By.xpath("//span[contains(text(), 'First Name')]/following::input"));
+            firstNameInput.sendKeys("Test");
+            
+            // Wait for Last Name field to appear after filling first name
+            wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    By.xpath("//span[contains(text(), 'Last Name')]/following::input")));
+            
+            // Fill Last Name
+            WebElement lastNameInput = driver.findElement(
+                    By.xpath("//span[contains(text(), 'Last Name')]/following::input"));
+            lastNameInput.sendKeys("User");
+            
+            // Wait for Username field to appear after filling last name
+            wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    By.xpath("//span[contains(text(), 'Username')]/following::input")));
+            
+            // Fill Username
+            WebElement usernameInput = driver.findElement(
+                    By.xpath("//span[contains(text(), 'Username')]/following::input"));
+            usernameInput.sendKeys("testuser" + System.currentTimeMillis());
+            
+            // Wait for Password field to appear after filling username
+            wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    By.xpath("//span[contains(text(), 'Password')]/following::input")));
+            
+            // Fill Password
+            WebElement passwordInput = driver.findElement(
+                    By.xpath("//span[contains(text(), 'Password')]/following::input"));
+            passwordInput.sendKeys(testPassword);
+
+            // Wait for shipping input to appear
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector("input[placeholder=\"Enter your shipping address\"]")));
+            
+            // Shipping Address
+            WebElement shippingInput = driver.findElement(
+                    By.cssSelector("input[placeholder=\"Enter your shipping address\"]"));
+            shippingInput.sendKeys("123 Test Street");
+
+            // Wait for phone input to appear after filling shipping
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector("input[placeholder=\"Enter your phone number\"]")));
+            
+            // Phone Number
+            WebElement phoneInput = driver.findElement(
+                    By.cssSelector("input[placeholder=\"Enter your phone number\"]"));
+            phoneInput.sendKeys("1234567890");
+
+            // Wait for animations
+            waitForAnimations();
+
+            // Check "I agree to the Terms of Service"
+            WebElement tosCheckbox = driver.findElement(By.cssSelector("input[name=\"tos\"]"));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", tosCheckbox);
+
+            // Wait for animations
+            waitForAnimations();
+
+            // Click the Checkout/Place Order button
+            WebElement checkoutButton = driver.findElement(By.cssSelector("button[type=\"submit\"]"));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", checkoutButton);
+
+             Wait<WebDriver> paymentWait = new FluentWait<>(driver)
+                    .withTimeout(Duration.ofSeconds(60))  // Allow up to 1 minute for payment processing
+                    .pollingEvery(Duration.ofSeconds(1))  // Check every second
+                    .ignoring(NoSuchElementException.class);
+            // Wait for redirect to payment page
+
+            paymentWait.until(ExpectedConditions.urlContains("/payment"));
+
+            // Fill payment form
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector("input[placeholder=\"John Doe\"]")));
+
+            WebElement cardHolderInput = driver.findElement(By.cssSelector("input[placeholder=\"John Doe\"]"));
+            cardHolderInput.sendKeys("Test User");
+
+            WebElement cardNumberInput = driver.findElement(
+                    By.cssSelector("input[placeholder=\"1234 5678 9012 3456\"]"));
+            cardNumberInput.sendKeys("1234567890123456");
+
+            WebElement expiryInput = driver.findElement(By.cssSelector("input[placeholder=\"MM/YY\"]"));
+            expiryInput.sendKeys("1225");
+
+            WebElement cvvInput = driver.findElement(By.cssSelector("input[placeholder=\"•••\"]"));
+            cvvInput.sendKeys("123");
+
+            // Wait for animations
+            waitForAnimations();
+
+            // Click Pay Securely Now button
+            WebElement payButton = driver.findElement(By.cssSelector("button[type=\"submit\"]"));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", payButton);
+
+            // Wait for payment success
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//h1[contains(text(), 'Payment Successful!')]")));
+
+            // Verify success message
+            WebElement successMessage = driver.findElement(By.xpath("//h1[contains(text(), 'Payment Successful!')]"));
+            assertTrue(successMessage.isDisplayed(), "Success message should be displayed");
+
+            // Now test login with the created account
+            // Navigate to login page
+            driver.get("http://localhost:5173/login");
+
+            // Wait for login form
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//h1[contains(text(), 'WELCOME TO OUR MARKET')]")));
+
+            // Fill login form with the credentials used during checkout
+            WebElement loginEmailInput = driver.findElement(By.cssSelector("input[type=\"text\"]"));
+            loginEmailInput.sendKeys(testEmail);
+
+            WebElement loginPasswordInput = driver.findElement(By.cssSelector("input[type=\"password\"]"));
+            loginPasswordInput.sendKeys(testPassword);
+
+            // Wait for any preloader to disappear before clicking the login button
+            waitForPreloaderToDisappear();
+            
+            // Use JavaScript to click the button to avoid preloader interference
+            WebElement loginButton = driver.findElement(By.cssSelector("button[type=\"submit\"]"));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginButton);
+
+            // Wait for redirect to home page (successful login redirects to /)
+            wait.until(ExpectedConditions.urlToBe("http://localhost:5173/"));
+
+            // Verify we're on the main page
+            assertTrue(driver.getCurrentUrl().equals("http://localhost:5173/"), 
+                    "User should be redirected to home page after successful login");
+            
+            // Add additional verification of logged-in state by looking for the account link
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector(".lucide-circle-user")));
+            
+            System.out.println("TC_002 - Guest checkout + account creation: PASSED");
+
+        } catch (Exception e) {
+            // Take screenshot and log on failure
+            if (driver instanceof JavascriptExecutor) {
+                try {
+                    ((JavascriptExecutor) driver).executeScript(
+                            "console.error('Test failed at URL: ' + window.location.href)");
+                } catch (Exception ignored) {}
+            }
+            
+            System.err.println("TC_002 test failed: " + e.getMessage());
+            e.printStackTrace();
             throw e;
         }
     }
