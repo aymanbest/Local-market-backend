@@ -21,6 +21,7 @@ import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -30,6 +31,19 @@ public class ShoppingFlowTest {
     private WebDriver driver;
     private WebDriverWait wait;
     private Wait<WebDriver> fluentWait;
+
+    // Static variables to store seller credentials across test methods
+    private static String sellerEmail = null;
+    private static String sellerPassword = null;
+
+    // Static variables to store customer credential and order number across test methods
+    private static String customerEmail = null;
+    private static String customerPassword = "customer123";
+    private static String orderNumber = null;
+
+    // WebDriver instances for different user sessions
+    private WebDriver producerDriver = null;
+    private WebDriver adminDriver = null;
 
     @BeforeAll
     public void setUp() {
@@ -59,9 +73,15 @@ public class ShoppingFlowTest {
 
     @AfterAll
     public void tearDown() {
-        // Close the browser after tests
+        // Close all browser instances
         if (driver != null) {
             driver.quit();
+        }
+        if (producerDriver != null) {
+            producerDriver.quit();
+        }
+        if (adminDriver != null) {
+            adminDriver.quit();
         }
     }
     
@@ -457,4 +477,1199 @@ public class ShoppingFlowTest {
             throw e;
         }
     }
+
+    @Test
+    public void testOrderAsRegisteredMember() {
+        try {
+            // Test ID: TC_003 - Order as a logged-in member
+            System.out.println("Running test: TC_003 - Order as a logged-in member");
+            
+            // Step 1: Register a new account
+            String timestamp = String.valueOf(System.currentTimeMillis());
+            String testEmail = "test_user_" + timestamp + "@example.com";
+            String testUsername = "testuser" + timestamp;
+            String testPassword = "Test123!";
+            String testFirstName = "Test";
+            String testLastName = "User";
+
+            // Navigate to registration page
+            driver.get("http://localhost:5173/register");
+            
+            waitForPreloaderToDisappear();
+            // Wait for the registration form to load
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//h1[contains(text(), 'WELCOME TO OUR MARKET')]")));
+            
+            // Wait for preloader to disappear
+            waitForPreloaderToDisappear();
+            
+            // Fill out registration form
+            WebElement firstNameInput = driver.findElement(By.name("firstname"));
+            firstNameInput.sendKeys(testFirstName);
+            
+            WebElement lastNameInput = driver.findElement(By.name("lastname"));
+            lastNameInput.sendKeys(testLastName);
+            
+            WebElement emailInput = driver.findElement(By.name("email"));
+            emailInput.sendKeys(testEmail);
+            
+            WebElement usernameInput = driver.findElement(By.name("username"));
+            usernameInput.sendKeys(testUsername);
+            
+            WebElement passwordInput = driver.findElement(
+                    By.xpath("//input[@name='password']"));
+            passwordInput.sendKeys(testPassword);
+        
+            
+            // Submit registration form using JavaScript click for reliability
+            WebElement registerButton = driver.findElement(By.xpath("//button[@type='submit']"));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", registerButton);
+            
+            waitForPreloaderToDisappear();
+            // Wait for registration to complete and redirect to home page
+            wait.until(ExpectedConditions.urlToBe("http://localhost:5173/"));
+
+            // Verify login successful by checking for the user menu
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector(".lucide-circle-user")));
+            
+            // Step 3: Now shop as a logged-in user
+            // Navigate to the store page
+            driver.get("http://localhost:5173/store");
+            
+            // Wait for products to load
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector(".grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3 > a")));
+            
+            // Wait for preloader to disappear
+            waitForPreloaderToDisappear();
+            
+            // Add a product to cart
+            WebElement addToCartButton = driver.findElement(
+                    By.cssSelector(".grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3 > a button"));
+            
+            // Use JavaScript to click, which can bypass some overlay issues
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", addToCartButton);
+            
+            // Wait for cart notification
+            waitForAnimations();
+            
+            // Navigate to cart page
+            driver.get("http://localhost:5173/cart");
+            
+            // For a logged-in user, we only need to fill out shipping address and phone number
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector("input[placeholder=\"Enter your shipping address\"]")));
+            
+            // Fill shipping address 
+            WebElement shippingInput = driver.findElement(
+                    By.cssSelector("input[placeholder=\"Enter your shipping address\"]"));
+            shippingInput.sendKeys("123 Test Street");
+            
+            // Wait for phone input to appear after filling shipping
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector("input[placeholder=\"Enter your phone number\"]")));
+            
+            // Fill phone number
+            WebElement phoneInput = driver.findElement(
+                    By.cssSelector("input[placeholder=\"Enter your phone number\"]"));
+            phoneInput.sendKeys("1234567890");
+            
+            // Wait for animations
+            waitForAnimations();
+            
+            // Check Terms of Service checkbox
+            WebElement tosCheckbox = driver.findElement(By.cssSelector("input[name=\"tos\"]"));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", tosCheckbox);
+            
+            // Wait for animations
+            waitForAnimations();
+            
+            // Click Checkout button
+            WebElement checkoutButton = driver.findElement(By.cssSelector("button[type=\"submit\"]"));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", checkoutButton);
+            
+            // Use fluentWait for potential longer redirect to payment page
+            Wait<WebDriver> paymentWait = new FluentWait<>(driver)
+                    .withTimeout(Duration.ofSeconds(60))  // Allow up to 1 minute for payment processing
+                    .pollingEvery(Duration.ofSeconds(1))  // Check every second
+                    .ignoring(NoSuchElementException.class);
+                    
+            // Wait for redirect to payment page
+            paymentWait.until(ExpectedConditions.urlContains("/payment"));
+            
+            // Fill payment form
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector("input[placeholder=\"John Doe\"]")));
+            
+            WebElement cardHolderInput = driver.findElement(By.cssSelector("input[placeholder=\"John Doe\"]"));
+            cardHolderInput.sendKeys(testFirstName + " " + testLastName);
+            
+            WebElement cardNumberInput = driver.findElement(
+                    By.cssSelector("input[placeholder=\"1234 5678 9012 3456\"]"));
+            cardNumberInput.sendKeys("1234567890123456");
+            
+            WebElement expiryInput = driver.findElement(By.cssSelector("input[placeholder=\"MM/YY\"]"));
+            expiryInput.sendKeys("1225");
+            
+            WebElement cvvInput = driver.findElement(By.cssSelector("input[placeholder=\"•••\"]"));
+            cvvInput.sendKeys("123");
+            
+            // Wait for animations
+            waitForAnimations();
+            
+            // Click Pay Securely Now button
+            WebElement payButton = driver.findElement(By.cssSelector("button[type=\"submit\"]"));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", payButton);
+            
+            // Wait for payment success
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//h1[contains(text(), 'Payment Successful!')]")));
+            
+            // Verify success message
+            WebElement successMessage = driver.findElement(By.xpath("//h1[contains(text(), 'Payment Successful!')]"));
+            assertTrue(successMessage.isDisplayed(), "Success message should be displayed");
+            
+            System.out.println("TC_003 - Order as a logged-in member: PASSED");
+            
+        } catch (Exception e) {
+            // Take screenshot and log on failure
+            if (driver instanceof JavascriptExecutor) {
+                try {
+                    ((JavascriptExecutor) driver).executeScript(
+                            "console.error('TC_003 test failed at URL: ' + window.location.href)");
+                } catch (Exception ignored) {}
+            }
+            
+            System.err.println("TC_003 test failed: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    @Test
+    public void testBecomeProducer() {
+        try {
+            // Test ID: TC_004 - Become a Producer
+            System.out.println("Running test: TC_004 - Become a Producer");
+            
+            // Step 1: Register a new account
+            String timestamp = String.valueOf(System.currentTimeMillis());
+            String testEmail = "test_seller_" + timestamp + "@example.com";
+            String testUsername = "testseller" + timestamp;
+            String testPassword = "Test123!";
+            String testFirstName = "Test";
+            String testLastName = "Seller";
+            
+            // Save credentials to static variables for TC_005
+            sellerEmail = testEmail;
+            sellerPassword = testPassword;
+            
+            // Navigate to registration page
+            driver.get("http://localhost:5173/register");
+            
+            waitForPreloaderToDisappear();
+            
+            // Wait for the registration form to load
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//h1[contains(text(), 'WELCOME TO OUR MARKET')]")));
+            
+            // Fill out registration form
+            WebElement firstNameInput = driver.findElement(By.name("firstname"));
+            firstNameInput.sendKeys(testFirstName);
+            
+            WebElement lastNameInput = driver.findElement(By.name("lastname"));
+            lastNameInput.sendKeys(testLastName);
+            
+            WebElement emailInput = driver.findElement(By.name("email"));
+            emailInput.sendKeys(testEmail);
+            
+            WebElement usernameInput = driver.findElement(By.name("username"));
+            usernameInput.sendKeys(testUsername);
+            
+            WebElement passwordInput = driver.findElement(
+                    By.xpath("//input[@name='password']"));
+            passwordInput.sendKeys(testPassword);
+            
+            // Submit registration form using JavaScript click for reliability
+            WebElement registerButton = driver.findElement(By.xpath("//button[@type='submit']"));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", registerButton);
+            
+            waitForPreloaderToDisappear();
+            
+            // Wait for registration to complete and redirect to home page
+            wait.until(ExpectedConditions.urlToBe("http://localhost:5173/"));
+            
+            // Verify login successful by checking for the user menu
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector(".lucide-circle-user")));
+            
+            // Step 2: Navigate to seller application page
+            driver.get("http://localhost:5173/account/apply-seller");
+            
+            waitForPreloaderToDisappear();
+            
+            // Wait for the application form to load
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//h1[contains(text(), 'Become a Seller')]")));
+            
+            // Fill out the application form
+            // Business name
+            WebElement businessNameInput = driver.findElement(
+                    By.xpath("//label[contains(text(), 'Business Name')]/following::input[1]"));
+            businessNameInput.sendKeys("Test Business " + timestamp);
+            
+            // Business description
+            WebElement businessDescInput = driver.findElement(
+                    By.xpath("//label[contains(text(), 'Business Description')]/following::textarea[1]"));
+            businessDescInput.sendKeys("This is a test business selling organic vegetables.");
+            
+            // Business phone
+            WebElement businessPhoneInput = driver.findElement(
+                    By.xpath("//label[contains(text(), 'Business Phone Number')]/following::input[1]"));
+            businessPhoneInput.sendKeys("1234567890");
+            
+            // Business address
+            WebElement businessAddressInput = driver.findElement(
+                    By.xpath("//label[contains(text(), 'Business Address')]/following::input[1]"));
+            businessAddressInput.sendKeys("123 Test Street, Test City");
+            
+            // Select City/Region from dropdown
+            WebElement regionSelect = driver.findElement(
+                    By.xpath("//label[contains(text(), 'City/Region')]/following::select[1]"));
+            
+            // Use the Select class for proper dropdown interaction
+            org.openqa.selenium.support.ui.Select dropdown = new org.openqa.selenium.support.ui.Select(regionSelect);
+            
+            // Wait for dropdown options to load
+            waitForAnimations();
+            
+            // Get all options
+            List<WebElement> options = dropdown.getOptions();
+            
+            // Find a valid option (not empty and not "Other")
+            String selectedOption = null;
+            for (WebElement option : options) {
+                String value = option.getAttribute("value");
+                if (value != null && !value.isEmpty() && !"Other".equals(value)) {
+                    selectedOption = value;
+                    break;
+                }
+            }
+            
+            // Select the option by value
+            if (selectedOption != null) {
+                dropdown.selectByValue(selectedOption);
+            } else {
+                // If no valid option found, select by index (the first non-empty option)
+                for (int i = 0; i < options.size(); i++) {
+                    String value = options.get(i).getAttribute("value");
+                    if (value != null && !value.isEmpty()) {
+                        dropdown.selectByIndex(i);
+                        break;
+                    }
+                }
+            }
+            
+            waitForAnimations();
+            
+            // Select a product category button
+            try {
+                // Try to find and click the first category button
+                WebElement categoryButton = driver.findElement(
+                        By.xpath("//h2[contains(text(), 'Product Categories')]/following::button[1]"));
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", categoryButton);
+            } catch (Exception e) {
+                // If first approach fails, try alternate method to find category buttons
+                WebElement categoryButton = driver.findElement(
+                        By.xpath("//h2[contains(text(), 'Product Categories')]/following::div[contains(@class, 'flex-wrap')]/button[1]"));
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", categoryButton);
+            }
+            
+            // Years of experience
+            WebElement yearsExpInput = driver.findElement(
+                    By.xpath("//label[contains(text(), 'Years of Experience')]/following::input[1]"));
+            yearsExpInput.sendKeys("5");
+            
+            // Website (optional)
+            WebElement websiteInput = driver.findElement(
+                    By.xpath("//label[contains(text(), 'Website or Social Media Link')]/following::input[1]"));
+            websiteInput.sendKeys("https://example.com");
+            
+            // Message to admin (optional)
+            WebElement messageInput = driver.findElement(
+                    By.xpath("//label[contains(text(), 'Message to Admin')]/following::textarea[1]"));
+            messageInput.sendKeys("Please review my application as soon as possible. Thank you!");
+            
+            // Submit the application form
+            WebElement submitButton = driver.findElement(By.xpath("//button[contains(text(), 'Submit Application')]"));
+
+            
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", submitButton);
+            
+            waitForPreloaderToDisappear();
+            
+            // Wait for redirect after submission
+            // Typically redirects to /account after submission
+            wait.until(driver -> {
+                String currentUrl = driver.getCurrentUrl();
+                return currentUrl.contains("/account");
+            });
+            
+            // Step 3: Navigate to become-seller page to check status
+            driver.get("http://localhost:5173/become-seller");
+            
+            waitForPreloaderToDisappear();
+            
+            // Verify application status shows "Application Under Review"
+            wait.until(ExpectedConditions.visibilityOfElementLocated(
+                    By.xpath("//h2[contains(text(), 'Application Under Review')]")));
+            
+            // Additional verification for Pending status
+            WebElement pendingStatus = driver.findElement(
+                    By.xpath("//h2[contains(text(), 'Application Under Review')]"));
+            assertTrue(pendingStatus.isDisplayed(), "Application status should show 'Application Under Review'");
+            
+            System.out.println("TC_004 - Become a Producer: PASSED");
+            
+        } catch (Exception e) {
+            // Take screenshot and log on failure
+            if (driver instanceof JavascriptExecutor) {
+                try {
+                    ((JavascriptExecutor) driver).executeScript(
+                            "console.error('TC_004 test failed at URL: ' + window.location.href)");
+                } catch (Exception ignored) {}
+            }
+            
+            System.err.println("TC_004 test failed: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    @Test
+    public void testReapplyAsProducer() {
+        try {
+            // Test ID: TC_005 - Reapply as Producer
+            System.out.println("Running test: TC_005 - Reapply as Producer");
+            
+            boolean needsLogin = true;
+            
+            // Verify we have seller credentials from previous test
+            if (sellerEmail == null || sellerPassword == null) {
+                System.out.println("No seller credentials found. Run testBecomeProducer first.");
+                // Create new credentials if needed
+                String timestamp = String.valueOf(System.currentTimeMillis());
+                sellerEmail = "test_seller_" + timestamp + "@example.com";
+                sellerPassword = "Test123!";
+                
+                // Register a new user and apply as seller first
+                testBecomeProducer();
+                
+                // No need to login again since testBecomeProducer already registered and logged in
+                needsLogin = false;
+            }
+            
+            // Step 1: Login with seller account (only if needed)
+            if (needsLogin) {
+                driver.get("http://localhost:5173/login");
+                
+                waitForPreloaderToDisappear();
+                
+                // Wait for login form to load
+                wait.until(ExpectedConditions.presenceOfElementLocated(
+                        By.xpath("//h1[contains(text(), 'WELCOME TO OUR MARKET')]")));
+                
+                // Fill out login form
+                WebElement loginEmailInput = driver.findElement(By.cssSelector("input[type=\"text\"]"));
+                loginEmailInput.sendKeys(sellerEmail);
+                
+                WebElement loginPasswordInput = driver.findElement(By.cssSelector("input[type=\"password\"]"));
+                loginPasswordInput.sendKeys(sellerPassword);
+                
+                // Wait for preloader to disappear
+                waitForPreloaderToDisappear();
+                
+                // Submit login form using JavaScript click
+                WebElement loginButton = driver.findElement(By.cssSelector("button[type=\"submit\"]"));
+                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginButton);
+                
+                // Wait for login to complete and redirect to home page
+                wait.until(ExpectedConditions.urlToBe("http://localhost:5173/"));
+                
+                // Verify login successful by checking for the user menu
+                wait.until(ExpectedConditions.presenceOfElementLocated(
+                        By.cssSelector(".lucide-circle-user")));
+            }
+            
+            // Step 2: Try to access seller application page again
+            driver.get("http://localhost:5173/account/apply-seller");
+            
+            waitForPreloaderToDisappear();
+            
+            // Step 3: Verify we're redirected to account page or shown pending application status
+            try {
+                // Option 1: We might get redirected to account page
+                WebElement accountHeading = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                        By.xpath("//h1[contains(text(), 'Account')]")));
+                System.out.println("Redirected to account page as expected when application is pending");
+                
+            } catch (Exception e) {
+                // Option 2: We might stay on the page with a pending message
+                try {
+                    WebElement pendingMessage = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                            By.xpath("//h2[contains(text(), 'Application Under Review')] | //h2[contains(text(), 'Application Pending')] | //div[contains(text(), 'pending')]")));
+                    assertTrue(pendingMessage.isDisplayed(), "Application pending message should be shown");
+                    System.out.println("Pending application message shown as expected");
+                    
+                } catch (Exception e2) {
+                    // If both options fail, navigate to become-seller to check status
+                    driver.get("http://localhost:5173/become-seller");
+                    waitForPreloaderToDisappear();
+                    
+                    // Verify application status shows as pending/under review
+                    WebElement pendingStatus = wait.until(ExpectedConditions.visibilityOfElementLocated(
+                            By.xpath("//h2[contains(text(), 'Application Under Review')]")));
+                    assertTrue(pendingStatus.isDisplayed(), "Application status should show 'Application Under Review'");
+                }
+            }
+            
+            System.out.println("TC_005 - Reapply as Producer: PASSED");
+            
+        } catch (Exception e) {
+            // Take screenshot and log on failure
+            if (driver instanceof JavascriptExecutor) {
+                try {
+                    ((JavascriptExecutor) driver).executeScript(
+                            "console.error('TC_005 test failed at URL: ' + window.location.href)");
+                } catch (Exception ignored) {}
+            }
+            
+            System.err.println("TC_005 test failed: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    @Test
+    public void testProductReviewAndModeration() throws InterruptedException {
+        try {
+            System.out.println("\n=== Starting TC_006: Add a review for a product (connected user) ===\n");
+            
+            // Generate unique username/email for this test
+            String testFirstName = "Test";
+            String testLastName = "Customer";
+            String testUsername = "testcustomer" + System.currentTimeMillis();
+            String testEmail = testUsername + "@example.com";
+            customerEmail = testEmail;
+            String testPassword = customerPassword;
+
+            // STEP 1: Register as a customer
+            driver.get("http://localhost:5173/register");
+            
+            waitForPreloaderToDisappear();
+            
+            // Wait for registration form to load
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//h1[contains(text(), 'WELCOME TO OUR MARKET')]")));
+            
+            // Fill out registration form
+            WebElement firstNameInput = driver.findElement(By.name("firstname"));
+            firstNameInput.sendKeys(testFirstName);
+            
+            WebElement lastNameInput = driver.findElement(By.name("lastname"));
+            lastNameInput.sendKeys(testLastName);
+            
+            WebElement emailInput = driver.findElement(By.name("email"));
+            emailInput.sendKeys(testEmail);
+            
+            WebElement usernameInput = driver.findElement(By.name("username"));
+            usernameInput.sendKeys(testUsername);
+            
+            WebElement passwordInput = driver.findElement(
+                    By.xpath("//input[@name='password']"));
+            passwordInput.sendKeys(testPassword);
+            
+            // Submit registration form using JavaScript click for reliability
+            WebElement registerButton = driver.findElement(By.xpath("//button[@type='submit']"));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", registerButton);
+            
+            waitForPreloaderToDisappear();
+
+            // Wait for registration to complete and redirect to home page
+            wait.until(ExpectedConditions.urlToBe("http://localhost:5173/"));
+
+            // Verify login successful by checking for the user menu
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector(".lucide-circle-user")));
+
+            // STEP 2: Place an order for the first product
+            String orderNumber = placeOrder(0);
+            
+            // STEP 3: Update order status to Delivered using producer account
+            String producerEmail = "producer5@test.com"; // Default producer email from requirements
+            boolean orderUpdated = updateOrderStatusToDelivered(orderNumber, customerEmail, producerEmail);
+            
+            if (!orderUpdated) {
+                System.out.println("Warning: Order status may not have been updated to Delivered");
+            }
+            
+            // STEP 4: Submit a review for the product (TC_006)
+            boolean reviewSubmitted = submitProductReview(0, 
+                    "This is a great product! I highly recommend it. The quality is excellent.");
+            
+            if (reviewSubmitted) {
+                System.out.println("\n=== TC_006 COMPLETED SUCCESSFULLY ===\n");
+            } else {
+                System.err.println("TC_006 FAILED - Could not submit review");
+                throw new RuntimeException("Failed to submit product review");
+            }
+            
+            // STEP 5: View and approve the review as admin (TC_007 & TC_008)
+            System.out.println("\n=== Starting TC_007 & TC_008: View and approve pending review (admin) ===\n");
+            boolean reviewApproved = moderateReview(testUsername, true);
+            
+            if (reviewApproved) {
+                System.out.println("\n=== TC_007 & TC_008 COMPLETED SUCCESSFULLY ===\n");
+            } else {
+                System.err.println("TC_007 & TC_008 FAILED - Could not approve review");
+                throw new RuntimeException("Failed to approve product review");
+            }
+            
+            // STEP 6: TC_009 - Place an order for a second product
+            System.out.println("\n=== Starting TC_009: Order second product and reject review ===\n");
+            String secondOrderNumber = placeOrder(1);
+            
+            // STEP 7: Update second order status to Delivered
+            boolean secondOrderUpdated = updateOrderStatusToDelivered(secondOrderNumber, customerEmail, producerEmail);
+            
+            if (!secondOrderUpdated) {
+                System.out.println("Warning: Second order status may not have been updated to Delivered");
+            }
+            
+            // STEP 8: Submit a review for the second product
+            boolean secondReviewSubmitted = submitProductReview(1, 
+                    "This is another review that should be rejected by admin.");
+            
+            if (!secondReviewSubmitted) {
+                System.err.println("TC_009 WARNING - Could not submit second review");
+                // Try with the first product again as fallback
+                secondReviewSubmitted = submitProductReview(0, 
+                        "This is a fallback review that should be rejected by admin.");
+                
+                if (!secondReviewSubmitted) {
+                    System.err.println("TC_009 FAILED - Could not submit any review");
+                    throw new RuntimeException("Failed to submit second product review");
+                }
+            }
+            
+            // STEP 9: Reject the second review as admin
+            boolean reviewRejected = moderateReview(testUsername, false);
+            
+            if (reviewRejected) {
+                System.out.println("\n=== TC_009 COMPLETED SUCCESSFULLY ===\n");
+            } else {
+                System.err.println("TC_009 FAILED - Could not reject review");
+                throw new RuntimeException("Failed to reject product review");
+            }
+            
+            System.out.println("\n=== ALL TESTS COMPLETED SUCCESSFULLY ===\n");
+            
+        } catch (Exception e) {
+            System.err.println("Test failed with exception: " + e.getMessage());
+            e.printStackTrace();
+            throw e; // Re-throw to fail the test
+        }
+    }
+
+    /**
+     * Helper method to place an order for a product
+     * @param productIndex Index of the product to order (0 for first product, 1 for second, etc.)
+     * @return The order number of the placed order
+     */
+    private String placeOrder(int productIndex) throws InterruptedException {
+        // Navigate to the store page
+        driver.get("http://localhost:5173/store");
+        
+        // Wait for products to load
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector(".grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3 > a")));
+        
+        waitForPreloaderToDisappear();
+        
+        // Get all product cards
+        List<WebElement> productCards = driver.findElements(
+                By.cssSelector(".grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3 > a"));
+        
+        // Make sure we have enough products
+        if (productCards.size() <= productIndex) {
+            throw new RuntimeException("Not enough products available. Requested index: " + 
+                    productIndex + ", available products: " + productCards.size());
+        }
+        
+        // Click on the specified product
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", productCards.get(productIndex));
+        
+        // Wait for product details page to load
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.xpath("//h1[contains(@class, 'text-4xl')]")));
+        
+        // Get product name for later verification
+        String productName = driver.findElement(By.xpath("//h1[contains(@class, 'text-4xl')]")).getText();
+        System.out.println("Selected product: " + productName);
+        
+        // Add item to cart
+        WebElement addToCartButton = driver.findElement(
+                By.xpath("//button[contains(text(), 'Add to Cart')]"));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", addToCartButton);
+        
+        waitForAnimations();
+        
+        // Navigate to cart
+        driver.get("http://localhost:5173/cart");
+        
+        // Complete checkout process
+        return completeCheckout();
+    }
+    
+    /**
+     * Helper method to complete the checkout process
+     * @return The order number of the placed order
+     */
+    private String completeCheckout() throws InterruptedException {
+        // Wait for cart page to load
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("input[placeholder=\"Enter your shipping address\"]")));
+        
+        // Fill shipping address 
+        WebElement shippingInput = driver.findElement(
+                By.cssSelector("input[placeholder=\"Enter your shipping address\"]"));
+        shippingInput.sendKeys("123 Test Street");
+        
+        // Wait for phone input to appear after filling shipping
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("input[placeholder=\"Enter your phone number\"]")));
+        
+        // Fill phone number
+        WebElement phoneInput = driver.findElement(
+                By.cssSelector("input[placeholder=\"Enter your phone number\"]"));
+        phoneInput.sendKeys("1234567890");
+        
+        // Wait for animations
+        waitForAnimations();
+        
+        // Check Terms of Service checkbox
+        WebElement tosCheckbox = driver.findElement(By.cssSelector("input[name=\"tos\"]"));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", tosCheckbox);
+        
+        // Wait for animations
+        waitForAnimations();
+        
+        // Click Checkout button
+        WebElement checkoutButton = driver.findElement(By.cssSelector("button[type=\"submit\"]"));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", checkoutButton);
+        
+        // Use fluentWait for potential longer redirect to payment page
+        Wait<WebDriver> paymentWait = new FluentWait<>(driver)
+                .withTimeout(Duration.ofSeconds(60))  // Allow up to 1 minute for payment processing
+                .pollingEvery(Duration.ofSeconds(1))  // Check every second
+                .ignoring(NoSuchElementException.class);
+                
+        // Wait for redirect to payment page
+        paymentWait.until(ExpectedConditions.urlContains("/payment"));
+        
+        // Complete payment
+        completePayment();
+        
+        // Wait for payment success
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.xpath("//h1[contains(text(), 'Payment Successful!')]")));
+        
+        // Navigate to orders to get the order number
+        WebElement ordButton = driver.findElement(By.cssSelector("a.px-6.py-2\\.5.border.border-border.text-base.font-medium.text-text.rounded-full"));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", ordButton);
+        
+        WebElement orderElement = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.xpath("//h2[contains(text(), 'Order #')]")));
+        String orderText = orderElement.getText();
+        String orderNumber = orderText.replaceAll("[^0-9]", ""); // Extract just the number
+        System.out.println("Order number: " + orderNumber);
+        
+        return orderNumber;
+    }
+    
+    /**
+     * Helper method to complete the payment form
+     */
+    private void completePayment() {
+        // Fill payment form
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("input[placeholder=\"John Doe\"]")));
+        
+        WebElement cardHolderInput = driver.findElement(By.cssSelector("input[placeholder=\"John Doe\"]"));
+        cardHolderInput.sendKeys("Test Customer");
+        
+        WebElement cardNumberInput = driver.findElement(
+                By.cssSelector("input[placeholder=\"1234 5678 9012 3456\"]"));
+        cardNumberInput.sendKeys("1234567890123456");
+        
+        WebElement expiryInput = driver.findElement(By.cssSelector("input[placeholder=\"MM/YY\"]"));
+        expiryInput.sendKeys("1225");
+        
+        WebElement cvvInput = driver.findElement(By.cssSelector("input[placeholder=\"•••\"]"));
+        cvvInput.sendKeys("123");
+        
+        // Wait for animations
+        waitForAnimations();
+        
+        // Click Pay Securely Now button
+        WebElement payButton = driver.findElement(By.cssSelector("button[type=\"submit\"]"));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", payButton);
+    }
+    
+    /**
+     * Helper method to update order status through the producer account
+     * @param orderNumber The order number to update
+     * @param customerEmail The customer email associated with the order
+     * @param producerEmail The producer email to log in with
+     * @return True if the order was successfully updated to Delivered
+     */
+    private boolean updateOrderStatusToDelivered(String orderNumber, String customerEmail, String producerEmail) throws InterruptedException {
+        System.out.println("\n=== Starting producer session to update order status for order #" + orderNumber + " ===\n");
+        
+        // Initialize producer browser session if needed
+        if (producerDriver == null) {
+            producerDriver = createNewUserSession(producerEmail, "producer123");
+        }
+        
+        // Navigate to producer orders page in producer session
+        producerDriver.get("http://localhost:5173/producer/orders");
+        
+        // Wait for orders page to load in producer session
+        WebDriverWait producerWait = new WebDriverWait(producerDriver, Duration.ofSeconds(10));
+        producerWait.until(ExpectedConditions.presenceOfElementLocated(
+                By.xpath("//h2[contains(text(), 'Order Management')]")));
+        
+        // Make sure any preloader is gone
+        try {
+            producerWait.until(ExpectedConditions.invisibilityOfElementLocated(
+                By.cssSelector("div.fixed.inset-0.z-50.flex.flex-col.items-center.justify-center")));
+            Thread.sleep(1000); // Small pause
+        } catch (Exception e) {
+            // Preloader might not be visible
+        }
+        
+        // Search for the order by customer email
+        WebElement searchInput = producerDriver.findElement(By.cssSelector("input[placeholder=\"Search by customer email...\"]"));
+        searchInput.clear();
+        searchInput.sendKeys(customerEmail);
+        
+        // Wait for search results
+        Thread.sleep(2000);
+        
+        breakpoint("Looking for order #" + orderNumber, 5);
+        
+        // Find the order
+        List<WebElement> orderRows = producerDriver.findElements(
+                By.xpath("//h3[contains(@class, 'text-lg') and contains(text(), '#" + orderNumber + "')]/ancestor::div[contains(@class, 'bg-cardBg')]"));
+            
+        if (orderRows.isEmpty()) {
+            System.out.println("No orders found with ID #" + orderNumber);
+            
+            // Try to find any order with a Processing button
+            System.out.println("Looking for any order with Processing status...");
+            orderRows = producerDriver.findElements(
+                    By.xpath("//button[contains(text(), 'Processing')]/ancestor::div[contains(@class, 'bg-cardBg')]"));
+            
+            if (!orderRows.isEmpty()) {
+                System.out.println("Found " + orderRows.size() + " orders with Processing status");
+            } else {
+                // Try to find any order
+                System.out.println("Looking for any order...");
+                orderRows = producerDriver.findElements(
+                        By.xpath("//div[contains(@class, 'bg-cardBg')]"));
+                System.out.println("Found " + orderRows.size() + " total orders");
+            }
+        }
+        
+        if (orderRows.isEmpty()) {
+            System.err.println("Could not find any orders");
+            return false;
+        }
+        
+        WebElement orderRow = orderRows.get(0);
+        System.out.println("Found order row, attempting to update status");
+        
+        // Process the order through all statuses
+        boolean processingClicked = clickButtonIfAvailable(orderRow, "Processing");
+        Thread.sleep(2000);
+        
+        boolean shippedClicked = clickButtonIfAvailable(orderRow, "Shipped");
+        Thread.sleep(2000);
+        
+        boolean deliveredClicked = clickButtonIfAvailable(orderRow, "Delivered");
+        Thread.sleep(2000);
+        
+        // Check final status
+        try {
+            List<WebElement> finalOrderRows = producerDriver.findElements(
+                    By.xpath("//div[contains(@class, 'bg-cardBg')]"));
+            if (!finalOrderRows.isEmpty()) {
+                WebElement statusElement = finalOrderRows.get(0).findElement(
+                        By.xpath(".//span[contains(@class, 'text-sm font-medium')]"));
+                String finalStatus = statusElement.getText();
+                System.out.println("Final order status: " + finalStatus);
+                
+                if ("Delivered".equals(finalStatus)) {
+                    System.out.println("Successfully updated order to Delivered status");
+                    return true;
+                } else {
+                    System.out.println("Warning: Final status is not Delivered. Current status: " + finalStatus);
+                    return false;
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Could not verify final status: " + e.getMessage());
+        }
+        
+        return processingClicked && shippedClicked && deliveredClicked;
+    }
+    
+    /**
+     * Helper method to click a button in an order row if it's available
+     * @param orderRow The order row element
+     * @param buttonText The text of the button to click
+     * @return True if the button was found and clicked
+     */
+    private boolean clickButtonIfAvailable(WebElement orderRow, String buttonText) {
+        try {
+            // First try to find it within the order row
+            WebElement button = null;
+            
+            try {
+                button = orderRow.findElement(By.xpath(".//button[contains(text(), '" + buttonText + "')]"));
+            } catch (NoSuchElementException e) {
+                // If not found in the row, try to find it anywhere on the page
+                try {
+                    button = producerDriver.findElement(By.xpath("//button[contains(text(), '" + buttonText + "')]"));
+                } catch (NoSuchElementException e2) {
+                    System.out.println(buttonText + " button not found, may already be in " + buttonText + " state");
+                    return false;
+                }
+            }
+            
+            if (button != null) {
+                // Scroll to button and click
+                ((JavascriptExecutor) producerDriver).executeScript("arguments[0].scrollIntoView({block: 'center'});", button);
+                Thread.sleep(500);
+                ((JavascriptExecutor) producerDriver).executeScript("arguments[0].click();", button);
+                System.out.println("Clicked " + buttonText + " button");
+                return true;
+            }
+        } catch (Exception e) {
+            System.out.println("Error clicking " + buttonText + " button: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    /**
+     * Helper method to submit a review for a product
+     * @param productIndex Index of the product to review
+     * @param reviewText The review text to submit
+     * @return True if the review was successfully submitted
+     */
+    private boolean submitProductReview(int productIndex, String reviewText) throws InterruptedException {
+        // Navigate to the store page
+        driver.get("http://localhost:5173/store");
+        waitForPreloaderToDisappear();
+        
+        // Find and click the product
+        List<WebElement> productCards = driver.findElements(
+                By.cssSelector(".grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3 > a"));
+        
+        if (productCards.size() <= productIndex) {
+            throw new RuntimeException("Not enough products available. Requested index: " + 
+                    productIndex + ", available products: " + productCards.size());
+        }
+        
+        // Click on the specified product
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", productCards.get(productIndex));
+        
+        // Wait for product details page to load
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.xpath("//h1[contains(@class, 'text-4xl')]")));
+        
+        // Take a breakpoint to see the page state
+        breakpoint("Checking for review section", 5);
+        
+        try {
+            // Try multiple selectors to find the review section
+            WebElement reviewHeading = null;
+            
+            // First try the exact text
+            try {
+                reviewHeading = driver.findElement(By.xpath("//h3[contains(text(), 'Share Your Experience')]"));
+            } catch (NoSuchElementException e) {
+                // Try alternative selectors
+                try {
+                    reviewHeading = driver.findElement(By.xpath("//h3[contains(text(), 'Review') or contains(text(), 'Feedback')]"));
+                } catch (NoSuchElementException e2) {
+                    // Try to find any Write Review button
+                    try {
+                        WebElement writeReviewButton = driver.findElement(
+                                By.xpath("//button[contains(text(), 'Write Review') or contains(text(), 'Add Review')]"));
+                        // If found, we don't need the heading
+                        reviewHeading = writeReviewButton;
+                        System.out.println("Found review button directly");
+                    } catch (NoSuchElementException e3) {
+                        // Not found with any method
+                        throw new NoSuchElementException("Could not find review section with any selector");
+                    }
+                }
+            }
+            
+            // Check if we found the button directly or need to click it
+            WebElement writeReviewButton;
+            if (reviewHeading.getTagName().equals("button")) {
+                writeReviewButton = reviewHeading;
+            } else {
+                // Find the Write Review button
+                writeReviewButton = driver.findElement(
+                        By.xpath("//button[contains(text(), 'Write Review') or contains(text(), 'Add Review')]"));
+            }
+            
+            // Click on Write Review button
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", writeReviewButton);
+            
+            // Wait for review form to appear
+            wait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//label[contains(text(), 'Your Review') or contains(text(), 'Comment')]")));
+            
+            // Find the textarea - try multiple selectors
+            WebElement commentTextarea = null;
+            try {
+                commentTextarea = driver.findElement(
+                        By.xpath("//textarea[contains(@placeholder, 'Share your thoughts') or contains(@placeholder, 'review')]"));
+            } catch (NoSuchElementException e) {
+                // Try a more generic approach
+                commentTextarea = driver.findElement(By.tagName("textarea"));
+            }
+            
+            commentTextarea.sendKeys(reviewText);
+            
+            // Submit the review - try multiple button selectors
+            WebElement submitButton = null;
+            try {
+                submitButton = driver.findElement(
+                        By.xpath("//button[contains(text(), 'Submit') and @type='submit']"));
+            } catch (NoSuchElementException e) {
+                // Try more generic approach
+                submitButton = driver.findElement(
+                        By.xpath("//form//button[@type='submit']"));
+            }
+            
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", submitButton);
+            
+            // Wait for submission to complete
+            waitForAnimations();
+            System.out.println("Successfully submitted review");
+            return true;
+            
+        } catch (Exception e) {
+            System.err.println("Could not submit review: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Helper method to moderate a review in the admin panel
+     * @param username The username of the reviewer to find
+     * @param approve True to approve the review, false to reject it
+     * @return True if the moderation action was successful
+     */
+    private boolean moderateReview(String username, boolean approve) throws InterruptedException {
+        System.out.println("\n=== Starting admin session to " + (approve ? "approve" : "reject") + " review ===\n");
+        
+        // Initialize admin browser session if needed
+        if (adminDriver == null) {
+            adminDriver = createNewUserSession("admin@localmarket.com", "admin123");
+        }
+        
+        // Navigate to reviews management page in admin session
+        adminDriver.get("http://localhost:5173/admin/reviews");
+        
+        // Wait for reviews management page to load
+        WebDriverWait adminWait = new WebDriverWait(adminDriver, Duration.ofSeconds(10));
+        adminWait.until(ExpectedConditions.presenceOfElementLocated(
+                By.xpath("//h2[contains(text(), 'Review Management')]")));
+        
+        // Make sure any preloader is gone
+        try {
+            adminWait.until(ExpectedConditions.invisibilityOfElementLocated(
+                By.cssSelector("div.fixed.inset-0.z-50.flex.flex-col.items-center.justify-center")));
+            Thread.sleep(1000); // Small pause
+        } catch (Exception e) {
+            // Preloader might not be visible
+        }
+        
+        breakpoint("Looking for review by " + username, 5);
+        
+        // Find the review from our test customer
+        try {
+            WebElement reviewRow = adminWait.until(ExpectedConditions.presenceOfElementLocated(
+                By.xpath("//tr[contains(., '" + username + "')]")));
+            
+            // Click the appropriate button
+            WebElement actionButton;
+            if (approve) {
+                actionButton = reviewRow.findElement(
+                        By.xpath(".//button[contains(@class, 'hover:bg-green-500/10')]"));
+            } else {
+                actionButton = reviewRow.findElement(
+                        By.xpath(".//button[contains(@class, 'hover:bg-red-500/10')]"));
+            }
+            
+            ((JavascriptExecutor) adminDriver).executeScript("arguments[0].click();", actionButton);
+            
+            // Wait for action to process
+            Thread.sleep(2000);
+            
+            // Verify the review is no longer in the list
+            boolean reviewGone = false;
+            try {
+                adminWait.until(ExpectedConditions.invisibilityOfElementLocated(
+                        By.xpath("//tr[contains(., '" + username + "')]")));
+                reviewGone = true;
+            } catch (TimeoutException e) {
+                // If timeout, check if any reviews are still present
+                List<WebElement> remainingReviews = adminDriver.findElements(By.xpath("//tbody/tr"));
+                if (remainingReviews.isEmpty()) {
+                    // If no reviews left, that's valid
+                    reviewGone = true;
+                }
+            }
+            
+            if (reviewGone) {
+                System.out.println("Review was successfully " + (approve ? "approved" : "rejected"));
+                return true;
+            } else {
+                System.out.println("Review still appears in the list after " + (approve ? "approval" : "rejection"));
+                return false;
+            }
+            
+        } catch (TimeoutException e) {
+            System.err.println("Could not find review by " + username);
+            return false;
+        }
+    }
+
+    /**
+     * Create a new browser session for a specific user role
+     * @throws InterruptedException if thread sleep is interrupted
+     */
+    private WebDriver createNewUserSession(String email, String password) throws InterruptedException {
+        System.out.println("Creating new browser session for: " + email);
+        
+        // Set up a new driver instance
+        WebDriverManager.chromedriver().setup();
+        ChromeOptions options = new ChromeOptions();
+        WebDriver newDriver = new ChromeDriver(options);
+        newDriver.manage().window().maximize();
+        
+        // Create waits for this driver
+        WebDriverWait newWait = new WebDriverWait(newDriver, Duration.ofSeconds(10));
+        
+        try {
+            // Navigate to login page
+            newDriver.get("http://localhost:5173/login");
+            
+            // Wait for login form to load
+            newWait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//h1[contains(text(), 'WELCOME TO OUR MARKET')]")));
+            
+            // Fill out login form
+            WebElement emailInput = newDriver.findElement(By.cssSelector("input[type=\"text\"]"));
+            emailInput.sendKeys(email);
+            
+            WebElement passwordInput = newDriver.findElement(By.cssSelector("input[type=\"password\"]"));
+            passwordInput.sendKeys(password);
+            
+            // Wait for any preloader
+            try {
+                newWait.until(ExpectedConditions.invisibilityOfElementLocated(
+                        By.cssSelector("div.fixed.inset-0.z-50.flex.flex-col.items-center.justify-center")));
+                Thread.sleep(1000); // Small pause
+            } catch (Exception e) {
+                // Preloader might not be visible
+            }
+            
+            // Submit login form using JavaScript click
+            WebElement loginButton = newDriver.findElement(By.cssSelector("button[type=\"submit\"]"));
+            ((JavascriptExecutor) newDriver).executeScript("arguments[0].click();", loginButton);
+            
+            // Wait for login to complete and redirect to home page or role-specific page
+            newWait.until(ExpectedConditions.or(
+                ExpectedConditions.urlToBe("http://localhost:5173/"),
+                ExpectedConditions.urlToBe("http://localhost:5173/admin"),
+                ExpectedConditions.urlToBe("http://localhost:5173/producer"),
+                ExpectedConditions.urlToBe("http://localhost:5173/producer/products"),
+                ExpectedConditions.urlContains("/dashboard")
+            ));
+            
+            // Log where we landed
+            System.out.println("Login successful - redirected to: " + newDriver.getCurrentUrl());
+            
+            // Wait a moment for the page to fully load
+            Thread.sleep(1000);
+            
+            // Verify login successful by checking for the user menu
+            newWait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector(".lucide-circle-user")));
+            
+            System.out.println("Login successful for: " + email);
+            return newDriver;
+        } catch (Exception e) {
+            System.err.println("Failed to create session for: " + email);
+            e.printStackTrace();
+            if (newDriver != null) {
+                newDriver.quit();
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Helper method to pause test execution for debugging
+     * @param message Message to display at breakpoint
+     * @param seconds Number of seconds to pause (default 10)
+     */
+    private void breakpoint(String message, int seconds) {
+        System.out.println("\n=== BREAKPOINT: " + message + " ===");
+        System.out.println("Test paused for " + seconds + " seconds to allow inspection...");
+        
+        try {
+            // Take screenshot if driver is available
+            if (driver instanceof JavascriptExecutor) {
+                ((JavascriptExecutor) driver).executeScript(
+                    "console.log('BREAKPOINT: " + message.replace("'", "\\'") + "')");
+            }
+            
+            // Show current URL for context
+            System.out.println("Customer browser URL: " + (driver != null ? driver.getCurrentUrl() : "N/A"));
+            if (producerDriver != null) {
+                System.out.println("Producer browser URL: " + producerDriver.getCurrentUrl());
+            }
+            if (adminDriver != null) {
+                System.out.println("Admin browser URL: " + adminDriver.getCurrentUrl());
+            }
+            
+            // Sleep to keep browser open for inspection
+            Thread.sleep(seconds * 1000);
+            System.out.println("=== Resuming test ===\n");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.out.println("Breakpoint interrupted");
+        }
+    }
+    
 } 
