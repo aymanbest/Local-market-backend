@@ -22,6 +22,8 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -45,8 +47,18 @@ public class ShoppingFlowTest {
     private WebDriver producerDriver = null;
     private WebDriver adminDriver = null;
 
+    // Customer credentials for review tests
+    private static String reviewCustomerEmail = null;
+    private static String reviewCustomerUsername = null;
+    private static String reviewOrderNumber1 = null;
+    private static String reviewOrderNumber2 = null;
+
     @BeforeAll
     public void setUp() {
+        // Suppress Selenium CDP warning messages
+        Logger.getLogger("org.openqa.selenium").setLevel(Level.SEVERE);
+        System.setProperty("webdriver.chrome.silentOutput", "true");
+        
         // Set up WebDriverManager for ChromeDriver
         WebDriverManager.chromedriver().setup();
         
@@ -274,7 +286,7 @@ public class ShoppingFlowTest {
     }
 
     @Test
-    public void testGuestCheckoutWithAccountCreation() {
+    public void testTC002_GuestCheckoutWithAccountCreation() {
         try {
             // Test ID: TC_002 - Guest checkout + account creation
             System.out.println("Running test: TC_002 - Guest checkout + account creation");
@@ -479,7 +491,7 @@ public class ShoppingFlowTest {
     }
 
     @Test
-    public void testOrderAsRegisteredMember() {
+    public void testTC003_OrderAsRegisteredMember() {
         try {
             // Test ID: TC_003 - Order as a logged-in member
             System.out.println("Running test: TC_003 - Order as a logged-in member");
@@ -648,7 +660,7 @@ public class ShoppingFlowTest {
     }
 
     @Test
-    public void testBecomeProducer() {
+    public void testTC004_BecomeProducer() {
         try {
             // Test ID: TC_004 - Become a Producer
             System.out.println("Running test: TC_004 - Become a Producer");
@@ -848,7 +860,7 @@ public class ShoppingFlowTest {
     }
 
     @Test
-    public void testReapplyAsProducer() {
+    public void testTC005_ReapplyAsProducer() {
         try {
             // Test ID: TC_005 - Reapply as Producer
             System.out.println("Running test: TC_005 - Reapply as Producer");
@@ -864,7 +876,7 @@ public class ShoppingFlowTest {
                 sellerPassword = "Test123!";
                 
                 // Register a new user and apply as seller first
-                testBecomeProducer();
+                testTC004_BecomeProducer();
                 
                 // No need to login again since testBecomeProducer already registered and logged in
                 needsLogin = false;
@@ -952,7 +964,7 @@ public class ShoppingFlowTest {
     }
 
     @Test
-    public void testProductReviewAndModeration() throws InterruptedException {
+    public void testTC006_AddProductReview() throws InterruptedException {
         try {
             System.out.println("\n=== Starting TC_006: Add a review for a product (connected user) ===\n");
             
@@ -961,7 +973,8 @@ public class ShoppingFlowTest {
             String testLastName = "Customer";
             String testUsername = "testcustomer" + System.currentTimeMillis();
             String testEmail = testUsername + "@example.com";
-            customerEmail = testEmail;
+            reviewCustomerEmail = testEmail;
+            reviewCustomerUsername = testUsername;
             String testPassword = customerPassword;
 
             // STEP 1: Register as a customer
@@ -1004,17 +1017,17 @@ public class ShoppingFlowTest {
                     By.cssSelector(".lucide-circle-user")));
 
             // STEP 2: Place an order for the first product
-            String orderNumber = placeOrder(0);
+            reviewOrderNumber1 = placeOrder(0);
             
             // STEP 3: Update order status to Delivered using producer account
             String producerEmail = "producer5@test.com"; // Default producer email from requirements
-            boolean orderUpdated = updateOrderStatusToDelivered(orderNumber, customerEmail, producerEmail);
+            boolean orderUpdated = updateOrderStatusToDelivered(reviewOrderNumber1, reviewCustomerEmail, producerEmail);
             
             if (!orderUpdated) {
                 System.out.println("Warning: Order status may not have been updated to Delivered");
             }
             
-            // STEP 4: Submit a review for the product (TC_006)
+            // STEP 4: Submit a review for the product
             boolean reviewSubmitted = submitProductReview(0, 
                     "This is a great product! I highly recommend it. The quality is excellent.");
             
@@ -1025,46 +1038,144 @@ public class ShoppingFlowTest {
                 throw new RuntimeException("Failed to submit product review");
             }
             
-            // STEP 5: View and approve the review as admin (TC_007 & TC_008)
-            System.out.println("\n=== Starting TC_007 & TC_008: View and approve pending review (admin) ===\n");
-            boolean reviewApproved = moderateReview(testUsername, true);
+        } catch (Exception e) {
+            System.err.println("TC_006 test failed with exception: " + e.getMessage());
+            e.printStackTrace();
+            throw e; // Re-throw to fail the test
+        }
+    }
+
+    @Test
+    public void testTC007_ViewPendingReviews() throws InterruptedException {
+        try {
+            System.out.println("\n=== Starting TC_007: View pending reviews (admin) ===\n");
+            
+            // Skip if previous test didn't run
+            if (reviewCustomerUsername == null) {
+                System.out.println("Running TC_006 first to create a review");
+                testTC006_AddProductReview();
+            }
+            
+            // Initialize admin browser session if needed
+            if (adminDriver == null) {
+                adminDriver = createNewUserSession("admin@localmarket.com", "admin123");
+            }
+            
+            // Navigate to reviews management page in admin session
+            adminDriver.get("http://localhost:5173/admin/reviews");
+            
+            // Wait for reviews management page to load
+            WebDriverWait adminWait = new WebDriverWait(adminDriver, Duration.ofSeconds(10));
+            adminWait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//h2[contains(text(), 'Review Management')]")));
+            
+            // Make sure any preloader is gone
+            try {
+                adminWait.until(ExpectedConditions.invisibilityOfElementLocated(
+                    By.cssSelector("div.fixed.inset-0.z-50.flex.flex-col.items-center.justify-center")));
+                Thread.sleep(1000); // Small pause
+            } catch (Exception e) {
+                // Preloader might not be visible
+            }
+            
+            breakpoint("Checking for review in admin panel", 5);
+            
+            // Verify the review from our test customer is present
+            try {
+                WebElement reviewRow = adminWait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//tr[contains(., '" + reviewCustomerUsername + "')]")));
+                
+                assertTrue(reviewRow != null, "Review from test customer should be present in admin review list");
+                System.out.println("\n=== TC_007 COMPLETED SUCCESSFULLY ===\n");
+                
+            } catch (TimeoutException e) {
+                System.out.println("Could not find the review in the table. Checking if there are any reviews...");
+                // Check if "No Pending Reviews" message is shown - this shouldn't happen in a proper test flow
+                boolean noReviews = adminDriver.findElements(By.xpath("//h3[contains(text(), 'No Pending Reviews')]")).size() > 0;
+                if (noReviews) {
+                    System.out.println("No pending reviews found.");
+                }
+                System.err.println("TC_007 FAILED - Could not find review in admin panel");
+                throw e; // Rethrow to fail the test
+            }
+            
+        } catch (Exception e) {
+            System.err.println("TC_007 test failed with exception: " + e.getMessage());
+            e.printStackTrace();
+            throw e; // Re-throw to fail the test
+        }
+    }
+
+    @Test
+    public void testTC008_ApproveReview() throws InterruptedException {
+        try {
+            System.out.println("\n=== Starting TC_008: Approve a pending review (admin) ===\n");
+            
+            // Skip if previous tests didn't run
+            if (reviewCustomerUsername == null) {
+                System.out.println("Running TC_006 first to create a review");
+                testTC006_AddProductReview();
+                System.out.println("Running TC_007 to verify review is visible in admin panel");
+                testTC007_ViewPendingReviews();
+            }
+            
+            // Approve the review
+            boolean reviewApproved = moderateReview(reviewCustomerUsername, true);
             
             if (reviewApproved) {
-                System.out.println("\n=== TC_007 & TC_008 COMPLETED SUCCESSFULLY ===\n");
+                System.out.println("\n=== TC_008 COMPLETED SUCCESSFULLY ===\n");
             } else {
-                System.err.println("TC_007 & TC_008 FAILED - Could not approve review");
+                System.err.println("TC_008 FAILED - Could not approve review");
                 throw new RuntimeException("Failed to approve product review");
             }
             
-            // STEP 6: TC_009 - Place an order for a second product
-            System.out.println("\n=== Starting TC_009: Order second product and reject review ===\n");
-            String secondOrderNumber = placeOrder(1);
+        } catch (Exception e) {
+            System.err.println("TC_008 test failed with exception: " + e.getMessage());
+            e.printStackTrace();
+            throw e; // Re-throw to fail the test
+        }
+    }
+
+    @Test
+    public void testTC009_RejectReview() throws InterruptedException {
+        try {
+            System.out.println("\n=== Starting TC_009: Reject a review (admin) ===\n");
             
-            // STEP 7: Update second order status to Delivered
-            boolean secondOrderUpdated = updateOrderStatusToDelivered(secondOrderNumber, customerEmail, producerEmail);
+            // Skip if we don't have customer credentials from previous tests
+            if (reviewCustomerEmail == null || reviewCustomerUsername == null) {
+                System.out.println("Running TC_006 first to set up customer account");
+                testTC006_AddProductReview();
+            }
             
-            if (!secondOrderUpdated) {
+            // Place an order for a second product
+            reviewOrderNumber2 = placeOrder(1);
+            
+            // Update second order status to Delivered
+            String producerEmail = "producer5@test.com"; // Default producer email from requirements
+            boolean orderUpdated = updateOrderStatusToDelivered(reviewOrderNumber2, reviewCustomerEmail, producerEmail);
+            
+            if (!orderUpdated) {
                 System.out.println("Warning: Second order status may not have been updated to Delivered");
             }
             
-            // STEP 8: Submit a review for the second product
-            boolean secondReviewSubmitted = submitProductReview(1, 
+            // Submit a review for the second product
+            boolean reviewSubmitted = submitProductReview(1, 
                     "This is another review that should be rejected by admin.");
             
-            if (!secondReviewSubmitted) {
+            if (!reviewSubmitted) {
                 System.err.println("TC_009 WARNING - Could not submit second review");
                 // Try with the first product again as fallback
-                secondReviewSubmitted = submitProductReview(0, 
+                reviewSubmitted = submitProductReview(0, 
                         "This is a fallback review that should be rejected by admin.");
                 
-                if (!secondReviewSubmitted) {
+                if (!reviewSubmitted) {
                     System.err.println("TC_009 FAILED - Could not submit any review");
                     throw new RuntimeException("Failed to submit second product review");
                 }
             }
             
-            // STEP 9: Reject the second review as admin
-            boolean reviewRejected = moderateReview(testUsername, false);
+            // Reject the review
+            boolean reviewRejected = moderateReview(reviewCustomerUsername, false);
             
             if (reviewRejected) {
                 System.out.println("\n=== TC_009 COMPLETED SUCCESSFULLY ===\n");
@@ -1073,10 +1184,8 @@ public class ShoppingFlowTest {
                 throw new RuntimeException("Failed to reject product review");
             }
             
-            System.out.println("\n=== ALL TESTS COMPLETED SUCCESSFULLY ===\n");
-            
         } catch (Exception e) {
-            System.err.println("Test failed with exception: " + e.getMessage());
+            System.err.println("TC_009 test failed with exception: " + e.getMessage());
             e.printStackTrace();
             throw e; // Re-throw to fail the test
         }
@@ -1412,12 +1521,12 @@ public class ShoppingFlowTest {
             } catch (NoSuchElementException e) {
                 // Try alternative selectors
                 try {
-                    reviewHeading = driver.findElement(By.xpath("//h3[contains(text(), 'Review') or contains(text(), 'Feedback')]"));
+                    reviewHeading = driver.findElement(By.xpath("//h3[contains(text(), 'Review')]"));
                 } catch (NoSuchElementException e2) {
                     // Try to find any Write Review button
                     try {
                         WebElement writeReviewButton = driver.findElement(
-                                By.xpath("//button[contains(text(), 'Write Review') or contains(text(), 'Add Review')]"));
+                                By.xpath("//button[contains(text(), 'Write Review')]"));
                         // If found, we don't need the heading
                         reviewHeading = writeReviewButton;
                         System.out.println("Found review button directly");
@@ -1514,51 +1623,136 @@ public class ShoppingFlowTest {
         
         breakpoint("Looking for review by " + username, 5);
         
-        // Find the review from our test customer
+        // Find the review row by username
         try {
+            // Find the row containing the username
             WebElement reviewRow = adminWait.until(ExpectedConditions.presenceOfElementLocated(
-                By.xpath("//tr[contains(., '" + username + "')]")));
+                By.xpath("//tbody/tr[contains(., '" + username + "')]")));
             
-            // Click the appropriate button
-            WebElement actionButton;
-            if (approve) {
-                actionButton = reviewRow.findElement(
-                        By.xpath(".//button[contains(@class, 'hover:bg-green-500/10')]"));
-            } else {
-                actionButton = reviewRow.findElement(
-                        By.xpath(".//button[contains(@class, 'hover:bg-red-500/10')]"));
-            }
+            // Get the product name from the first cell in the row to use for verification later
+            WebElement productCell = reviewRow.findElement(By.xpath(".//td[1]"));
+            String productName = productCell.getText().trim();
+            System.out.println("Found review row for username: " + username + ", product: " + productName);
             
-            ((JavascriptExecutor) adminDriver).executeScript("arguments[0].click();", actionButton);
+            // Find the actions cell (last td in the row)
+            WebElement actionsCell = reviewRow.findElement(By.xpath(".//td[last()]"));
             
-            // Wait for action to process
-            Thread.sleep(2000);
+            // Take a screenshot or breakpoint to see the state before clicking
+            breakpoint("About to click " + (approve ? "approve" : "reject") + " button", 2);
             
-            // Verify the review is no longer in the list
-            boolean reviewGone = false;
-            try {
-                adminWait.until(ExpectedConditions.invisibilityOfElementLocated(
-                        By.xpath("//tr[contains(., '" + username + "')]")));
-                reviewGone = true;
-            } catch (TimeoutException e) {
-                // If timeout, check if any reviews are still present
-                List<WebElement> remainingReviews = adminDriver.findElements(By.xpath("//tbody/tr"));
-                if (remainingReviews.isEmpty()) {
-                    // If no reviews left, that's valid
-                    reviewGone = true;
-                }
-            }
+            // Both buttons are in a div with class "flex items-center gap-2"
+            WebElement buttonsContainer = actionsCell.findElement(By.cssSelector("div.flex.items-center.gap-2"));
             
-            if (reviewGone) {
-                System.out.println("Review was successfully " + (approve ? "approved" : "rejected"));
-                return true;
-            } else {
-                System.out.println("Review still appears in the list after " + (approve ? "approval" : "rejection"));
+            // Get all buttons in the container
+            List<WebElement> buttons = buttonsContainer.findElements(By.tagName("button"));
+            
+            if (buttons.size() < 2) {
+                System.err.println("Expected 2 buttons, found " + buttons.size());
                 return false;
             }
             
-        } catch (TimeoutException e) {
-            System.err.println("Could not find review by " + username);
+            System.out.println("Found " + buttons.size() + " action buttons");
+            
+            // The first button is approve (green), the second is reject (red)
+            WebElement targetButton = approve ? buttons.get(0) : buttons.get(1);
+            
+            // Scroll to make sure the button is visible
+            ((JavascriptExecutor) adminDriver).executeScript(
+                    "arguments[0].scrollIntoView({block: 'center'});", targetButton);
+            Thread.sleep(1000);
+            
+            // Try different clicking methods
+            try {
+                // Method 1: Direct click
+                targetButton.click();
+                System.out.println("Direct click successful");
+            } catch (Exception e) {
+                System.out.println("Direct click failed: " + e.getMessage());
+                
+                try {
+                    // Method 2: JavaScript click
+                    ((JavascriptExecutor) adminDriver).executeScript("arguments[0].click();", targetButton);
+                    System.out.println("JavaScript click successful");
+                } catch (Exception e2) {
+                    System.out.println("JavaScript click failed: " + e2.getMessage());
+                    
+                    // Method 3: Action chains
+                    try {
+                        org.openqa.selenium.interactions.Actions actions = 
+                                new org.openqa.selenium.interactions.Actions(adminDriver);
+                        actions.moveToElement(targetButton).click().perform();
+                        System.out.println("Actions click successful");
+                    } catch (Exception e3) {
+                        System.out.println("Actions click failed: " + e3.getMessage());
+                        return false;
+                    }
+                }
+            }
+            
+            // Wait longer after clicking
+            Thread.sleep(3000);
+            
+            // Refresh the page to verify the result
+            adminDriver.navigate().refresh();
+            
+            // Wait for the page to load
+            adminWait.until(ExpectedConditions.presenceOfElementLocated(
+                    By.xpath("//h2[contains(text(), 'Review Management')]")));
+            Thread.sleep(1000);
+            
+            // Check if the specific review (username + product) is still in the table
+            String xpathForSpecificReview = "//tbody/tr[contains(., '" + username + "') and contains(., '" + productName + "')]";
+            System.out.println("Checking if review exists with xpath: " + xpathForSpecificReview);
+            
+            List<WebElement> remainingReviews = adminDriver.findElements(By.xpath(xpathForSpecificReview));
+            
+            boolean reviewGone = remainingReviews.isEmpty();
+            System.out.println("After " + (approve ? "approval" : "rejection") + 
+                    ", review for " + productName + " by " + username + " " + 
+                    (reviewGone ? "is gone (SUCCESS)" : "is still present (FAILURE)"));
+            
+            // If testing reject and still seeing the review, take another screenshot to debug
+            if (!approve && !reviewGone) {
+                breakpoint("FAILURE: Review still present after rejection attempt", 5);
+                
+                // Try one more time with a different approach as a last resort
+                System.out.println("Trying a final attempt to reject the review");
+                
+                // Find the row again
+                List<WebElement> rowsToTry = adminDriver.findElements(
+                        By.xpath("//tbody/tr[contains(., '" + username + "') and contains(., '" + productName + "')]"));
+                
+                if (!rowsToTry.isEmpty()) {
+                    // Try one more time with the second button
+                    WebElement row = rowsToTry.get(0);
+                    List<WebElement> allButtons = row.findElements(By.tagName("button"));
+                    
+                    // Find and click the last button (should be reject)
+                    if (allButtons.size() >= 2) {
+                        WebElement lastResortButton = allButtons.get(allButtons.size() - 1);
+                        
+                        // Click with JavaScript without any animations
+                        ((JavascriptExecutor) adminDriver).executeScript(
+                                "arguments[0].click(); console.log('Last resort click executed');", lastResortButton);
+                        
+                        Thread.sleep(3000);
+                        adminDriver.navigate().refresh();
+                        
+                        // Check one more time
+                        List<WebElement> finalCheck = adminDriver.findElements(By.xpath(xpathForSpecificReview));
+                        boolean finalResult = finalCheck.isEmpty();
+                        System.out.println("Final attempt result: " + (finalResult ? "SUCCESS" : "FAILURE"));
+                        
+                        return finalResult;
+                    }
+                }
+            }
+            
+            return reviewGone;
+            
+        } catch (Exception e) {
+            System.err.println("Error in moderateReview: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -1672,4 +1866,11 @@ public class ShoppingFlowTest {
         }
     }
     
+    /**
+     * Overloaded breakpoint method with default 10 second pause
+     * @param message Message to display at breakpoint
+     */
+    private void breakpoint(String message) {
+        breakpoint(message, 10);
+    }
 } 
