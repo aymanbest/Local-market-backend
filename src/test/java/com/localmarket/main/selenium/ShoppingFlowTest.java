@@ -47,6 +47,8 @@ public class ShoppingFlowTest extends BaseTest {
             // Use JavaScript to click, which can bypass some overlay issues
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", addToCartButton);
 
+            takeScreenshot(driver, "TC_001", "Add_to_Cart_Button_Clicked");
+
             // Use fluent wait for cart notification/update
             waitForAnimations();
 
@@ -82,16 +84,21 @@ public class ShoppingFlowTest extends BaseTest {
             // Wait for animations
             waitForAnimations();
 
+            
             // Check "I agree to the Terms of Service"
             WebElement tosCheckbox = driver.findElement(By.cssSelector("input[name=\"tos\"]"));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", tosCheckbox);
 
+            takeScreenshot(driver, "TC_001", "Fill_out_guest_checkout_form");
+            
             // Wait for animations
             waitForAnimations();
 
             // Click the Checkout button using JavaScript
             WebElement checkoutButton = driver.findElement(By.cssSelector("button[type=\"submit\"]"));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", checkoutButton);
+
+            takeScreenshot(driver, "TC_001", "Checkout_Button_Clicked");
 
             // Use fluent wait for checkout processing and redirection
             // This wait allows more time for API calls and SMTP processing
@@ -107,8 +114,10 @@ public class ShoppingFlowTest extends BaseTest {
             assertTrue(driver.getCurrentUrl().contains("/payment"), 
                     "User should be redirected to payment page");
 
+            takeScreenshot(driver, "TC_001", "Redirected_to_payment_page");
+
             // Complete payment
-            completePayment();
+            completePayment("TC_001");
 
             // Use fluent wait for payment processing
             Wait<WebDriver> paymentWait = new FluentWait<>(driver)
@@ -119,6 +128,8 @@ public class ShoppingFlowTest extends BaseTest {
             // Wait for the success message to appear
             paymentWait.until(ExpectedConditions.presenceOfElementLocated(
                     By.xpath("//h1[contains(text(), 'Payment Successful!')]")));
+
+            takeScreenshot(driver, "TC_001", "Payment_Successful_Message_Displayed");
 
             // Verify the success message is displayed
             WebElement successMessage = driver.findElement(By.xpath("//h1[contains(text(), 'Payment Successful!')]"));
@@ -169,6 +180,8 @@ public class ShoppingFlowTest extends BaseTest {
             
             // Use JavaScript to click, which can bypass some overlay issues
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", addToCartButton);
+
+            takeScreenshot(driver, "TC_002", "Add_to_Cart_Button_Clicked");
 
             // Wait for cart notification
             waitForAnimations();
@@ -256,6 +269,7 @@ public class ShoppingFlowTest extends BaseTest {
             WebElement tosCheckbox = driver.findElement(By.cssSelector("input[name=\"tos\"]"));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", tosCheckbox);
 
+            takeScreenshot(driver, "TC_002", "Fill_out_guest_checkout_form");
             // Wait for animations
             waitForAnimations();
 
@@ -272,7 +286,7 @@ public class ShoppingFlowTest extends BaseTest {
             paymentWait.until(ExpectedConditions.urlContains("/payment"));
 
             // Complete payment
-            completePayment();
+            completePayment("TC_002");
 
             // Wait for payment success
             wait.until(ExpectedConditions.presenceOfElementLocated(
@@ -281,6 +295,8 @@ public class ShoppingFlowTest extends BaseTest {
             // Verify success message
             WebElement successMessage = driver.findElement(By.xpath("//h1[contains(text(), 'Payment Successful!')]"));
             assertTrue(successMessage.isDisplayed(), "Success message should be displayed");
+
+            takeScreenshot(driver, "TC_002", "Payment_Successful_Message_Displayed");
 
             // Now test login with the created account
             // Navigate to login page
@@ -296,6 +312,7 @@ public class ShoppingFlowTest extends BaseTest {
             WebElement loginPasswordInput = driver.findElement(By.cssSelector("input[type=\"password\"]"));
             loginPasswordInput.sendKeys(testPassword);
 
+            takeScreenshot(driver, "TC_002", "Fill_out_login_form_with_created_account");
             // Wait for any preloader to disappear before clicking the login button
             waitForPreloaderToDisappear();
             
@@ -303,6 +320,7 @@ public class ShoppingFlowTest extends BaseTest {
             WebElement loginButton = driver.findElement(By.cssSelector("button[type=\"submit\"]"));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginButton);
 
+            takeScreenshot(driver, "TC_002", "Login_Button_Clicked_with_created_account");
             // Wait for redirect to home page (successful login redirects to /)
             wait.until(ExpectedConditions.urlToBe("http://localhost:5173/"));
 
@@ -313,6 +331,8 @@ public class ShoppingFlowTest extends BaseTest {
             // Add additional verification of logged-in state by looking for the account link
             wait.until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector(".lucide-circle-user")));
+
+            takeScreenshot(driver, "TC_002", "Logged_in_as_created_account");
             
             System.out.println("TC_002 - Guest checkout + account creation: PASSED");
 
@@ -377,12 +397,16 @@ public class ShoppingFlowTest extends BaseTest {
             WebElement passwordInput = driver.findElement(
                     By.xpath("//input[@name='password']"));
             passwordInput.sendKeys(testPassword);
+
+            takeScreenshot(driver, "TC_003", "Fill_out_registration_form");
         
             
             // Submit registration form using JavaScript click for reliability
             WebElement registerButton = driver.findElement(By.xpath("//button[@type='submit']"));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", registerButton);
             
+            takeScreenshot(driver, "TC_003", "Register_Button_Clicked");
+
             waitForPreloaderToDisappear();
             // Wait for registration to complete and redirect to home page
             wait.until(ExpectedConditions.urlToBe("http://localhost:5173/"));
@@ -391,6 +415,8 @@ public class ShoppingFlowTest extends BaseTest {
             wait.until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector(".lucide-circle-user")));
             
+            takeScreenshot(driver, "TC_003", "Logged_in_as_registered_member");
+
             // Step 3: Now shop as a logged-in user
             // Navigate to the store page
             driver.get("http://localhost:5173/store");
@@ -409,6 +435,8 @@ public class ShoppingFlowTest extends BaseTest {
             // Use JavaScript to click, which can bypass some overlay issues
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", addToCartButton);
             
+            takeScreenshot(driver, "TC_003", "Add_to_Cart_Button_Clicked");
+
             // Wait for cart notification
             waitForAnimations();
             
@@ -433,12 +461,15 @@ public class ShoppingFlowTest extends BaseTest {
                     By.cssSelector("input[placeholder=\"Enter your phone number\"]"));
             phoneInput.sendKeys("1234567890");
             
+            
             // Wait for animations
             waitForAnimations();
             
             // Check Terms of Service checkbox
             WebElement tosCheckbox = driver.findElement(By.cssSelector("input[name=\"tos\"]"));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", tosCheckbox);
+            
+            takeScreenshot(driver, "TC_003", "Fill_out_checkout_form_for_logged_in_user");
             
             // Wait for animations
             waitForAnimations();
@@ -457,7 +488,7 @@ public class ShoppingFlowTest extends BaseTest {
             paymentWait.until(ExpectedConditions.urlContains("/payment"));
             
             // Complete payment
-            completePayment();
+            completePayment("TC_003");
             
             // Wait for payment success
             wait.until(ExpectedConditions.presenceOfElementLocated(
@@ -465,8 +496,13 @@ public class ShoppingFlowTest extends BaseTest {
             
             // Verify success message
             WebElement successMessage = driver.findElement(By.xpath("//h1[contains(text(), 'Payment Successful!')]"));
+
+            takeScreenshot(driver, "TC_003", "Payment_Successful_Message_Displayed");
+            
             assertTrue(successMessage.isDisplayed(), "Success message should be displayed");
             
+            
+
             System.out.println("TC_003 - Order as a logged-in member: PASSED");
             
         } catch (Exception e) {

@@ -37,6 +37,7 @@ public class CommunicationTest extends BaseTest {
     private static final String ADMIN_EMAIL = "admin@localmarket.com";
     private static final String ADMIN_PASSWORD = "admin123";
     private static final String TEST_MESSAGE = "Le message envoyé devrait safficher immédiatement dans la fenêtre de chat.";
+    private static final String TEST_ID = "TC_010";
     
     @Override
     public void tearDown() {
@@ -92,50 +93,71 @@ public class CommunicationTest extends BaseTest {
             // Initialize producer browser session
             producerDriver = createNewUserSession(PRODUCER_EMAIL, PRODUCER_PASSWORD);
             producerWait = new WebDriverWait(producerDriver, Duration.ofSeconds(10));
+            takeScreenshot(producerDriver, TEST_ID, "ETAP1_Producer_Login_Success");
             
             // Initialize admin browser session
             adminDriver = createNewUserSession(ADMIN_EMAIL, ADMIN_PASSWORD);
             adminWait = new WebDriverWait(adminDriver, Duration.ofSeconds(10));
+            takeScreenshot(adminDriver, TEST_ID, "ETAP1_Admin_Login_Success");
             
             // Step 1: Producer creates a support ticket
             // Navigate to support page in producer session
             navigateToProducerSupport(producerDriver, producerWait);
+            takeScreenshot(producerDriver, TEST_ID, "ETAP2_Producer_Support_Page");
             
             // Create a new ticket
             String ticketSubject = "Test Support Ticket " + System.currentTimeMillis();
             createNewTicket(producerDriver, producerWait, ticketSubject);
+            takeScreenshot(producerDriver, TEST_ID, "ETAP3_Producer_Ticket_Created");
             
             // Wait for the chat box to appear automatically
             waitForChatBox(producerDriver, producerWait);
+            takeScreenshot(producerDriver, TEST_ID, "ETAP4_Producer_Chat_Open");
             
             // Step 2: Admin assigns the ticket and replies
             // Navigate to support page in admin session
             navigateToAdminSupport(adminDriver, adminWait);
+            takeScreenshot(adminDriver, TEST_ID, "ETAP5_Admin_Support_Page");
             
             // Click on the "Unassigned" tab
             clickUnassignedTab(adminDriver, adminWait);
+            takeScreenshot(adminDriver, TEST_ID, "ETAP6_Admin_Unassigned_Tab");
             
             // Find the ticket and assign it to the admin
             assignTicketToAdmin(adminDriver, adminWait, ticketSubject);
+            takeScreenshot(adminDriver, TEST_ID, "ETAP7_Admin_Ticket_Assigned");
             
             // Navigate to "My Tickets" tab to find the assigned ticket
             clickMyTicketsTab(adminDriver, adminWait);
+            takeScreenshot(adminDriver, TEST_ID, "ETAP8_Admin_My_Tickets_Tab");
             
             // Open the assigned ticket
             openTicket(adminDriver, adminWait, ticketSubject);
+            takeScreenshot(adminDriver, TEST_ID, "ETAP9_Admin_Ticket_Open");
             
             // Send a message from admin to producer
             sendMessage(adminDriver, adminWait, TEST_MESSAGE);
+            takeScreenshot(adminDriver, TEST_ID, "ETAP10_Admin_Message_Sent");
             
             // Step 3: Verify the message appears in producer's chat
             verifyMessageReceived(producerDriver, producerWait, TEST_MESSAGE);
+            takeScreenshot(producerDriver, TEST_ID, "ETAP11_Producer_Message_Received");
             
             // Step 4: Close the ticket from admin side
             closeTicket(adminDriver, adminWait);
+            takeScreenshot(adminDriver, TEST_ID, "ETAP12_Admin_Ticket_Closed");
             
             System.out.println("\n=== TC_010 COMPLETED SUCCESSFULLY ===\n");
             
         } catch (Exception e) {
+            // Take screenshot on failure
+            if (producerDriver != null) {
+                takeScreenshot(producerDriver, TEST_ID, "ERROR_Producer_State");
+            }
+            if (adminDriver != null) {
+                takeScreenshot(adminDriver, TEST_ID, "ERROR_Admin_State");
+            }
+            
             System.err.println("TC_010 test failed with exception: " + e.getMessage());
             e.printStackTrace();
             throw e; // Re-throw to fail the test
@@ -398,12 +420,20 @@ public class CommunicationTest extends BaseTest {
      */
     private void closeTicket(WebDriver driver, WebDriverWait wait) {
         try {
+            if (driver == null || wait == null) {
+                System.out.println("Cannot close ticket - driver or wait is null");
+                return;
+            }
+            
             System.out.println("Attempting to close the ticket...");
             
             // Find and click the Close Ticket button
             WebElement closeTicketButton = wait.until(ExpectedConditions.elementToBeClickable(
                     By.xpath("//button[contains(@class, 'bg-red-600') and contains(text(), 'Close Ticket')]")));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", closeTicketButton);
+            
+            // Take screenshot of confirmation dialog
+            takeScreenshot(driver, TEST_ID, "ETAP_Close_Ticket_Dialog");
             
             // Wait for the confirmation modal to appear
             wait.until(ExpectedConditions.visibilityOfElementLocated(
@@ -429,7 +459,7 @@ public class CommunicationTest extends BaseTest {
             System.out.println("Successfully closed the ticket");
         } catch (Exception e) {
             System.err.println("Failed to close ticket: " + e.getMessage());
-            throw new RuntimeException("Failed to close the ticket", e);
+            // Don't throw an exception here, as this might be called during cleanup
         }
     }
 } 

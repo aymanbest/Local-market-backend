@@ -8,7 +8,9 @@ import org.junit.jupiter.api.TestInstance;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.OutputType;
 import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -20,7 +22,14 @@ import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
+import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -34,6 +43,9 @@ public class BaseTest {
     protected WebDriver driver;
     protected WebDriverWait wait;
     protected Wait<WebDriver> fluentWait;
+    
+    // Directory for storing screenshots
+    private static final String SCREENSHOT_DIR = "test-screenshots";
 
     @BeforeEach
     public void setUp() {
@@ -88,6 +100,69 @@ public class BaseTest {
                 
         // Maximize window for better element visibility
         driver.manage().window().maximize();
+        
+        // Create screenshot directory if it doesn't exist
+        createScreenshotDirectory();
+    }
+    
+    /**
+     * Creates the screenshot directory if it doesn't exist
+     */
+    private void createScreenshotDirectory() {
+        File directory = new File(SCREENSHOT_DIR);
+        if (!directory.exists()) {
+            boolean created = directory.mkdirs();
+            if (created) {
+                System.out.println("Created screenshot directory: " + directory.getAbsolutePath());
+            } else {
+                System.err.println("Failed to create screenshot directory: " + directory.getAbsolutePath());
+            }
+        }
+    }
+    
+    /**
+     * Takes a screenshot and saves it with a custom name
+     * 
+     * @param driver The WebDriver instance to use for taking the screenshot
+     * @param testName The test case name (e.g., "TC_001")
+     * @param stepName The step name or description (e.g., "Login_Form_Filled")
+     * @return Path to the saved screenshot file, or null if screenshot failed
+     */
+    protected String takeScreenshot(WebDriver driver, String testName, String stepName) {
+        if (driver == null) {
+            System.err.println("Cannot take screenshot - driver is null");
+            return null;
+        }
+        
+        try {
+            // Clean up the step name to make it file-system friendly
+            String cleanStepName = stepName.replaceAll("[^a-zA-Z0-9_\\-]", "_");
+            
+            // Create timestamp for unique filename
+            String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+            
+            // Create filename
+            String filename = testName + "_" + cleanStepName + "_" + timestamp + ".png";
+            
+            // Take screenshot
+            File screenshotFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+            
+            // Create target file path
+            Path targetPath = Paths.get(SCREENSHOT_DIR, filename);
+            
+            // Copy screenshot to target location
+            Files.copy(screenshotFile.toPath(), targetPath);
+            
+            System.out.println("Screenshot saved: " + targetPath.toAbsolutePath());
+            return targetPath.toString();
+            
+        } catch (IOException e) {
+            System.err.println("Failed to save screenshot: " + e.getMessage());
+            return null;
+        } catch (Exception e) {
+            System.err.println("Error taking screenshot: " + e.getMessage());
+            return null;
+        }
     }
 
     @AfterAll
@@ -213,6 +288,10 @@ public class BaseTest {
      * Complete payment form with test credit card details
      */
     protected void completePayment() {
+        completePayment(null);
+    }
+    
+    protected void completePayment(String TestName) {
         // Fill payment form
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("input[placeholder=\"John Doe\"]")));
@@ -230,12 +309,15 @@ public class BaseTest {
         WebElement cvvInput = driver.findElement(By.cssSelector("input[placeholder=\"•••\"]"));
         cvvInput.sendKeys("123");
         
+        takeScreenshot(driver, TestName, "Fill_out_payment_form");
         // Wait for animations
         waitForAnimations();
         
         // Click Pay Securely Now button
         WebElement payButton = driver.findElement(By.cssSelector("button[type=\"submit\"]"));
         ((JavascriptExecutor) driver).executeScript("arguments[0].click();", payButton);
+
+        takeScreenshot(driver, TestName, "Pay_Button_Clicked");
     }
     
     /**

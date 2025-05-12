@@ -121,9 +121,13 @@ public class ReviewTest extends BaseTest {
                     By.xpath("//input[@name='password']"));
             passwordInput.sendKeys(testPassword);
             
+            takeScreenshot(driver, "TC_006", "Fill_out_registration_form");
+            
             // Submit registration form using JavaScript click for reliability
             WebElement registerButton = driver.findElement(By.xpath("//button[@type='submit']"));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", registerButton);
+            
+            takeScreenshot(driver, "TC_006", "Register_Button_Clicked");
             
             waitForPreloaderToDisappear();
 
@@ -133,9 +137,13 @@ public class ReviewTest extends BaseTest {
             // Verify login successful by checking for the user menu
             wait.until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector(".lucide-circle-user")));
+                    
+            takeScreenshot(driver, "TC_006", "Registration_Successful");
 
             // STEP 2: Place an order for the first product
             reviewOrderNumber1 = placeOrder(0);
+            
+            takeScreenshot(driver, "TC_006", "Order_Placed_Successfully");
             
             // STEP 3: Update order status to Delivered using producer account
             String producerEmail = "producer5@test.com"; // Default producer email from requirements
@@ -143,6 +151,8 @@ public class ReviewTest extends BaseTest {
             
             if (!orderUpdated) {
                 System.out.println("Warning: Order status may not have been updated to Delivered");
+            } else {
+                takeScreenshot(driver, "TC_006", "Order_Status_Updated_To_Delivered");
             }
             
             // STEP 4: Submit a review for the product
@@ -150,6 +160,7 @@ public class ReviewTest extends BaseTest {
                     "This is a great product! I highly recommend it. The quality is excellent.");
             
             if (reviewSubmitted) {
+                takeScreenshot(driver, "TC_006", "Review_Submitted_Successfully");
                 System.out.println("\n=== TC_006 COMPLETED SUCCESSFULLY ===\n");
             } else {
                 System.err.println("TC_006 FAILED - Could not submit review");
@@ -157,6 +168,7 @@ public class ReviewTest extends BaseTest {
             }
             
         } catch (Exception e) {
+            takeScreenshot(driver, "TC_006", "Error_State");
             System.err.println("TC_006 test failed with exception: " + e.getMessage());
             e.printStackTrace();
             throw e; // Re-throw to fail the test
@@ -187,6 +199,8 @@ public class ReviewTest extends BaseTest {
                 adminDriver = createNewUserSession("admin@localmarket.com", "admin123");
             }
             
+            takeScreenshot(adminDriver, "TC_007", "Admin_Login_Successful");
+            
             // Navigate to reviews management page in admin session
             adminDriver.get("http://localhost:5173/admin/reviews");
             
@@ -194,6 +208,8 @@ public class ReviewTest extends BaseTest {
             WebDriverWait adminWait = new WebDriverWait(adminDriver, Duration.ofSeconds(10));
             adminWait.until(ExpectedConditions.presenceOfElementLocated(
                     By.xpath("//h2[contains(text(), 'Review Management')]")));
+            
+            takeScreenshot(adminDriver, "TC_007", "Admin_Reviews_Management_Page");
             
             // Make sure any preloader is gone
             try {
@@ -211,6 +227,8 @@ public class ReviewTest extends BaseTest {
                 WebElement reviewRow = adminWait.until(ExpectedConditions.presenceOfElementLocated(
                     By.xpath("//tr[contains(., '" + reviewCustomerUsername + "')]")));
                 
+                takeScreenshot(adminDriver, "TC_007", "Review_Found_In_Admin_Panel");
+                
                 assertTrue(reviewRow != null, "Review from test customer should be present in admin review list");
                 System.out.println("\n=== TC_007 COMPLETED SUCCESSFULLY ===\n");
                 
@@ -220,12 +238,14 @@ public class ReviewTest extends BaseTest {
                 boolean noReviews = adminDriver.findElements(By.xpath("//h3[contains(text(), 'No Pending Reviews')]")).size() > 0;
                 if (noReviews) {
                     System.out.println("No pending reviews found.");
+                    takeScreenshot(adminDriver, "TC_007", "No_Pending_Reviews_Message");
                 }
                 System.err.println("TC_007 FAILED - Could not find review in admin panel");
                 throw e; // Rethrow to fail the test
             }
             
         } catch (Exception e) {
+            takeScreenshot(adminDriver, "TC_007", "Error_State");
             System.err.println("TC_007 test failed with exception: " + e.getMessage());
             e.printStackTrace();
             throw e; // Re-throw to fail the test
@@ -253,17 +273,22 @@ public class ReviewTest extends BaseTest {
                 testTC007_ViewPendingReviews();
             }
             
+            takeScreenshot(adminDriver, "TC_008", "Before_Approve_Review");
+            
             // Approve the review
             boolean reviewApproved = moderateReview(reviewCustomerUsername, true);
             
             if (reviewApproved) {
+                takeScreenshot(adminDriver, "TC_008", "Review_Approved_Successfully");
                 System.out.println("\n=== TC_008 COMPLETED SUCCESSFULLY ===\n");
             } else {
+                takeScreenshot(adminDriver, "TC_008", "Review_Approval_Failed");
                 System.err.println("TC_008 FAILED - Could not approve review");
                 throw new RuntimeException("Failed to approve product review");
             }
             
         } catch (Exception e) {
+            takeScreenshot(adminDriver, "TC_008", "Error_State");
             System.err.println("TC_008 test failed with exception: " + e.getMessage());
             e.printStackTrace();
             throw e; // Re-throw to fail the test
@@ -292,12 +317,16 @@ public class ReviewTest extends BaseTest {
             // Place an order for a second product
             reviewOrderNumber2 = placeOrder(1);
             
+            takeScreenshot(driver, "TC_009", "Second_Order_Placed");
+            
             // Update second order status to Delivered
             String producerEmail = "producer5@test.com"; // Default producer email from requirements
             boolean orderUpdated = updateOrderStatusToDelivered(reviewOrderNumber2, reviewCustomerEmail, producerEmail);
             
             if (!orderUpdated) {
                 System.out.println("Warning: Second order status may not have been updated to Delivered");
+            } else {
+                takeScreenshot(driver, "TC_009", "Second_Order_Status_Updated");
             }
             
             // Submit a review for the second product
@@ -311,22 +340,31 @@ public class ReviewTest extends BaseTest {
                         "This is a fallback review that should be rejected by admin.");
                 
                 if (!reviewSubmitted) {
+                    takeScreenshot(driver, "TC_009", "Review_Submission_Failed");
                     System.err.println("TC_009 FAILED - Could not submit any review");
                     throw new RuntimeException("Failed to submit second product review");
                 }
             }
             
+            takeScreenshot(driver, "TC_009", "Review_Submitted_Successfully");
+            
             // Reject the review
             boolean reviewRejected = moderateReview(reviewCustomerUsername, false);
             
             if (reviewRejected) {
+                takeScreenshot(adminDriver, "TC_009", "Review_Rejected_Successfully");
                 System.out.println("\n=== TC_009 COMPLETED SUCCESSFULLY ===\n");
             } else {
+                takeScreenshot(adminDriver, "TC_009", "Review_Rejection_Failed");
                 System.err.println("TC_009 FAILED - Could not reject review");
                 throw new RuntimeException("Failed to reject product review");
             }
             
         } catch (Exception e) {
+            takeScreenshot(driver, "TC_009", "Error_State_Customer");
+            if (adminDriver != null) {
+                takeScreenshot(adminDriver, "TC_009", "Error_State_Admin");
+            }
             System.err.println("TC_009 test failed with exception: " + e.getMessage());
             e.printStackTrace();
             throw e; // Re-throw to fail the test
@@ -728,6 +766,8 @@ public class ReviewTest extends BaseTest {
         adminWait.until(ExpectedConditions.presenceOfElementLocated(
                 By.xpath("//h2[contains(text(), 'Review Management')]")));
         
+        takeScreenshot(adminDriver, "Review_Moderation", "Admin_Reviews_Management_Page");
+        
         // Make sure any preloader is gone
         try {
             adminWait.until(ExpectedConditions.invisibilityOfElementLocated(
@@ -744,7 +784,9 @@ public class ReviewTest extends BaseTest {
             // Find the row containing the username
             WebElement reviewRow = adminWait.until(ExpectedConditions.presenceOfElementLocated(
                 By.xpath("//tbody/tr[contains(., '" + username + "')]")));
-            
+                
+            takeScreenshot(adminDriver, "Review_Moderation", "Review_Found_For_Moderation");
+                
             // Get the product name from the first cell in the row to use for verification later
             WebElement productCell = reviewRow.findElement(By.xpath(".//td[1]"));
             String productName = productCell.getText().trim();
@@ -777,6 +819,8 @@ public class ReviewTest extends BaseTest {
                     "arguments[0].scrollIntoView({block: 'center'});", targetButton);
             Thread.sleep(1000);
             
+            takeScreenshot(adminDriver, "Review_Moderation", (approve ? "Approve" : "Reject") + "_Button_Before_Click");
+            
             // Try different clicking methods
             try {
                 // Method 1: Direct click
@@ -805,6 +849,32 @@ public class ReviewTest extends BaseTest {
                 }
             }
             
+            // If rejecting, we need to handle the rejection reason modal
+            if (!approve) {
+                try {
+                    // Wait for rejection reason modal
+                    adminWait.until(ExpectedConditions.visibilityOfElementLocated(
+                            By.xpath("//h3[contains(text(), 'Rejection Reason')]")));
+                            
+                    takeScreenshot(adminDriver, "Review_Moderation", "Rejection_Reason_Modal");
+                    
+                    // Enter rejection reason
+                    WebElement reasonInput = adminDriver.findElement(
+                            By.xpath("//textarea[@placeholder='Enter reason for rejection']"));
+                    reasonInput.sendKeys("This review does not meet our content guidelines.");
+                    
+                    takeScreenshot(adminDriver, "Review_Moderation", "Rejection_Reason_Entered");
+                    
+                    // Submit the form
+                    WebElement submitButton = adminDriver.findElement(
+                            By.xpath("//button[contains(text(), 'Submit')]"));
+                    ((JavascriptExecutor) adminDriver).executeScript("arguments[0].click();", submitButton);
+                } catch (Exception e) {
+                    System.out.println("No rejection reason modal found or error handling it: " + e.getMessage());
+                    // Continue anyway as some implementations might not have this modal
+                }
+            }
+            
             // Wait longer after clicking
             Thread.sleep(3000);
             
@@ -827,9 +897,14 @@ public class ReviewTest extends BaseTest {
                     ", review for " + productName + " by " + username + " " + 
                     (reviewGone ? "is gone (SUCCESS)" : "is still present (FAILURE)"));
             
+            if (reviewGone) {
+                takeScreenshot(adminDriver, "Review_Moderation", "Review_" + (approve ? "Approved" : "Rejected") + "_Successfully");
+            }
+            
             // If testing reject and still seeing the review, take another screenshot to debug
             if (!approve && !reviewGone) {
                 breakpoint("FAILURE: Review still present after rejection attempt", 5);
+                takeScreenshot(adminDriver, "Review_Moderation", "Review_Still_Present_After_Rejection");
                 
                 // Try one more time with a different approach as a last resort
                 System.out.println("Trying a final attempt to reject the review");
@@ -847,6 +922,8 @@ public class ReviewTest extends BaseTest {
                     if (allButtons.size() >= 2) {
                         WebElement lastResortButton = allButtons.get(allButtons.size() - 1);
                         
+                        takeScreenshot(adminDriver, "Review_Moderation", "Last_Resort_Reject_Button");
+                        
                         // Click with JavaScript without any animations
                         ((JavascriptExecutor) adminDriver).executeScript(
                                 "arguments[0].click(); console.log('Last resort click executed');", lastResortButton);
@@ -859,6 +936,12 @@ public class ReviewTest extends BaseTest {
                         boolean finalResult = finalCheck.isEmpty();
                         System.out.println("Final attempt result: " + (finalResult ? "SUCCESS" : "FAILURE"));
                         
+                        if (finalResult) {
+                            takeScreenshot(adminDriver, "Review_Moderation", "Review_Rejected_After_Final_Attempt");
+                        } else {
+                            takeScreenshot(adminDriver, "Review_Moderation", "Review_Still_Present_After_Final_Attempt");
+                        }
+                        
                         return finalResult;
                     }
                 }
@@ -867,6 +950,7 @@ public class ReviewTest extends BaseTest {
             return reviewGone;
             
         } catch (Exception e) {
+            takeScreenshot(adminDriver, "Review_Moderation", "Error_During_" + (approve ? "Approval" : "Rejection"));
             System.err.println("Error in moderateReview: " + e.getMessage());
             e.printStackTrace();
             return false;

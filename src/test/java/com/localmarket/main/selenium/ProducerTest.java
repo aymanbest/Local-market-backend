@@ -78,10 +78,14 @@ public class ProducerTest extends BaseTest {
             WebElement passwordInput = driver.findElement(
                     By.xpath("//input[@name='password']"));
             passwordInput.sendKeys(testPassword);
+
+            takeScreenshot(driver, "TC_004", "Fill_out_registration_form");
             
             // Submit registration form using JavaScript click for reliability
             WebElement registerButton = driver.findElement(By.xpath("//button[@type='submit']"));
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", registerButton);
+
+            takeScreenshot(driver, "TC_004", "Register_Button_Clicked");
             
             waitForPreloaderToDisappear();
             
@@ -100,6 +104,8 @@ public class ProducerTest extends BaseTest {
             // Wait for the application form to load
             wait.until(ExpectedConditions.presenceOfElementLocated(
                     By.xpath("//h1[contains(text(), 'Become a Seller')]")));
+
+            takeScreenshot(driver, "TC_004", "Access_application_form_for_producer");
             
             // Fill out the application form
             // Business name
@@ -191,11 +197,18 @@ public class ProducerTest extends BaseTest {
             
             // Submit the application form
             WebElement submitButton = driver.findElement(By.xpath("//button[contains(text(), 'Submit Application')]"));
+
+            takeScreenshot(driver, "TC_004", "Fill_out_application_form");
             
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", submitButton);
+
+            
             
             waitForPreloaderToDisappear();
+
+            takeScreenshot(driver, "TC_004", "Submit_application_form");
             
+
             // Wait for redirect after submission
             // Typically redirects to /account after submission
             wait.until(driver -> {
@@ -211,6 +224,8 @@ public class ProducerTest extends BaseTest {
             // Verify application status shows "Application Under Review"
             wait.until(ExpectedConditions.visibilityOfElementLocated(
                     By.xpath("//h2[contains(text(), 'Application Under Review')]")));
+            
+            takeScreenshot(driver, "TC_004", "Application_Under_Review_Message_Displayed");
             
             // Additional verification for Pending status
             WebElement pendingStatus = driver.findElement(
@@ -302,6 +317,8 @@ public class ProducerTest extends BaseTest {
                 WebElement loginPasswordInput = driver.findElement(By.cssSelector("input[type=\"password\"]"));
                 loginPasswordInput.sendKeys(sellerPassword);
                 
+                takeScreenshot(driver, "TC_005", "Fill_out_login_form");
+                
                 // Wait for preloader to disappear
                 waitForPreloaderToDisappear();
                 
@@ -309,18 +326,24 @@ public class ProducerTest extends BaseTest {
                 WebElement loginButton = driver.findElement(By.cssSelector("button[type=\"submit\"]"));
                 ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginButton);
                 
+                takeScreenshot(driver, "TC_005", "Login_Button_Clicked");
+                
                 // Wait for login to complete and redirect to home page
                 wait.until(ExpectedConditions.urlToBe("http://localhost:5173/"));
                 
                 // Verify login successful by checking for the user menu
                 wait.until(ExpectedConditions.presenceOfElementLocated(
                         By.cssSelector(".lucide-circle-user")));
+                
+                takeScreenshot(driver, "TC_005", "Logged_in_Successfully");
             }
             
             // Step 2: Try to access seller application page again
             driver.get("http://localhost:5173/account/apply-seller");
             
             waitForPreloaderToDisappear();
+            
+            takeScreenshot(driver, "TC_005", "Access_Seller_Application_Page");
             
             // Step 3: Verify we're redirected to account page or shown pending application status
             try {
@@ -329,6 +352,8 @@ public class ProducerTest extends BaseTest {
                         By.xpath("//h1[contains(text(), 'Account')]")));
                 System.out.println("Redirected to account page as expected when application is pending");
                 
+                takeScreenshot(driver, "TC_005", "Redirected_To_Account_Page");
+                
             } catch (Exception e) {
                 // Option 2: We might stay on the page with a pending message
                 try {
@@ -336,6 +361,8 @@ public class ProducerTest extends BaseTest {
                             By.xpath("//h2[contains(text(), 'Application Under Review')] | //h2[contains(text(), 'Application Pending')] | //div[contains(text(), 'pending')]")));
                     assertTrue(pendingMessage.isDisplayed(), "Application pending message should be shown");
                     System.out.println("Pending application message shown as expected");
+                    
+                    takeScreenshot(driver, "TC_005", "Pending_Application_Message");
                     
                 } catch (Exception e2) {
                     // If both options fail, navigate to become-seller to check status
@@ -346,6 +373,8 @@ public class ProducerTest extends BaseTest {
                     WebElement pendingStatus = wait.until(ExpectedConditions.visibilityOfElementLocated(
                             By.xpath("//h2[contains(text(), 'Application Under Review')]")));
                     assertTrue(pendingStatus.isDisplayed(), "Application status should show 'Application Under Review'");
+                    
+                    takeScreenshot(driver, "TC_005", "Application_Under_Review_Status");
                 }
             }
             
@@ -357,6 +386,8 @@ public class ProducerTest extends BaseTest {
                 try {
                     ((JavascriptExecutor) driver).executeScript(
                             "console.error('TC_005 test failed at URL: ' + window.location.href)");
+                    
+                    takeScreenshot(driver, "TC_005", "Error_State");
                 } catch (Exception ignored) {}
             }
             
