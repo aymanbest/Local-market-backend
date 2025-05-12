@@ -49,13 +49,31 @@ public class BaseTest {
         // Add options if needed (headless, disable-gpu, etc.)
         //options.addArguments("--headless");
         
-        // Reuse the static driver if it exists, otherwise create a new one
-        if (staticDriver == null) {
+        // Check if there's an existing driver and if it's valid
+        boolean needNewDriver = true;
+        
+        if (staticDriver != null) {
+            try {
+                // Try to get the current URL to check if driver is still active
+                staticDriver.getCurrentUrl();
+                needNewDriver = false;
+                System.out.println("Reusing existing WebDriver instance");
+            } catch (Exception e) {
+                System.out.println("Existing WebDriver is not responding, creating new instance");
+                try {
+                    staticDriver.quit();
+                } catch (Exception ex) {
+                    // Ignore - driver may already be closed
+                }
+                staticDriver = null;
+            }
+        }
+        
+        if (needNewDriver) {
             System.out.println("Creating new WebDriver instance");
             staticDriver = new ChromeDriver(options);
-        } else {
-            System.out.println("Reusing existing WebDriver instance");
         }
+        
         driver = staticDriver;
         
         // Standard wait (10 seconds)
@@ -74,11 +92,18 @@ public class BaseTest {
 
     @AfterAll
     public void tearDown() {
-        // Only close browser instance if this is the SeleniumTestSuite
         if (driver != null) {
-            System.out.println("Closing WebDriver instance");
-            driver.quit();
-            staticDriver = null;
+            try {
+                System.out.println("Closing WebDriver instance from " + this.getClass().getSimpleName());
+                driver.quit();
+                // Only set staticDriver to null if it's the same instance being closed
+                if (staticDriver == driver) {
+                    staticDriver = null;
+                }
+                driver = null;
+            } catch (Exception e) {
+                System.err.println("Error closing WebDriver: " + e.getMessage());
+            }
         }
     }
     
@@ -89,8 +114,16 @@ public class BaseTest {
     protected void resetSession() {
         System.out.println("Resetting browser session...");
         if (driver != null) {
-            driver.quit();
-            staticDriver = null;
+            try {
+                driver.quit();
+                // Only set staticDriver to null if it's the same instance being closed
+                if (staticDriver == driver) {
+                    staticDriver = null;
+                }
+                driver = null;
+            } catch (Exception e) {
+                System.err.println("Error closing WebDriver during reset: " + e.getMessage());
+            }
         }
         
         // Set up a new driver
@@ -109,6 +142,22 @@ public class BaseTest {
         // Maximize window for better element visibility
         driver.manage().window().maximize();
         System.out.println("New browser session created");
+    }
+    
+    /**
+     * Clean up any WebDriver resources that may have been created independently
+     * Call this when a test creates its own WebDriver instead of using staticDriver
+     * @param individualDriver The WebDriver instance to close
+     */
+    protected void closeIndividualDriver(WebDriver individualDriver) {
+        if (individualDriver != null && individualDriver != staticDriver) {
+            try {
+                System.out.println("Closing individual WebDriver instance");
+                individualDriver.quit();
+            } catch (Exception e) {
+                System.err.println("Error closing individual WebDriver: " + e.getMessage());
+            }
+        }
     }
     
     /**

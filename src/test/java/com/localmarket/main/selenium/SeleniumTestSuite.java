@@ -8,6 +8,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -16,6 +18,7 @@ public class SeleniumTestSuite {
     private ShoppingFlowTest shoppingFlowTest;
     private ProducerTest producerTest;
     private ReviewTest reviewTest;
+    private CommunicationTest communicationTest;
     private BaseTest baseTest;
     
     @BeforeAll
@@ -34,33 +37,88 @@ public class SeleniumTestSuite {
         reviewTest = new ReviewTest();
         reviewTest.setUp();
         
+        communicationTest = new CommunicationTest();
+        communicationTest.setUp();
+        
         System.out.println("All test classes initialized with WebDriver");
+    }
+    
+    @AfterEach
+    public void cleanupAfterTest() {
+        // Ensure staticDriver is properly managed
+        System.out.println("Checking WebDriver state after test...");
+        
+        // If staticDriver is null but a test class has a non-null driver, update staticDriver
+        if (BaseTest.staticDriver == null) {
+            if (shoppingFlowTest != null && shoppingFlowTest.driver != null) {
+                BaseTest.staticDriver = shoppingFlowTest.driver;
+            } else if (producerTest != null && producerTest.driver != null) {
+                BaseTest.staticDriver = producerTest.driver;
+            } else if (reviewTest != null && reviewTest.driver != null) {
+                BaseTest.staticDriver = reviewTest.driver;
+            } else if (communicationTest != null && communicationTest.driver != null) {
+                BaseTest.staticDriver = communicationTest.driver;
+            } else if (baseTest != null && baseTest.driver != null) {
+                BaseTest.staticDriver = baseTest.driver;
+            }
+        }
     }
     
     @AfterAll
     public void tearDown() {
         System.out.println("Cleaning up all WebDrivers after test suite");
         
-        // Close any remaining WebDrivers
+        // Close all WebDrivers in reverse order
+        if (communicationTest != null) {
+            try {
+                communicationTest.tearDown();
+                communicationTest.driver = null;
+            } catch (Exception e) {
+                System.err.println("Error cleaning up communicationTest driver: " + e.getMessage());
+            }
+        }
+        
         if (reviewTest != null) {
-            reviewTest.tearDown();
+            try {
+                reviewTest.tearDown();
+                reviewTest.driver = null;
+            } catch (Exception e) {
+                System.err.println("Error cleaning up reviewTest driver: " + e.getMessage());
+            }
         }
         
         if (producerTest != null && producerTest.driver != null) {
-            producerTest.driver.quit();
+            try {
+                producerTest.driver.quit();
+                producerTest.driver = null;
+            } catch (Exception e) {
+                System.err.println("Error cleaning up producerTest driver: " + e.getMessage());
+            }
         }
         
         if (shoppingFlowTest != null && shoppingFlowTest.driver != null) {
-            shoppingFlowTest.driver.quit();
+            try {
+                shoppingFlowTest.driver.quit();
+                shoppingFlowTest.driver = null;
+            } catch (Exception e) {
+                System.err.println("Error cleaning up shoppingFlowTest driver: " + e.getMessage());
+            }
         }
         
         // Final cleanup
         if (baseTest != null) {
-            baseTest.tearDown();
+            try {
+                baseTest.tearDown();
+                baseTest.driver = null;
+            } catch (Exception e) {
+                System.err.println("Error cleaning up baseTest driver: " + e.getMessage());
+            }
         }
         
         // Make sure static driver is null
         BaseTest.staticDriver = null;
+        
+        System.out.println("All WebDrivers have been properly closed");
     }
     
     @Test
@@ -71,7 +129,12 @@ public class SeleniumTestSuite {
         if (shoppingFlowTest.driver == null) {
             shoppingFlowTest.setUp();
         }
-        shoppingFlowTest.testTC001_CompleteShoppingFlowIncludingPayment();
+        try {
+            shoppingFlowTest.testTC001_CompleteShoppingFlowIncludingPayment();
+        } finally {
+            // Ensure staticDriver is updated
+            BaseTest.staticDriver = shoppingFlowTest.driver;
+        }
     }
     
     @Test
@@ -81,7 +144,12 @@ public class SeleniumTestSuite {
         // Reset session for a clean test
         baseTest.resetSession();
         shoppingFlowTest.setUp();
-        shoppingFlowTest.testTC002_GuestCheckoutWithAccountCreation();
+        try {
+            shoppingFlowTest.testTC002_GuestCheckoutWithAccountCreation();
+        } finally {
+            // Ensure staticDriver is updated
+            BaseTest.staticDriver = shoppingFlowTest.driver;
+        }
     }
     
     @Test
@@ -91,7 +159,12 @@ public class SeleniumTestSuite {
         // Reset session for a clean test
         baseTest.resetSession();
         shoppingFlowTest.setUp();
-        shoppingFlowTest.testTC003_OrderAsRegisteredMember();
+        try {
+            shoppingFlowTest.testTC003_OrderAsRegisteredMember();
+        } finally {
+            // Ensure staticDriver is updated
+            BaseTest.staticDriver = shoppingFlowTest.driver;
+        }
     }
     
     @Test
@@ -101,32 +174,51 @@ public class SeleniumTestSuite {
         // Reset session before starting Producer tests
         baseTest.resetSession();
         producerTest.setUp();
-        producerTest.testTC004_BecomeProducer();
+        try {
+            producerTest.testTC004_BecomeProducer();
+        } finally {
+            // Ensure staticDriver is updated
+            BaseTest.staticDriver = producerTest.driver;
+        }
     }
     
     @Test
     @Order(5)
     @DisplayName("Producer Test - Reapply as Producer")
     public void testTC005_ReapplyAsProducer() {
-        // For this test, we don't need to initialize the driver
-        // as the test method will create its own WebDriver instance
-        producerTest.testTC005_ReapplyAsProducer();
-        
-        // After this test, we need to reset the static driver reference
-        // since the test creates its own driver
-        BaseTest.staticDriver = null;
-        
-        // Reinitialize for future tests
-        baseTest.setUp();
+        try {
+            producerTest.testTC005_ReapplyAsProducer();
+        } finally {
+            // After this test, we need to handle the WebDriver instance
+            if (producerTest.driver != null && producerTest.driver != BaseTest.staticDriver) {
+                try {
+                    producerTest.driver.quit();
+                } catch (Exception e) {
+                    System.err.println("Error closing producerTest driver: " + e.getMessage());
+                } finally {
+                    // Update or reset static driver reference as needed
+                    if (BaseTest.staticDriver == null) {
+                        // If the test created a new driver and staticDriver is null, we need to
+                        // reinitialize for future tests
+                        baseTest.setUp();
+                    }
+                }
+            }
+        }
     }
     
     @Test
     @Order(6)
     @DisplayName("Review Test - Add a review for a product")
     public void testTC006_AddProductReview() throws InterruptedException {
-        // For this test, we don't need to initialize the driver
-        // as the test method will create its own WebDriver instance
-        reviewTest.testTC006_AddProductReview();
+        try {
+            reviewTest.testTC006_AddProductReview();
+        } finally {
+            // Ensure any new WebDriver created by this test is properly tracked
+            if (reviewTest.driver != null && reviewTest.driver != BaseTest.staticDriver) {
+                BaseTest.staticDriver = reviewTest.driver;
+            }
+        }
     }
     
     @Test
@@ -137,7 +229,12 @@ public class SeleniumTestSuite {
         if (reviewTest.driver == null) {
             reviewTest.setUp();
         }
-        reviewTest.testTC007_ViewPendingReviews();
+        try {
+            reviewTest.testTC007_ViewPendingReviews();
+        } finally {
+            // Ensure staticDriver is updated
+            BaseTest.staticDriver = reviewTest.driver;
+        }
     }
     
     @Test
@@ -148,7 +245,12 @@ public class SeleniumTestSuite {
         if (reviewTest.driver == null) {
             reviewTest.setUp();
         }
-        reviewTest.testTC008_ApproveReview();
+        try {
+            reviewTest.testTC008_ApproveReview();
+        } finally {
+            // Ensure staticDriver is updated
+            BaseTest.staticDriver = reviewTest.driver;
+        }
     }
     
     @Test
@@ -159,6 +261,40 @@ public class SeleniumTestSuite {
         if (reviewTest.driver == null) {
             reviewTest.setUp();
         }
-        reviewTest.testTC009_RejectReview();
+        try {
+            reviewTest.testTC009_RejectReview();
+        } finally {
+            // Ensure staticDriver is updated
+            BaseTest.staticDriver = reviewTest.driver;
+        }
+    }
+    
+    @Test
+    @Order(10)
+    @DisplayName("Communication Test - Real-time communication between producer and admin")
+    public void testTC010_RealTimeCommunication() throws InterruptedException {
+        // Reset the session before running this test
+        baseTest.resetSession();
+        
+        try {
+            // This test creates its own WebDriver instances for producer and admin
+            communicationTest.testTC010_RealTimeCommunication();
+        } finally {
+            // Ensure any WebDriver instances created by this test are properly closed
+            if (communicationTest.driver != null && communicationTest.driver != BaseTest.staticDriver) {
+                try {
+                    communicationTest.driver.quit();
+                } catch (Exception e) {
+                    System.err.println("Error closing communicationTest driver: " + e.getMessage());
+                } finally {
+                    communicationTest.driver = null;
+                }
+            }
+            
+            // Reset static driver reference after the test
+            if (BaseTest.staticDriver == null) {
+                baseTest.setUp();
+            }
+        }
     }
 } 
