@@ -69,7 +69,7 @@ public class ReviewTest extends BaseTest {
             
             // Set up a new driver from scratch
             io.github.bonigarcia.wdm.WebDriverManager.chromedriver().setup();
-            ChromeOptions options = new ChromeOptions();
+            
             driver = new ChromeDriver(options);
             
             // Initialize waits

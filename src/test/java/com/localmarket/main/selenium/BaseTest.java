@@ -43,6 +43,11 @@ public class BaseTest {
     protected WebDriver driver;
     protected WebDriverWait wait;
     protected Wait<WebDriver> fluentWait;
+    protected ChromeOptions options = new ChromeOptions();
+    // Configure Chrome options
+    {
+        options.addArguments("--headless");
+    }
     
     // Directory for storing screenshots
     private static final String SCREENSHOT_DIR = "test-screenshots";
@@ -53,12 +58,9 @@ public class BaseTest {
         Logger.getLogger("org.openqa.selenium").setLevel(Level.SEVERE);
         System.setProperty("webdriver.chrome.silentOutput", "true");
         
-        // Set up WebDriverManager for ChromeDriver
         WebDriverManager.chromedriver().setup();
         
-        // Chrome WebDriver setup
-        ChromeOptions options = new ChromeOptions();
-        // Add options if needed (headless, disable-gpu, etc.)
+        // ChromeOptions options = new ChromeOptions();
         //options.addArguments("--headless");
         
         // Check if there's an existing driver and if it's valid
@@ -91,7 +93,7 @@ public class BaseTest {
         // Standard wait (10 seconds)
         wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         
-        // Fluent wait configuration (useful for animations and slower operations)
+        // Fluent wait configuration
         fluentWait = new FluentWait<>(driver)
                 .withTimeout(Duration.ofSeconds(30))
                 .pollingEvery(Duration.ofMillis(500))
@@ -129,40 +131,41 @@ public class BaseTest {
      * @return Path to the saved screenshot file, or null if screenshot failed
      */
     protected String takeScreenshot(WebDriver driver, String testName, String stepName) {
-        if (driver == null) {
-            System.err.println("Cannot take screenshot - driver is null");
-            return null;
-        }
+        // if (driver == null) {
+        //     System.err.println("Cannot take screenshot - driver is null");
+        //     return null;
+        // }
         
-        try {
-            // Clean up the step name to make it file-system friendly
-            String cleanStepName = stepName.replaceAll("[^a-zA-Z0-9_\\-]", "_");
+        // try {
+        //     // Clean up the step name to make it file-system friendly
+        //     String cleanStepName = stepName.replaceAll("[^a-zA-Z0-9_\\-]", "_");
             
-            // Create timestamp for unique filename
-            String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        //     // Create timestamp for unique filename
+        //     String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
             
-            // Create filename
-            String filename = testName + "_" + cleanStepName + "_" + timestamp + ".png";
+        //     // Create filename
+        //     String filename = testName + "_" + cleanStepName + "_" + timestamp + ".png";
             
-            // Take screenshot
-            File screenshotFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+        //     // Take screenshot
+        //     File screenshotFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
             
-            // Create target file path
-            Path targetPath = Paths.get(SCREENSHOT_DIR, filename);
+        //     // Create target file path
+        //     Path targetPath = Paths.get(SCREENSHOT_DIR, filename);
             
-            // Copy screenshot to target location
-            Files.copy(screenshotFile.toPath(), targetPath);
+        //     // Copy screenshot to target location
+        //     Files.copy(screenshotFile.toPath(), targetPath);
             
-            System.out.println("Screenshot saved: " + targetPath.toAbsolutePath());
-            return targetPath.toString();
+        //     System.out.println("Screenshot saved: " + targetPath.toAbsolutePath());
+        //     return targetPath.toString();
             
-        } catch (IOException e) {
-            System.err.println("Failed to save screenshot: " + e.getMessage());
-            return null;
-        } catch (Exception e) {
-            System.err.println("Error taking screenshot: " + e.getMessage());
-            return null;
-        }
+        // } catch (IOException e) {
+        //     System.err.println("Failed to save screenshot: " + e.getMessage());
+        //     return null;
+        // } catch (Exception e) {
+        //     System.err.println("Error taking screenshot: " + e.getMessage());
+        //     return null;
+        // }
+        return null;
     }
 
     @AfterAll
@@ -202,7 +205,7 @@ public class BaseTest {
         }
         
         // Set up a new driver
-        ChromeOptions options = new ChromeOptions();
+        // ChromeOptions options = new ChromeOptions();
         staticDriver = new ChromeDriver(options);
         driver = staticDriver;
         
@@ -266,6 +269,7 @@ public class BaseTest {
 
     /**
      * Wait specifically for the preloader overlay to disappear
+     * THE TRUCK PRELOADER
      */
     protected void waitForPreloaderToDisappear() {
         try {
@@ -331,7 +335,7 @@ public class BaseTest {
         
         // Set up a new driver instance
         WebDriverManager.chromedriver().setup();
-        ChromeOptions options = new ChromeOptions();
+        // ChromeOptions options = new ChromeOptions();
         WebDriver newDriver = new ChromeDriver(options);
         newDriver.manage().window().maximize();
         

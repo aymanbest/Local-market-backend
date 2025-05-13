@@ -15,7 +15,7 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.FluentWait;
-
+import org.openqa.selenium.support.ui.Select;
 import java.time.Duration;
 import java.util.List;
 
@@ -26,6 +26,7 @@ public class ProducerTest extends BaseTest {
     // Static variables to store seller credentials across test methods
     private static String sellerEmail = null;
     private static String sellerPassword = null;
+    private static boolean tc004Completed = false;
 
     @Test
     @DisplayName("Become a Producer")
@@ -133,7 +134,7 @@ public class ProducerTest extends BaseTest {
                     By.xpath("//label[contains(text(), 'City/Region')]/following::select[1]"));
             
             // Use the Select class for proper dropdown interaction
-            org.openqa.selenium.support.ui.Select dropdown = new org.openqa.selenium.support.ui.Select(regionSelect);
+            Select dropdown = new Select(regionSelect);
             
             // Wait for dropdown options to load
             waitForAnimations();
@@ -141,28 +142,13 @@ public class ProducerTest extends BaseTest {
             // Get all options
             List<WebElement> options = dropdown.getOptions();
             
-            // Find a valid option (not empty and not "Other")
-            String selectedOption = null;
-            for (WebElement option : options) {
-                String value = option.getAttribute("value");
-                if (value != null && !value.isEmpty() && !"Other".equals(value)) {
-                    selectedOption = value;
-                    break;
-                }
-            }
-            
-            // Select the option by value
-            if (selectedOption != null) {
-                dropdown.selectByValue(selectedOption);
-            } else {
-                // If no valid option found, select by index (the first non-empty option)
-                for (int i = 0; i < options.size(); i++) {
-                    String value = options.get(i).getAttribute("value");
-                    if (value != null && !value.isEmpty()) {
-                        dropdown.selectByIndex(i);
-                        break;
-                    }
-                }
+            // Find a valid option
+            // select the first option in the dropdown
+            if (options.size() > 1) {
+                dropdown.selectByIndex(1);
+            } else if (options.size() > 0) {
+                // Fallback
+                dropdown.selectByIndex(0);
             }
             
             waitForAnimations();
@@ -201,14 +187,11 @@ public class ProducerTest extends BaseTest {
             takeScreenshot(driver, "TC_004", "Fill_out_application_form");
             
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", submitButton);
-
-            
             
             waitForPreloaderToDisappear();
 
             takeScreenshot(driver, "TC_004", "Submit_application_form");
             
-
             // Wait for redirect after submission
             // Typically redirects to /account after submission
             wait.until(driver -> {
@@ -234,6 +217,10 @@ public class ProducerTest extends BaseTest {
             
             System.out.println("TC_004 - Become a Producer: PASSED");
             
+            // Mark test as completed and update static driver
+            tc004Completed = true;
+            BaseTest.staticDriver = driver;
+            
         } catch (Exception e) {
             // Take screenshot and log on failure
             if (driver instanceof JavascriptExecutor) {
@@ -247,6 +234,7 @@ public class ProducerTest extends BaseTest {
             e.printStackTrace();
             throw e;
         }
+        // IMPORTANT: Do not close the driver here as TC005 may need it
     }
 
     @Test
@@ -257,95 +245,31 @@ public class ProducerTest extends BaseTest {
             // Test ID: TC_005 - Reapply as Producer
             System.out.println("Running test: TC_005 - Reapply as Producer");
             
-            // Create a completely new WebDriver instance for this test
-            if (driver != null) {
-                driver.quit();
-            }
-            
-            // Set up a new driver from scratch
-            io.github.bonigarcia.wdm.WebDriverManager.chromedriver().setup();
-            ChromeOptions options = new ChromeOptions();
-            driver = new ChromeDriver(options);
-            
-            // Initialize waits
-            wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-            fluentWait = new FluentWait<>(driver)
-                    .withTimeout(Duration.ofSeconds(30))
-                    .pollingEvery(Duration.ofMillis(500))
-                    .ignoring(NoSuchElementException.class)
-                    .ignoring(StaleElementReferenceException.class);
-                    
-            // Maximize window
-            driver.manage().window().maximize();
-            
-            boolean needsLogin = true;
-            
-            // Verify we have seller credentials from previous test
-            if (sellerEmail == null || sellerPassword == null) {
-                System.out.println("No seller credentials found. Run testBecomeProducer first.");
-                // Create new credentials if needed
-                String timestamp = String.valueOf(System.currentTimeMillis());
-                sellerEmail = "test_seller_" + timestamp + "@example.com";
-                sellerPassword = "Test123!";
-                
-                // Close this driver
-                driver.quit();
-                
-                // Register a new user and apply as seller first
+            // If test is running standalone (not through test suite)
+            if (!tc004Completed && (sellerEmail == null || sellerPassword == null)) {
+                System.out.println("TC_004 not completed, running it first...");
                 testTC004_BecomeProducer();
-                
-                // No need to login again since testBecomeProducer already registered and logged in
-                needsLogin = false;
-                return;
+                System.out.println("TC_004 completed, continuing with TC_005...");
             }
             
-            // Step 1: Login with seller account (only if needed)
-            if (needsLogin) {
-                driver.get("http://localhost:5173/login");
-                
-                waitForPreloaderToDisappear();
-                breakpoint("After waitForPreloaderToDisappear", 5);
-                
-                // Wait for login form to load
-                wait.until(ExpectedConditions.presenceOfElementLocated(
-                        By.xpath("//h1[contains(text(), 'WELCOME TO OUR MARKET')]")));
-                
-                // Fill out login form
-                WebElement loginEmailInput = driver.findElement(By.cssSelector("input[type=\"text\"]"));
-                loginEmailInput.sendKeys(sellerEmail);
-                
-                WebElement loginPasswordInput = driver.findElement(By.cssSelector("input[type=\"password\"]"));
-                loginPasswordInput.sendKeys(sellerPassword);
-                
-                takeScreenshot(driver, "TC_005", "Fill_out_login_form");
-                
-                // Wait for preloader to disappear
-                waitForPreloaderToDisappear();
-                
-                // Submit login form using JavaScript click
-                WebElement loginButton = driver.findElement(By.cssSelector("button[type=\"submit\"]"));
-                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", loginButton);
-                
-                takeScreenshot(driver, "TC_005", "Login_Button_Clicked");
-                
-                // Wait for login to complete and redirect to home page
-                wait.until(ExpectedConditions.urlToBe("http://localhost:5173/"));
-                
-                // Verify login successful by checking for the user menu
-                wait.until(ExpectedConditions.presenceOfElementLocated(
-                        By.cssSelector(".lucide-circle-user")));
-                
-                takeScreenshot(driver, "TC_005", "Logged_in_Successfully");
+            // Ensure we have a valid driver
+            if (driver == null) {
+                System.out.println("Driver is null, initializing...");
+                setUp();
             }
             
-            // Step 2: Try to access seller application page again
+            System.out.println("Checking seller application status with credentials: " + sellerEmail);
+            
+            // Navigate to seller application page again
             driver.get("http://localhost:5173/account/apply-seller");
             
             waitForPreloaderToDisappear();
             
-            takeScreenshot(driver, "TC_005", "Access_Seller_Application_Page");
+            // takeScreenshot(driver, "TC_005", "Access_Seller_Application_Page");
+
+            breakpoint("apply seller", 5);
             
-            // Step 3: Verify we're redirected to account page or shown pending application status
+            // Verify we're redirected to account page or shown pending application status
             try {
                 // Option 1: We might get redirected to account page
                 WebElement accountHeading = wait.until(ExpectedConditions.visibilityOfElementLocated(
@@ -394,13 +318,7 @@ public class ProducerTest extends BaseTest {
             System.err.println("TC_005 test failed: " + e.getMessage());
             e.printStackTrace();
             throw e;
-        } finally {
-            // Close the WebDriver when this test is done
-            if (driver != null) {
-                System.out.println("Closing WebDriver for TC_005");
-                driver.quit();
-                driver = null;
-            }
         }
+        // Let the test suite manage the driver closing
     }
 } 

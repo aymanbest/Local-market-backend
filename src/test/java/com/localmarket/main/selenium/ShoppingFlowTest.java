@@ -82,7 +82,7 @@ public class ShoppingFlowTest extends BaseTest {
             phoneInput.sendKeys("1234567890");
 
             // Wait for animations
-            waitForAnimations();
+           // waitForAnimations();
 
             
             // Check "I agree to the Terms of Service"
@@ -92,7 +92,7 @@ public class ShoppingFlowTest extends BaseTest {
             takeScreenshot(driver, "TC_001", "Fill_out_guest_checkout_form");
             
             // Wait for animations
-            waitForAnimations();
+            //waitForAnimations();
 
             // Click the Checkout button using JavaScript
             WebElement checkoutButton = driver.findElement(By.cssSelector("button[type=\"submit\"]"));
@@ -136,7 +136,7 @@ public class ShoppingFlowTest extends BaseTest {
             String messageText = successMessage.getText();
             assertEquals("Payment Successful!", messageText, "Success message should be displayed");
 
-            System.out.println("TC_001 - Complete shopping flow including payment: PASSED");
+            System.out.println("TC_001 - Complete shopping flow using guest checkout including payment: PASSED");
 
         } catch (Exception e) {
             // Take screenshot on failure
