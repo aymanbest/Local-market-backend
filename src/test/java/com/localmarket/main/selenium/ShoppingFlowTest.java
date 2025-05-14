@@ -147,7 +147,7 @@ public class ShoppingFlowTest {
     }
 
     @Test
-    public void testCompleteShoppingFlowIncludingPayment() {
+    public void TC_001_CompleteShoppingGUEST() {
         try {
             // Navigate to the store page
             driver.get("http://localhost:5173/store");
@@ -286,7 +286,7 @@ public class ShoppingFlowTest {
     }
 
     @Test
-    public void testTC002_GuestCheckoutWithAccountCreation() {
+    public void TC_002_GuestCheckoutWithAccountCreation() {
         try {
             // Test ID: TC_002 - Guest checkout + account creation
             System.out.println("Running test: TC_002 - Guest checkout + account creation");
@@ -491,7 +491,7 @@ public class ShoppingFlowTest {
     }
 
     @Test
-    public void testTC003_OrderAsRegisteredMember() {
+    public void TC_003_OrderAsRegisteredMember() {
         try {
             // Test ID: TC_003 - Order as a logged-in member
             System.out.println("Running test: TC_003 - Order as a logged-in member");
@@ -660,7 +660,7 @@ public class ShoppingFlowTest {
     }
 
     @Test
-    public void testTC004_BecomeProducer() {
+    public void TC_004_BecomeProducer() {
         try {
             // Test ID: TC_004 - Become a Producer
             System.out.println("Running test: TC_004 - Become a Producer");
@@ -876,7 +876,7 @@ public class ShoppingFlowTest {
                 sellerPassword = "Test123!";
                 
                 // Register a new user and apply as seller first
-                testTC004_BecomeProducer();
+                TC_004_BecomeProducer();
                 
                 // No need to login again since testBecomeProducer already registered and logged in
                 needsLogin = false;
@@ -964,7 +964,7 @@ public class ShoppingFlowTest {
     }
 
     @Test
-    public void testTC006_AddProductReview() throws InterruptedException {
+    public void TC_006_AddProductReview() throws InterruptedException {
         try {
             System.out.println("\n=== Starting TC_006: Add a review for a product (connected user) ===\n");
             
@@ -1046,14 +1046,14 @@ public class ShoppingFlowTest {
     }
 
     @Test
-    public void testTC007_ViewPendingReviews() throws InterruptedException {
+    public void TC_007_ViewPendingReviews() throws InterruptedException {
         try {
             System.out.println("\n=== Starting TC_007: View pending reviews (admin) ===\n");
             
             // Skip if previous test didn't run
             if (reviewCustomerUsername == null) {
                 System.out.println("Running TC_006 first to create a review");
-                testTC006_AddProductReview();
+                TC_006_AddProductReview();
             }
             
             // Initialize admin browser session if needed
@@ -1107,16 +1107,16 @@ public class ShoppingFlowTest {
     }
 
     @Test
-    public void testTC008_ApproveReview() throws InterruptedException {
+    public void TC_008_ApproveReview() throws InterruptedException {
         try {
             System.out.println("\n=== Starting TC_008: Approve a pending review (admin) ===\n");
             
             // Skip if previous tests didn't run
             if (reviewCustomerUsername == null) {
                 System.out.println("Running TC_006 first to create a review");
-                testTC006_AddProductReview();
+                TC_006_AddProductReview();
                 System.out.println("Running TC_007 to verify review is visible in admin panel");
-                testTC007_ViewPendingReviews();
+                TC_007_ViewPendingReviews();
             }
             
             // Approve the review
@@ -1137,14 +1137,14 @@ public class ShoppingFlowTest {
     }
 
     @Test
-    public void testTC009_RejectReview() throws InterruptedException {
+    public void TC_009_RejectReview() throws InterruptedException {
         try {
             System.out.println("\n=== Starting TC_009: Reject a review (admin) ===\n");
             
             // Skip if we don't have customer credentials from previous tests
             if (reviewCustomerEmail == null || reviewCustomerUsername == null) {
                 System.out.println("Running TC_006 first to set up customer account");
-                testTC006_AddProductReview();
+                TC_006_AddProductReview();
             }
             
             // Place an order for a second product
